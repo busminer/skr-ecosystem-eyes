@@ -2,6 +2,8 @@
 
 Independent, read-only intelligence for the SKR staking ecosystem on Solana.
 
+**Live community beta:** [busminer.github.io/skr-ecosystem-eyes](https://busminer.github.io/skr-ecosystem-eyes/)
+
 ![Node 22+](https://img.shields.io/badge/Node-22%2B-68f5b2?style=flat-square) ![Dependencies](https://img.shields.io/badge/runtime_dependencies-0-68f5b2?style=flat-square) ![Mode](https://img.shields.io/badge/mode-read--only-8b7cff?style=flat-square)
 
 ## What works now
