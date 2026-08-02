@@ -1,0 +1,25 @@
+# Local runtime data
+/data/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Visual verification artifacts
+/artifacts/
+/.chrome-*
+
+# Internal plans and simulation-first experiments are not part of v1.
+/.hermes/
+/prototypes/
+
+# Machine-specific Windows launchers stay local.
+/scripts/start-skr-eyes.cmd
+/scripts/start-skr-eyes.vbs
+/scripts/start_skr_eyes_silent.pyw
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/

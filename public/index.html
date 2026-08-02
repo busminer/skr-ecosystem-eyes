@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Live, read-only intelligence for the SKR staking ecosystem.">
+  <title>SKR Ecosystem Eyes — Operations Console</title>
+  <link rel="icon" href="/assets/brand/skr-token-white.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/operations-console.css?v=4">
+</head>
+<body>
+  <div class="app-frame">
+    <aside class="rail" aria-label="Operations Console navigation">
+      <a class="rail-brand" href="#overview" aria-label="SKR Ecosystem Eyes"><img src="/assets/brand/skr-token-white.svg" alt="SKR token mark"><span><strong>SKR Eyes</strong><small>OPERATIONS CONSOLE</small></span></a>
+      <nav class="rail-nav">
+        <a class="rail-link active" href="#overview" aria-label="Overview"><i>01</i><span>Overview</span></a>
+        <a class="rail-link" href="#flows" aria-label="Capital flows"><i>02</i><span>Capital flows</span></a>
+        <a class="rail-link" href="#activity" aria-label="Live activity"><i>03</i><span>Event ledger</span></a>
+        <a class="rail-link" href="#protocol" aria-label="Protocol state"><i>04</i><span>Protocol health</span></a>
+      </nav>
+      <div class="rail-foot"><div><i></i><span>Solana mainnet</span></div><small>FINALIZED · READ ONLY</small></div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <a class="identity" href="#overview">
+          <span class="identity-copy"><strong>Network overview</strong><small>SKR STAKING · SOLANA MAINNET</small></span>
+        </a>
+        <div class="range-control" aria-label="History range"><button class="active">24H</button><button disabled>7D</button><button disabled>30D</button><span>LOCAL INDEX</span></div>
+        <div class="top-system">
+          <span id="clock">--:--:-- UTC</span>
+          <b><i id="liveDot" class="dot"></i> <span id="networkStatus">CONNECTING</span></b>
+          <a class="official-link" href="https://stake.solanamobile.com/" target="_blank" rel="noopener">Official staking ↗</a>
+        </div>
+      </header>
+      <nav class="mobile-tabs" aria-label="Mobile console navigation">
+        <a href="#overview">Overview</a><a href="#flows">Flows</a><a href="#activity">Ledger</a><a href="#protocol">Health</a>
+      </nav>
+
+      <main class="stage">
+        <div class="disclosure"><strong>INDEPENDENT COMMUNITY ANALYTICS · NOT AFFILIATED WITH SOLANA FOUNDATION OR SOLANA MOBILE</strong><span>NO WALLET · NO SIGNING · FINALIZED DATA</span></div>
+
+        <section class="ops-brief" aria-label="Generated network brief">
+          <div class="brief-verdict"><span>GENERATED STATE VERDICT</span><strong id="systemVerdict">PARTIAL VIEW</strong><small id="verdictDetail">WAITING FOR A COMPLETE 24H WINDOW</small></div>
+          <div class="brief-stat"><span>DATA FRESHNESS</span><strong id="briefFreshness">SCANNING</strong><small>CONFIG · VAULT · USERSTAKE</small></div>
+          <div class="brief-stat"><span>HISTORY COVERAGE</span><strong id="briefCoverage">LOCAL</strong><small>NEVER IMPLIED BEYOND INDEXED DATA</small></div>
+          <div class="brief-stat"><span>TRUST MODEL</span><strong>ON-CHAIN FIRST</strong><small>INDEPENDENTLY DERIVED TOTALS</small></div>
+        </section>
+
+        <section class="command-grid" id="overview" aria-label="SKR network state">
+          <article class="panel stake-core">
+            <header class="panel-head"><div><p class="panel-kicker">NETWORK STATE</p><h2>Staking position</h2></div><div class="panel-meta"><strong id="freshness">SCANNING</strong><span id="rpcLabel">SOLANA RPC</span></div></header>
+            <div class="metric-monument" data-provenance="activeStaked">
+              <span>ACTIVE STAKED</span>
+              <strong id="activeStaked">—</strong>
+              <small class="metric-unit">SKR</small>
+              <div class="stake-meter"><i id="stakedPercentBar"></i></div>
+              <div class="meter-labels"><span id="stakedPercent">— OF SUPPLY</span><span>100%</span></div>
+            </div>
+            <div class="core-list">
+              <div class="core-row" data-provenance="sharePrice"><span>SHARE PRICE</span><strong id="sharePrice">—</strong><small id="rewardIndex">— REWARD INDEX</small></div>
+              <div class="core-row"><span>ACTIVE POSITIONS</span><strong id="activePositions">—</strong><small id="totalPositions">— TOTAL ACCOUNTS</small></div>
+              <div class="core-row" data-provenance="stakedPercent"><span>SUPPLY CAPTURE</span><strong id="supplyCapture">—</strong><small>FINALIZED CONFIG + MINT STATE</small></div>
+            </div>
+          </article>
+
+          <article class="panel capital-field">
+            <header class="panel-head"><div><p class="panel-kicker">LIVE CAPITAL ROUTING</p><h2>Staking vault operations</h2></div><div class="panel-meta"><strong>STAKE IN · UNSTAKE OUT</strong><span>FINALIZED EVENTS / REAL AMOUNTS</span></div></header>
+            <div class="canvas-wrap">
+              <canvas id="capitalCanvas" aria-label="Live finalized SKR stake events entering the staking vault and unstake events returning toward the 48-hour cooldown"></canvas>
+              <div class="lane-overlay">
+                <div class="lane-stat route-in"><span>01 / STAKE IN</span><strong>→ VAULT</strong></div>
+                <div class="lane-stat vault-total"><span>STAKING VAULT</span><strong id="laneActive">—</strong></div>
+                <div class="lane-stat route-out"><span>02 / 48H QUEUE TOTAL</span><strong id="lanePending">—</strong><small>HELD IN VAULT · INCL. EXIT READY</small></div>
+              </div>
+              <div class="canvas-caption" role="status" aria-live="polite"><span><b id="fieldStatus">CONNECTING EVENT STREAM</b><br><span id="fieldLatest">ONLY NEW FINALIZED EVENTS MOVE</span></span><span>STAKE → ACTIVE · UNSTAKE ← 48H QUEUE</span></div>
+            </div>
+          </article>
+
+          <article class="panel exit-core">
+            <header class="panel-head"><div><p class="panel-kicker">EXIT PRESSURE</p><h2>48-hour queue</h2></div><div class="panel-meta"><strong id="queueTag">SCANNING</strong><span>USERSTAKE ACCOUNTS</span></div></header>
+            <div class="pressure-display" data-provenance="pendingUnstake">
+              <div class="pressure-ring" id="pressureRing"><strong id="pressureRatio">—</strong><small>OF ACTIVE</small></div>
+              <div class="pressure-copy"><span>PENDING UNSTAKE</span><strong id="pendingUnstake">—</strong><small id="pendingPositions">— POSITIONS COOLING</small></div>
+            </div>
+            <div class="exit-stat" data-provenance="withdrawable"><span>WITHDRAWABLE NOW</span><strong id="withdrawable">—</strong></div>
+            <div class="exit-stat" data-provenance="vaultBalance"><span>VAULT BALANCE</span><strong id="vaultBalance">—</strong></div>
+            <div class="unlock-horizon" data-provenance="unlockHorizon" aria-label="48 hour unlock horizon">
+              <div class="horizon-head"><span>UNLOCK HORIZON</span><small>SHARE OF PENDING SKR</small></div>
+              <div class="horizon-row"><span>READY</span><i><b id="unlockReadyBar"></b></i><strong id="unlockReady">—</strong></div>
+              <div class="horizon-row"><span>0–6H</span><i><b id="unlock6Bar"></b></i><strong id="unlock6">—</strong></div>
+              <div class="horizon-row"><span>6–12H</span><i><b id="unlock12Bar"></b></i><strong id="unlock12">—</strong></div>
+              <div class="horizon-row"><span>12–24H</span><i><b id="unlock24Bar"></b></i><strong id="unlock24">—</strong></div>
+              <div class="horizon-row"><span>24–48H</span><i><b id="unlock48Bar"></b></i><strong id="unlock48">—</strong></div>
+            </div>
+            <div class="mini-queue" id="miniQueue"><div class="empty">Scanning exit queue…</div></div>
+          </article>
+        </section>
+
+        <section class="signal-strip" aria-label="24 hour flow signals">
+          <article class="signal stake" data-provenance="flow24h"><header><span>24H STAKED</span><b>↗ IN</b></header><strong id="staked24">—</strong><small id="stakeEvents24">— EVENTS</small></article>
+          <article class="signal unstake" data-provenance="flow24h"><header><span>24H UNSTAKED</span><b>↘ OUT</b></header><strong id="unstaked24">—</strong><small id="unstakeEvents24">EXIT PRESSURE</small></article>
+          <article class="signal" data-provenance="flow24h"><header><span>24H NET ACTIVE FLOW</span><b id="netArrow">→</b></header><strong id="netFlow24">—</strong><small id="uniqueWallets24">STAKE − UNSTAKE · — WALLETS</small></article>
+          <article class="signal withdraw" data-provenance="flow24h"><header><span>24H WITHDRAWN</span><b>⇥ EXIT</b></header><strong id="withdrawn24">—</strong><small>TOKENS EXITED VAULT</small></article>
+        </section>
+
+        <section class="analytics-grid" id="flows">
+          <article class="panel flow-panel" data-provenance="flow24h">
+            <header class="panel-head"><div><p class="panel-kicker">FLOW ENGINE</p><h2>Stake / unstake velocity</h2></div><div class="chart-legend"><span class="stake-key">STAKE</span><span class="unstake-key">UNSTAKE</span></div></header>
+            <div id="flowChart" class="chart"><div class="empty">COLLECTING HOURLY FLOW DATA…</div></div>
+            <div class="coverage" id="coverage">HISTORY COVERAGE BEGINS WHEN THIS INDEXER STARTS.</div>
+          </article>
+
+          <aside class="panel integrity-panel" id="protocol">
+            <header class="panel-head"><div><p class="panel-kicker">PROTOCOL INTEGRITY</p><h2>Reconciliation matrix</h2></div><div class="panel-meta"><strong>READ ONLY</strong><span>INDEPENDENT SOURCES</span></div></header>
+            <div class="integrity-list">
+              <div class="integrity-row"><span>RPC CONNECTION<small>FINALIZED COMMITMENT</small></span><b class="ok" id="integrityRpc">ONLINE</b></div>
+              <div class="integrity-row"><span>VAULT EXCESS<small>VAULT MINUS ACTIVE STAKE</small></span><b id="vaultExcess">—</b></div>
+              <div class="integrity-row" data-provenance="guardianPools"><span>GUARDIAN POOLS<small>ACTIVE STAKE CONCENTRATION</small></span><b id="guardianPools">SCANNING</b></div>
+              <div class="integrity-row"><span>COOLDOWN CONFIG<small>PROGRAM ACCOUNT STATE</small></span><b class="ok">48 HOURS</b></div>
+              <div class="integrity-row"><span>EVENT PROOF<small>EVERY ROW LINKS ON-CHAIN</small></span><b class="ok">VERIFIABLE</b></div>
+            </div>
+            <div class="integrity-foot">Totals are independently derived from config, mint, vault and filtered UserStake accounts. Historical unstake values remain approximate until slot-level share-price snapshots are stored.</div>
+          </aside>
+        </section>
+
+        <section class="operations-grid" id="activity">
+          <article class="panel events-panel">
+            <header class="panel-head"><div><p class="panel-kicker">EVENT LEDGER</p><h2>Finalized staking activity</h2></div><div class="filters" id="filters"><button class="active" data-type="">ALL</button><button data-type="stake">STAKE</button><button data-type="unstake">UNSTAKE</button><button data-type="withdraw">WITHDRAW</button><button data-min="100000">WHALES</button></div></header>
+            <div class="table-wrap"><table><thead><tr><th>AGE</th><th>ACTION</th><th>WALLET</th><th class="right">MAGNITUDE / AMOUNT</th><th></th></tr></thead><tbody id="eventRows"><tr><td colspan="5" class="empty">SYNCING RECENT TRANSACTIONS…</td></tr></tbody></table></div>
+          </article>
+
+          <aside class="panel queue-panel">
+            <header class="panel-head"><div><p class="panel-kicker">EXIT RADAR</p><h2>Largest unlocks</h2></div><div class="panel-meta"><strong>TOP 12</strong><span>BY SKR AMOUNT</span></div></header>
+            <div id="queueRows" class="queue-list"><div class="empty">SCANNING USERSTAKE ACCOUNTS…</div></div>
+          </aside>
+        </section>
+
+        <section class="protocol-strip" aria-label="Protocol identifiers">
+          <div><span>STAKING PROGRAM</span><a id="programLink" target="_blank" rel="noopener">SKRskr…94BZ ↗</a></div>
+          <div><span>STAKE VAULT</span><a id="vaultLink" target="_blank" rel="noopener">8isViK…ZbB8 ↗</a></div>
+          <div><span>INDEXER MODE</span><b>FINALIZED / SSE</b></div>
+          <p>No wallet connection. No transaction signing. No custody. All critical totals are sourced from Solana on-chain accounts rather than a third-party dashboard.</p>
+        </section>
+
+        <section class="attribution">
+          <div class="attribution-index"><span>INDEPENDENT / 2026</span><strong>SKR</strong><span>ECOSYSTEM INTELLIGENCE</span></div>
+          <div class="attribution-copy"><h2>See the staking economy before it becomes a headline.</h2><p><strong>SKR Ecosystem Eyes is an independent community analytics project.</strong> It is not affiliated with, endorsed by or sponsored by Solana Foundation or Solana Mobile. Solana, Solana Mobile, Seeker and SKR marks belong to their respective owners. Data is informational only, not financial advice. Visual research: <a href="https://solanamobile.com/" target="_blank" rel="noopener">Solana Mobile ↗</a>.</p></div>
+        </section>
+      </main>
+
+      <footer class="footer"><span>SKR ECOSYSTEM EYES · INDEPENDENT OPERATIONS CONSOLE</span><div><a href="https://solanamobile.com/skr" target="_blank" rel="noopener">ABOUT SKR ↗</a><span id="footerStatus">BOOTING INDEXER…</span></div></footer>
+    </div>
+  </div>
+  <button class="drawer-scrim" id="drawerScrim" aria-label="Close evidence inspector" tabindex="-1"></button>
+  <aside class="evidence-drawer" id="evidenceDrawer" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="drawerTitle">
+    <header class="drawer-head">
+      <div><span id="drawerEyebrow">PROVENANCE</span><h2 id="drawerTitle">Evidence inspector</h2></div>
+      <button class="drawer-close" id="drawerClose" aria-label="Close evidence inspector">×</button>
+    </header>
+    <div class="drawer-status" id="drawerStatus"></div>
+    <div class="drawer-body" id="drawerBody"><div class="empty">Select a metric or event to inspect its evidence.</div></div>
+  </aside>
+  <script type="module" src="/app.js?v=18"></script>
+</body>
+</html>

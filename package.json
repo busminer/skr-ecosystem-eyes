@@ -1,0 +1,20 @@
+{
+  "name": "skr-ecosystem-eyes",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "author": "Alex Kosa",
+  "repository": "https://github.com/busminer/skr-ecosystem-eyes",
+  "bugs": "https://github.com/busminer/skr-ecosystem-eyes/issues",
+  "homepage": "https://github.com/busminer/skr-ecosystem-eyes#readme",
+  "description": "Read-only live intelligence dashboard for the SKR staking ecosystem.",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test",
+    "check": "node scripts/check-syntax.mjs && node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
