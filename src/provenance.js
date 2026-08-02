@@ -9,7 +9,7 @@ export function buildProvenance({ metrics = {}, analytics = {}, sourceSlots = {}
   scan ||= {};
   const observedAt = metrics.updatedAt || null;
   const source = (label, account, slot) => ({ label, account, slot: slot ?? null });
-  const record = ({ title, sources, derivation, accuracy = 'Exact at the reported finalized snapshot', caveat = null, coverageFrom = null, scanMode = null }) => ({
+  const record = ({ title, sources, derivation, accuracy = 'Exact arithmetic from the reported finalized source slot(s)', caveat = null, coverageFrom = null, scanMode = null }) => ({
     title,
     commitment: 'finalized',
     observedAt,
@@ -32,6 +32,8 @@ export function buildProvenance({ metrics = {}, analytics = {}, sourceSlots = {}
     : USER_STAKE_SCAN_CAVEAT;
   const accountCount = Number.isFinite(scan.userStakeAccountCount) ? scan.userStakeAccountCount : null;
   const pageCount = Number.isFinite(scan.userStakePageCount) ? scan.userStakePageCount : null;
+  const multiSlotCaveat = 'Inputs are individually finalized but may come from nearby, non-identical slots; every source slot is reported separately.';
+  const combineCaveats = (...values) => values.filter(Boolean).join(' ');
 
   const positionDerivation = positionScanMode === 'paginated-filtered'
     ? `Sum of pending amounts from ${accountCount ?? 'all'} UserStake accounts returned across ${pageCount ?? 'all'} paginated finalized getProgramAccounts responses.`
@@ -54,6 +56,7 @@ export function buildProvenance({ metrics = {}, analytics = {}, sourceSlots = {}
       title: 'Supply capture',
       sources: [config, mint],
       derivation: 'Active staked SKR ÷ finalized SKR mint supply × 100.',
+      caveat: multiSlotCaveat,
     }),
     pendingUnstake: record({
       title: 'Pending unstake',
@@ -73,7 +76,7 @@ export function buildProvenance({ metrics = {}, analytics = {}, sourceSlots = {}
       title: '48-hour unlock horizon',
       sources: [positions, config],
       derivation: 'Complete filtered UserStake scan partitioned into ready, 0–6h, 6–12h, 12–24h and 24–48h maturity bands.',
-      caveat: positionCaveat,
+      caveat: combineCaveats(positionCaveat, multiSlotCaveat),
       scanMode: positionScanMode,
     }),
     vaultBalance: record({
@@ -85,7 +88,7 @@ export function buildProvenance({ metrics = {}, analytics = {}, sourceSlots = {}
       title: 'Guardian concentration',
       sources: [positions, config],
       derivation: 'Active shares grouped by Guardian pool and converted with the finalized share price.',
-      caveat: positionCaveat,
+      caveat: combineCaveats(positionCaveat, multiSlotCaveat),
       scanMode: positionScanMode,
     }),
     flow24h: record({

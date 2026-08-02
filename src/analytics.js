@@ -1,4 +1,4 @@
-const WINDOWS = { '1h': 3_600, '24h': 86_400, '7d': 604_800 };
+const WINDOWS = { '1h': 3_600, '24h': 86_400, '7d': 604_800, '30d': 2_592_000 };
 
 function emptyFlow() {
   return { staked: 0, unstaked: 0, withdrawn: 0, cancelled: 0, netFlow: 0, events: 0, wallets: 0 };
@@ -34,6 +34,7 @@ export function summarizeEvents(events = [], now = Math.floor(Date.now() / 1000)
     staked: 0,
     unstaked: 0,
     withdrawn: 0,
+    cancelled: 0,
     events: 0,
   }));
   for (const event of valid) {

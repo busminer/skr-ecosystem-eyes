@@ -26,3 +26,12 @@ test('evaluateFreshness picks the worst live signal', () => {
   assert.equal(result.overall, 'stale');
   assert.equal(result.isStale, true);
 });
+
+test('evaluateFreshness does not call a partially initialized service fresh', () => {
+  const now = 1_800_000_200;
+  const result = evaluateFreshness({ now, lastSyncAt: now - 5 });
+  assert.equal(result.events, 'fresh');
+  assert.equal(result.metrics, 'unknown');
+  assert.equal(result.queue, 'unknown');
+  assert.equal(result.overall, 'unknown');
+});

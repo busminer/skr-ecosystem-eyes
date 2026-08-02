@@ -21,7 +21,12 @@ export function writeSse(streams, event, payload) {
       continue;
     }
     try {
-      response.write(message);
+      const accepted = response.write(message);
+      if (!accepted) {
+        streams.delete(response);
+        try { response.destroy(); } catch { /* ignore */ }
+        continue;
+      }
       written += 1;
     } catch {
       streams.delete(response);

@@ -46,6 +46,22 @@ test('parseStakingTransaction derives withdraw amount from vault token delta', (
   assert.equal(parseStakingTransaction(tx)[0].wallet, USER);
 });
 
+test('parseStakingTransaction emits one exact transaction total for multiple withdraw instructions', () => {
+  const tx = transactionFixture({
+    data: 'Xd2GMpFXgQ1',
+    accounts: [0, 1, 3, 6, 5, 8],
+    preTokenBalances: [{ accountIndex: 6, mint: MINT, owner: STAKE_CONFIG, uiTokenAmount: { amount: '5000000000', decimals: 6 } }],
+    postTokenBalances: [{ accountIndex: 6, mint: MINT, owner: STAKE_CONFIG, uiTokenAmount: { amount: '4500000000', decimals: 6 } }],
+  });
+  tx.transaction.message.instructions.push({ ...tx.transaction.message.instructions[0] });
+
+  const events = parseStakingTransaction(tx);
+  assert.equal(events.length, 1);
+  assert.equal(events[0].amount, 500);
+  assert.equal(events[0].aggregation, 'transaction-total');
+  assert.deepEqual(events[0].instructionIndex, [0, 1]);
+});
+
 test('parseStakingTransaction ignores failed and irrelevant transactions', () => {
   const failed = transactionFixture({ data: 'SXLVHmrGRvoUgsKGA44HWf', accounts: [0, 1, 2, 3, 4] });
   failed.meta.err = { InstructionError: [0, 'Custom'] };

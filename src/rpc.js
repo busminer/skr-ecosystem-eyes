@@ -10,7 +10,7 @@ export class SolanaRpc {
     this.url = url;
     this.scanUrl = scanUrl;
     this.id = 0;
-    this.minimumInterval = Number(process.env.RPC_MIN_INTERVAL_MS || 250);
+    this.minimumInterval = Number(process.env.RPC_MIN_INTERVAL_MS || 500);
     this.lastCallAt = 0;
     this.queue = Promise.resolve();
   }
@@ -34,13 +34,21 @@ export class SolanaRpc {
           body: JSON.stringify({ jsonrpc: '2.0', id: ++this.id, method, params }),
           signal: AbortSignal.timeout(60_000),
         });
-        if (!response.ok) throw new Error(`RPC HTTP ${response.status}`);
+        if (!response.ok) {
+          const error = new Error(`RPC HTTP ${response.status}`);
+          const retryAfter = Number(response.headers.get('retry-after'));
+          if (Number.isFinite(retryAfter) && retryAfter > 0) error.retryAfterMs = Math.min(60_000, retryAfter * 1_000);
+          throw error;
+        }
         const payload = await response.json();
         if (payload.error) throw new Error(`RPC ${payload.error.code}: ${payload.error.message}`);
         return payload.result;
       } catch (error) {
         lastError = error;
-        if (attempt + 1 < attempts) await sleep(1_000 * 2 ** attempt);
+        if (attempt + 1 < attempts) {
+          const exponentialBackoff = 1_000 * 2 ** attempt;
+          await sleep(Math.max(exponentialBackoff, Number(error.retryAfterMs) || 0));
+        }
       }
     }
     throw lastError;
@@ -116,6 +124,34 @@ export class SolanaRpc {
 
   getRecentSignatures(limit = 50) {
     return this.call('getSignaturesForAddress', [PROGRAM_ID, { limit, commitment: 'finalized' }]);
+  }
+
+  async getSignaturesSince(
+    until,
+    {
+      pageLimit = Number(process.env.SIGNATURE_PAGE_LIMIT || 1_000),
+      maxPages = Number(process.env.SIGNATURE_MAX_PAGES || 20),
+    } = {},
+  ) {
+    if (!until) throw new Error('A persisted signature cursor is required for incremental sync');
+    const limit = Number.isSafeInteger(pageLimit) && pageLimit > 0 ? Math.min(1_000, pageLimit) : 1_000;
+    const pageCap = Number.isSafeInteger(maxPages) && maxPages > 0 ? maxPages : 20;
+    const signatures = [];
+    let before = null;
+
+    for (let page = 0; page < pageCap; page += 1) {
+      const options = { limit, commitment: 'finalized', until };
+      if (before) options.before = before;
+      const batch = await this.call('getSignaturesForAddress', [PROGRAM_ID, options]);
+      if (!Array.isArray(batch)) throw new Error('RPC getSignaturesForAddress returned an invalid response');
+      signatures.push(...batch);
+      if (batch.length < limit) return signatures;
+      const nextBefore = batch.at(-1)?.signature;
+      if (!nextBefore || nextBefore === before) throw new Error('RPC signature pagination did not advance');
+      before = nextBefore;
+    }
+
+    throw new Error(`RPC signature backlog exceeded ${pageCap * limit} transactions; cursor was not advanced`);
   }
 
   getTransaction(signature) {

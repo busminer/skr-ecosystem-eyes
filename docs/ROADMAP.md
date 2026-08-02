@@ -13,7 +13,7 @@ The MVP deliberately starts with one source of truth: finalized Solana state. Fe
 | Active accounts | sliced UserStake accounts | none |
 | Guardian pool distribution/concentration | same UserStake slice | none |
 | Stake/unstake/cancel/withdraw feed | staking program transactions | public RPC throughput |
-| 1h/24h/7d flow and whale feed | locally indexed events | local disk only |
+| 1h/24h/7d/30d flow and whale feed | cursor-indexed SQLite events | local disk only |
 
 ## Best next additions
 
@@ -95,4 +95,4 @@ Do not keep full RPC transaction JSON indefinitely. Persist:
 - current wallet/queue materialized state;
 - a restart-safe signature/slot cursor.
 
-For a public beta, move `data/events.json` to PostgreSQL while keeping the same read-only API contract.
+The public beta now uses built-in SQLite with WAL, a 35-day retention window, a bounded in-memory live set and an independently persisted signature cursor. Legacy `data/events.json` is imported automatically and left untouched as a rollback artifact. PostgreSQL is only needed if community traffic, retained history or multi-instance deployment outgrows a single VPS.
