@@ -21,11 +21,24 @@ const rpc = new SolanaRpc();
 const store = new EventStore();
 const indexer = new StakingIndexer({ rpc, store });
 const streams = new Set();
-const EVENT_TYPES = new Set(['stake', 'unstake', 'withdraw']);
+const EVENT_TYPES = new Set(['stake', 'unstake', 'cancel_unstake', 'withdraw']);
+const SSE_MAX_CLIENTS = Number.isSafeInteger(Number(process.env.SSE_MAX_CLIENTS))
+  ? Math.max(1, Number(process.env.SSE_MAX_CLIENTS))
+  : 100;
+const SECURITY_HEADERS = Object.freeze({
+  'content-security-policy': "default-src 'self'; base-uri 'none'; connect-src 'self'; font-src 'self' data:; form-action 'none'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'",
+  'cross-origin-opener-policy': 'same-origin',
+  'cross-origin-resource-policy': 'same-origin',
+  'permissions-policy': 'camera=(), geolocation=(), microphone=(), payment=(), usb=()',
+  'referrer-policy': 'no-referrer',
+  'strict-transport-security': 'max-age=31536000',
+  'x-content-type-options': 'nosniff',
+  'x-frame-options': 'DENY',
+});
 let shuttingDown = false;
 
 function sendJson(response, payload, status = 200) {
-  response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+  response.writeHead(status, { ...SECURITY_HEADERS, 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
   response.end(JSON.stringify(payload));
 }
 
@@ -44,7 +57,7 @@ async function serveStatic(requestPath, response) {
     if (!(await stat(file)).isFile()) return false;
     const extension = path.extname(file);
     const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
-    response.writeHead(200, { 'content-type': types[extension] || 'application/octet-stream', 'cache-control': extension === '.html' ? 'no-store' : 'public, max-age=300' });
+    response.writeHead(200, { ...SECURITY_HEADERS, 'content-type': types[extension] || 'application/octet-stream', 'cache-control': extension === '.html' ? 'no-store' : 'public, max-age=300' });
     response.end(await readFile(file));
     return true;
   } catch {
@@ -52,7 +65,7 @@ async function serveStatic(requestPath, response) {
   }
 }
 
-const server = http.createServer(async (request, response) => {
+async function handleRequest(request, response) {
   const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
   if (request.method !== 'GET') return sendJson(response, { error: 'Read-only service' }, 405);
 
@@ -79,6 +92,9 @@ const server = http.createServer(async (request, response) => {
     if (!isSafeWalletQuery(wallet)) {
       return sendJson(response, { error: 'Invalid wallet query parameter' }, 400);
     }
+    if (typeof store.queryEvents === 'function') {
+      return sendJson(response, store.queryEvents({ limit, offset, minimum, type, wallet }));
+    }
     const walletNeedle = wallet.toLowerCase();
     const filtered = indexer.events.filter((event) =>
       (!type || event.type === type) &&
@@ -88,7 +104,9 @@ const server = http.createServer(async (request, response) => {
   }
   if (url.pathname === '/api/stream') {
     if (shuttingDown) return sendJson(response, { error: 'Shutting down' }, 503);
+    if (streams.size >= SSE_MAX_CLIENTS) return sendJson(response, { error: 'Live stream capacity reached' }, 503);
     response.writeHead(200, {
+      ...SECURITY_HEADERS,
       'content-type': 'text/event-stream', 'cache-control': 'no-cache, no-transform', connection: 'keep-alive',
       'x-accel-buffering': 'no',
     });
@@ -103,7 +121,20 @@ const server = http.createServer(async (request, response) => {
 
   if (await serveStatic(url.pathname, response)) return;
   sendJson(response, { error: 'Not found' }, 404);
+}
+
+const server = http.createServer((request, response) => {
+  handleRequest(request, response).catch((error) => {
+    console.error('Request failed:', error.message);
+    if (!response.headersSent) sendJson(response, { error: 'Internal service error' }, 500);
+    else response.destroy();
+  });
 });
+
+server.requestTimeout = 30_000;
+server.headersTimeout = 15_000;
+server.keepAliveTimeout = 5_000;
+server.maxHeadersCount = 100;
 
 function shutdown(signal) {
   if (shuttingDown) return;

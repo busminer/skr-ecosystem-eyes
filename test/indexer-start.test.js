@@ -89,3 +89,87 @@ test('indexer.start arms timers even when degraded after exhausting retries', as
   assert.equal(indexer.publicStatus().rpc, 'rpc.example');
   indexer.stop();
 });
+
+test('indexer does not advance its cursor or report a fresh sync after a transaction lookup failure', async () => {
+  let savedCursor = 'known-cursor';
+  const store = {
+    limit: 100,
+    async load() { return []; },
+    append() { throw new Error('append should not run'); },
+    getCursor() { return savedCursor; },
+    setCursor(value) { savedCursor = value; },
+    summarize() { return null; },
+  };
+  const rpc = {
+    url: 'https://rpc.example',
+    scanUrl: 'https://rpc.example',
+    async getSignaturesSince() { return [{ signature: 'new-signature', err: null }]; },
+    async getTransaction() { throw new Error('transaction lookup failed'); },
+  };
+  const indexer = new StakingIndexer({ rpc, store });
+  indexer.metrics = { sharePrice: 1 };
+  indexer.started = true;
+  indexer.status.phase = 'live';
+
+  const error = await indexer.syncEvents().then(() => null, (caught) => caught);
+  indexer.recordError(error);
+  assert.match(indexer.status.lastError, /transaction lookup failed/);
+  assert.equal(indexer.status.phase, 'degraded');
+  assert.equal(indexer.status.lastSyncAt, undefined);
+  assert.equal(savedCursor, 'known-cursor');
+});
+
+test('indexer checkpoints each completed signature before a later rate-limit failure', async () => {
+  let savedCursor = 'known-cursor';
+  const store = {
+    limit: 100,
+    append() {},
+    getCursor() { return savedCursor; },
+    setCursor(value) { savedCursor = value; },
+    summarize() { return null; },
+  };
+  const rpc = {
+    url: 'https://rpc.example',
+    scanUrl: 'https://rpc.example',
+    async getSignaturesSince() {
+      return [{ signature: 'newer', err: null }, { signature: 'older', err: null }];
+    },
+    async getTransaction(signature) {
+      if (signature === 'newer') throw new Error('RPC HTTP 429');
+      return {
+        slot: 1,
+        blockTime: 1,
+        meta: { err: null, innerInstructions: [] },
+        transaction: { signatures: [signature], message: { accountKeys: [], instructions: [] } },
+      };
+    },
+  };
+  const indexer = new StakingIndexer({ rpc, store });
+  indexer.metrics = { sharePrice: 1 };
+  await assert.rejects(() => indexer.syncEvents(), /429/);
+  assert.equal(savedCursor, 'older');
+  assert.equal(indexer.status.lastSyncAt, undefined);
+});
+
+test('a successful event sync does not hide an outstanding metrics failure', async () => {
+  const store = {
+    limit: 100,
+    getCursor() { return null; },
+    summarize() { return null; },
+  };
+  const rpc = {
+    url: 'https://rpc.example',
+    scanUrl: 'https://rpc.example',
+    async getRecentSignatures() { return []; },
+  };
+  const indexer = new StakingIndexer({ rpc, store });
+  indexer.metrics = { sharePrice: 1 };
+  indexer.started = true;
+  indexer.status.phase = 'live';
+  indexer.recordError(new Error('metrics unavailable'), false, 'metrics');
+
+  await indexer.syncEvents();
+  assert.equal(indexer.status.metricsError, 'metrics unavailable');
+  assert.equal(indexer.status.lastError, 'metrics unavailable');
+  assert.equal(indexer.status.phase, 'degraded');
+});

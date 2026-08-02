@@ -74,3 +74,17 @@ test('closeSseStreams ends and clears all subscribers', () => {
   assert.equal(streams.size, 0);
   assert.deepEqual(ends, ['end']);
 });
+
+test('writeSse disconnects a slow client when its response buffer is full', () => {
+  const streams = new Set();
+  const slow = {
+    writableEnded: false,
+    destroyed: false,
+    write() { return false; },
+    destroy() { this.destroyed = true; },
+  };
+  streams.add(slow);
+  assert.equal(writeSse(streams, 'state', { ok: true }), 0);
+  assert.equal(streams.size, 0);
+  assert.equal(slow.destroyed, true);
+});

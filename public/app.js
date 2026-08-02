@@ -121,7 +121,7 @@ function openEventEvidence(event, trigger) {
     title: eventLabel(event.type),
     status: `${chip('FINALIZED', 'finalized')}${chip(String(amount.status || 'unavailable').toUpperCase(), amount.status)}${chip(`SLOT ${transaction.slot ?? 'N/A'}`)}`,
     body: `<div class="evidence-summary"><span>EVENT AMOUNT</span><strong>${amount.value == null ? 'NOT AVAILABLE' : `${esc(full(amount.value))} SKR`}</strong><small>${esc(amount.method)}</small></div>
-      <div class="evidence-section"><span>TRANSACTION PROOF</span><div class="evidence-facts">${fact('BLOCK TIME', timestampLabel(transaction.blockTime))}${fact('SLOT', transaction.slot)}${fact('INSTRUCTION', transaction.instructionIndex)}${fact('RAW AMOUNT', amount.rawValue)}</div></div>
+      <div class="evidence-section"><span>TRANSACTION PROOF</span><div class="evidence-facts">${fact('BLOCK TIME', timestampLabel(transaction.blockTime))}${fact('SLOT', transaction.slot)}${fact('INSTRUCTION', transaction.instructionIndex)}${fact('AGGREGATION', amount.aggregation?.toUpperCase() || 'PER INSTRUCTION')}${fact('RAW AMOUNT', amount.rawValue)}</div></div>
       <div class="evidence-section"><span>LINKED EVIDENCE</span>${sourceRows}</div>${caveat}`,
   }, trigger);
 }
@@ -320,7 +320,7 @@ function renderState(state) {
   const status = state.status || {};
   const recentlySynced = status.lastSyncAt && Math.floor(Date.now() / 1000) - status.lastSyncAt < 60;
     const freshness = status.freshness || (status.lastError ? 'stale' : recentlySynced ? 'fresh' : 'aging');
-    const live = !status.lastError && freshness !== 'stale' && (status.phase === 'live' || recentlySynced);
+    const live = !status.lastError && freshness !== 'stale' && freshness !== 'unknown' && (status.phase === 'live' || recentlySynced);
     $('liveDot').className = `dot ${live ? 'live' : freshness === 'stale' || status.lastError ? 'error' : ''}`;
     setText('networkStatus', freshness === 'stale' ? 'STALE' : live ? 'LIVE' : status.phase?.replaceAll('-', ' ').toUpperCase() || 'STARTING');
     const metricsAge = status.freshnessDetail?.metricsAgeSec;

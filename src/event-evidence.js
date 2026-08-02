@@ -22,9 +22,28 @@ const AMOUNT_EVIDENCE = Object.freeze({
 });
 
 export function buildEventEvidence(event = {}) {
-  const definition = AMOUNT_EVIDENCE[event.type] || {
+  let definition = AMOUNT_EVIDENCE[event.type] || {
     status: 'unavailable', method: 'Unsupported event type.', caveat: 'No evidence method is registered.',
   };
+  if (event.type === 'withdraw' && event.rawAmount == null) {
+    definition = {
+      status: 'unavailable',
+      method: 'The finalized transaction did not expose an attributable Stake Vault decrease.',
+      caveat: 'No withdrawal amount is reported rather than inventing one.',
+    };
+  } else if (event.type === 'withdraw' && event.aggregation === 'transaction-total') {
+    definition = {
+      status: 'exact',
+      method: 'Finalized aggregate Stake Vault token-balance decrease for all withdraw instructions in the transaction.',
+      caveat: 'The total is transaction-level and is not attributed to individual withdraw instructions.',
+    };
+  } else if (event.type === 'withdraw' && event.aggregation === 'transaction-net') {
+    definition = {
+      status: 'estimated',
+      method: 'Finalized net Stake Vault token-balance decrease across a mixed staking transaction.',
+      caveat: 'Other Stake Vault movements in the same transaction can make the net decrease differ from gross withdrawn SKR.',
+    };
+  }
   return {
     transaction: {
       commitment: 'finalized',
@@ -37,10 +56,11 @@ export function buildEventEvidence(event = {}) {
       wallet: event.wallet || null,
       guardianPool: event.guardianPool || null,
     },
-    amount: {
-      value: event.amount ?? null,
-      rawValue: event.rawAmount ?? null,
-      ...definition,
+      amount: {
+        value: event.amount ?? null,
+        rawValue: event.rawAmount ?? null,
+        aggregation: event.aggregation || null,
+        ...definition,
     },
   };
 }

@@ -70,3 +70,21 @@ test('SolanaRpc event evidence requests finalized signatures and transactions', 
   assert.equal(calls[0].params[1].commitment, 'finalized');
   assert.equal(calls[1].params[1].commitment, 'finalized');
 });
+
+test('SolanaRpc paginates signatures back to the persisted cursor', async () => {
+  const rpc = new SolanaRpc('https://example.invalid');
+  const calls = [];
+  rpc.call = async (method, params) => {
+    calls.push({ method, params });
+    return calls.length === 1
+      ? [{ signature: 'new-3' }, { signature: 'new-2' }]
+      : [{ signature: 'new-1' }];
+  };
+
+  const signatures = await rpc.getSignaturesSince('known-cursor', { pageLimit: 2, maxPages: 3 });
+  assert.deepEqual(signatures.map((item) => item.signature), ['new-3', 'new-2', 'new-1']);
+  assert.equal(calls[0].params[1].until, 'known-cursor');
+  assert.equal(calls[0].params[1].before, undefined);
+  assert.equal(calls[1].params[1].before, 'new-2');
+  assert.equal(calls[1].params[1].until, 'known-cursor');
+});

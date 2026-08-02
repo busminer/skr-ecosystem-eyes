@@ -27,7 +27,7 @@ export function evaluateFreshness({
   const events = freshnessLevel(eventsAgeSec, eventsStaleSec);
   const queue = freshnessLevel(queueAgeSec, queueStaleSec);
 
-  const rank = { unknown: 0, fresh: 1, aging: 2, stale: 3 };
+  const rank = { fresh: 0, aging: 1, stale: 2, unknown: 3 };
   const overall = [metrics, events, queue].sort((left, right) => rank[right] - rank[left])[0] || 'unknown';
 
   return {

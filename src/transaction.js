@@ -53,6 +53,7 @@ export function parseStakingTransaction(transaction, sharePriceRaw = 1_000_000_0
   if (!signature) return [];
 
   const events = [];
+  const withdrawals = [];
   for (const { instruction, id, instructionIndex } of instructions(transaction)) {
     const programId = instruction.programId || keys[instruction.programIdIndex];
     if (programId !== PROGRAM_ID || typeof instruction.data !== 'string') continue;
@@ -65,9 +66,14 @@ export function parseStakingTransaction(transaction, sharePriceRaw = 1_000_000_0
       return Number.isInteger(indexOrKey) ? keys[indexOrKey] : publicKey(indexOrKey);
     };
 
-    let rawAmount = decoded.rawAmount;
     if (decoded.type === 'withdraw') {
-      rawAmount = vaultDelta(transaction, accountIndexes[VAULT_ACCOUNT.withdraw], decoded.type);
+      withdrawals.push({
+        id,
+        instructionIndex,
+        wallet: accountAt(WALLET_ACCOUNT.withdraw) || null,
+        vaultAccountIndex: accountIndexes[VAULT_ACCOUNT.withdraw],
+      });
+      continue;
     }
 
     events.push({
@@ -79,8 +85,38 @@ export function parseStakingTransaction(transaction, sharePriceRaw = 1_000_000_0
       type: decoded.type,
       wallet: accountAt(WALLET_ACCOUNT[decoded.type]) || null,
       guardianPool: accountAt(GUARDIAN_ACCOUNT[decoded.type]) || null,
+      amount: decoded.rawAmount === null ? null : Number(decoded.rawAmount) / 10 ** TOKEN_DECIMALS,
+      rawAmount: decoded.rawAmount === null ? null : decoded.rawAmount.toString(),
+    });
+  }
+
+  if (withdrawals.length) {
+    const vaultIndexes = [...new Set(withdrawals
+      .map((item) => item.vaultAccountIndex)
+      .filter(Number.isInteger))];
+    const deltas = vaultIndexes
+      .map((index) => vaultDelta(transaction, index, 'withdraw'))
+      .filter((amount) => amount !== null);
+    const rawAmount = deltas.length ? deltas.reduce((sum, amount) => sum + amount, 0n) : null;
+    const wallets = [...new Set(withdrawals.map((item) => item.wallet).filter(Boolean))];
+    const combined = withdrawals.length > 1;
+    const mixedTransaction = events.length > 0;
+    events.push({
+      id: combined ? `${signature}:withdraw-total` : `${signature}:${withdrawals[0].id}`,
+      signature,
+      instructionIndex: combined
+        ? withdrawals.map((item) => item.instructionIndex)
+        : withdrawals[0].instructionIndex,
+      slot: transaction.slot ?? null,
+      blockTime: transaction.blockTime ?? null,
+      type: 'withdraw',
+      wallet: wallets.length === 1 ? wallets[0] : null,
+      guardianPool: null,
       amount: rawAmount === null ? null : Number(rawAmount) / 10 ** TOKEN_DECIMALS,
       rawAmount: rawAmount === null ? null : rawAmount.toString(),
+      ...(combined || mixedTransaction
+        ? { aggregation: mixedTransaction ? 'transaction-net' : 'transaction-total' }
+        : {}),
     });
   }
   return events;

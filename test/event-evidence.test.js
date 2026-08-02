@@ -29,3 +29,13 @@ test('buildEventEvidence preserves finalized transaction proof fields', () => {
   });
   assert.deepEqual(evidence.accounts, { wallet: 'wallet', guardianPool: 'guardian' });
 });
+
+test('buildEventEvidence distinguishes exact transaction totals from mixed net withdraws', () => {
+  const total = buildEventEvidence({ ...base, type: 'withdraw', amount: 12, rawAmount: '12000000', aggregation: 'transaction-total' });
+  assert.equal(total.amount.status, 'exact');
+  assert.match(total.amount.method, /aggregate/i);
+
+  const mixed = buildEventEvidence({ ...base, type: 'withdraw', amount: 10, rawAmount: '10000000', aggregation: 'transaction-net' });
+  assert.equal(mixed.amount.status, 'estimated');
+  assert.match(mixed.amount.caveat, /other Stake Vault movements/i);
+});
