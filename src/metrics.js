@@ -9,7 +9,7 @@ function tokenAmount(raw) {
   return Number(value / TOKEN_SCALE) + Number(value % TOKEN_SCALE) / Number(TOKEN_SCALE);
 }
 
-function parseUserStakeSlice(entry, cooldownSeconds, now) {
+export function parseUserStakeSlice(entry, cooldownSeconds, now) {
   try {
     const data = Buffer.from(entry.account.data[0], 'base64');
     if (data.length < 128) return null;
@@ -32,6 +32,70 @@ function parseUserStakeSlice(entry, cooldownSeconds, now) {
   } catch {
     return null;
   }
+}
+
+export function indexUserStakeAccountsByWallet(userStakeAccounts = []) {
+  const index = new Map();
+  for (const entry of userStakeAccounts) {
+    try {
+      const data = Buffer.from(entry.account.data[0], 'base64');
+      if (data.length < 32) continue;
+      const wallet = encodeBase58(data.subarray(0, 32));
+      const current = index.get(wallet);
+      if (current) current.push(entry);
+      else index.set(wallet, [entry]);
+    } catch {
+      // Malformed accounts are ignored consistently with parseUserStakeSlice.
+    }
+  }
+  return index;
+}
+
+export function summarizeWalletProfile({ wallet, configData, userStakeAccounts = [], now = Math.floor(Date.now() / 1000) }) {
+  const config = decodeStakeConfig(configData);
+  const positions = userStakeAccounts
+    .map((entry) => parseUserStakeSlice(entry, config.cooldownSeconds, now))
+    .filter((position) => position?.wallet === wallet);
+
+  const items = positions.map((position) => {
+    const activeRaw = sharesToRawTokens(position.shares, config.sharePriceRaw);
+    return {
+      stakeAccount: position.stakeAccount,
+      guardianPool: position.guardianPool,
+      activeStaked: tokenAmount(activeRaw),
+      pendingUnstake: tokenAmount(position.pendingRaw),
+      unstakeTimestamp: position.pendingRaw > 0n ? position.unstakeTimestamp : null,
+      unlockAt: position.unlockAt,
+      status: position.status,
+    };
+  });
+
+  const activeStaked = items.reduce((sum, position) => sum + position.activeStaked, 0);
+  const pendingUnstake = items.reduce((sum, position) => sum + position.pendingUnstake, 0);
+  const withdrawable = items
+    .filter((position) => position.status === 'withdrawable')
+    .reduce((sum, position) => sum + position.pendingUnstake, 0);
+  const nextUnlockAt = items
+    .filter((position) => position.status === 'cooldown' && position.unlockAt != null)
+    .reduce((earliest, position) => earliest == null || position.unlockAt < earliest ? position.unlockAt : earliest, null);
+  const guardians = [...new Set(items.filter((position) => position.activeStaked > 0).map((position) => position.guardianPool))];
+
+  return {
+    wallet,
+    found: items.length > 0,
+    totals: {
+      activeStaked,
+      pendingUnstake,
+      withdrawable,
+      positions: items.length,
+      activePositions: items.filter((position) => position.activeStaked > 0).length,
+      pendingPositions: items.filter((position) => position.pendingUnstake > 0).length,
+    },
+    guardians,
+    nextUnlockAt,
+    positions: items,
+    updatedAt: now,
+  };
 }
 
 export function summarizeOnChainState({ configData, vaultRaw, supplyRaw, userStakeAccounts = [], now = Math.floor(Date.now() / 1000) }) {

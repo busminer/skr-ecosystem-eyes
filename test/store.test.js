@@ -38,18 +38,24 @@ test('EventStore migrates legacy JSON once and keeps more history than the memor
   assert.equal(store.count(), 2);
   assert.equal(store.getCursor(), 'signature-recent');
 
-  store.append([event('new', 'stake', 20, now - 30, 'c')]);
+  store.append([
+    event('new', 'stake', 20, now - 30, 'c'),
+    event('similar-wallet', 'stake', 1, now - 20, 'cc'),
+  ]);
   store.setCursor('signature-new');
   const analytics = store.summarize(now);
-  assert.equal(store.count(), 3);
+  assert.equal(store.count(), 4);
   assert.equal(store.getCursor(), 'signature-new');
-  assert.equal(analytics.windows['24h'].staked, 20);
+  assert.equal(analytics.windows['24h'].staked, 21);
   assert.equal(analytics.windows['24h'].unstaked, 4);
-  assert.equal(analytics.windows['7d'].staked, 30);
-  assert.equal(analytics.windows['30d'].events, 3);
+  assert.equal(analytics.windows['7d'].staked, 31);
+  assert.equal(analytics.windows['30d'].events, 4);
   assert.equal(analytics.coverageFrom, now - 90_000);
   const filtered = store.queryEvents({ type: 'stake', wallet: 'c', limit: 10, offset: 0 });
-  assert.equal(filtered.total, 1);
-  assert.equal(filtered.items[0].id, 'new');
+  assert.equal(filtered.total, 2);
+  assert.deepEqual(new Set(filtered.items.map((item) => item.id)), new Set(['new', 'similar-wallet']));
+  const exact = store.queryEvents({ wallet: 'c', walletExact: true, limit: 10, offset: 0 });
+  assert.equal(exact.total, 1);
+  assert.equal(exact.items[0].id, 'new');
   store.close();
 });

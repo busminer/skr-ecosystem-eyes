@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { decodeBase58 } from '../src/base58.js';
-import { summarizeOnChainState } from '../src/metrics.js';
+import { indexUserStakeAccountsByWallet, summarizeOnChainState, summarizeWalletProfile } from '../src/metrics.js';
 import { DEFAULT_GUARDIAN_POOL as GUARDIAN_POOL } from '../src/constants.js';
 
 function writeU128(buffer, offset, value) {
@@ -85,4 +85,41 @@ test('summarizeOnChainState aggregates the complete 48 hour unlock horizon', () 
     next24h: 4,
     next48h: 5,
   });
+});
+
+test('summarizeWalletProfile returns exact personal stake and next unlock', () => {
+  const now = 1_800_000_000;
+  const cooldown = 172_800;
+  const profile = summarizeWalletProfile({
+    wallet: WALLET_A,
+    configData: configData(),
+    userStakeAccounts: [
+      position({ wallet: WALLET_A, shares: 1_000_000_000n, pending: 2_000_000n, timestamp: now - cooldown + 3_600 }),
+      position({ wallet: WALLET_A, shares: 500_000_000n, pending: 3_000_000n, timestamp: now - cooldown - 10 }),
+      position({ wallet: WALLET_B, shares: 9_000_000_000n, pending: 9_000_000n, timestamp: now }),
+    ],
+    now,
+  });
+
+  assert.equal(profile.found, true);
+  assert.equal(profile.totals.positions, 2);
+  assert.equal(profile.totals.activeStaked, 1_650);
+  assert.equal(profile.totals.pendingUnstake, 5);
+  assert.equal(profile.totals.withdrawable, 3);
+  assert.equal(profile.nextUnlockAt, now + 3_600);
+  assert.deepEqual(profile.guardians, [GUARDIAN_POOL]);
+  assert.equal(profile.positions.some((item) => item.status === 'withdrawable'), true);
+});
+
+test('indexUserStakeAccountsByWallet groups once for bounded profile lookups', () => {
+  const entries = [
+    position({ wallet: WALLET_A, shares: 1n, pending: 0n, timestamp: 0 }),
+    position({ wallet: WALLET_B, shares: 2n, pending: 0n, timestamp: 0 }),
+    position({ wallet: WALLET_A, shares: 3n, pending: 0n, timestamp: 0 }),
+    { pubkey: 'malformed', account: { data: ['not-base64!', 'base64'] } },
+  ];
+  const index = indexUserStakeAccountsByWallet(entries);
+  assert.equal(index.get(WALLET_A)?.length, 2);
+  assert.equal(index.get(WALLET_B)?.length, 1);
+  assert.equal(index.has('malformed'), false);
 });

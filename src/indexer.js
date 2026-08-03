@@ -3,7 +3,7 @@ import { summarizeEvents } from './analytics.js';
 import { buildEventEvidence } from './event-evidence.js';
 import { evaluateFreshness } from './freshness.js';
 import { maskRpcUrl } from './http-utils.js';
-import { summarizeOnChainState } from './metrics.js';
+import { indexUserStakeAccountsByWallet, summarizeOnChainState, summarizeWalletProfile } from './metrics.js';
 import { buildProvenance, USER_STAKE_SCAN_CAVEAT } from './provenance.js';
 import { parseStakingTransaction } from './transaction.js';
 
@@ -34,7 +34,9 @@ export class StakingIndexer extends EventEmitter {
     this.events = [];
     this.analytics = summarizeEvents([]);
     this.metrics = null;
+    this.configData = null;
     this.userStakeAccounts = [];
+    this.userStakeAccountsByWallet = new Map();
     this.sourceSlots = {};
     this.userStakeSlot = null;
     this.known = new Set();
@@ -173,10 +175,12 @@ export class StakingIndexer extends EventEmitter {
     this.status.phase = scanQueue ? 'scanning-positions' : this.status.phase;
     try {
       const core = await this.rpc.getCoreInputs();
+      this.configData = core.configData;
       this.sourceSlots = { ...this.sourceSlots, ...(core.sourceSlots || {}) };
       if (scanQueue || this.userStakeAccounts.length === 0) {
         const snapshot = await this.rpc.getUserStakeAccounts();
         this.userStakeAccounts = Array.isArray(snapshot) ? snapshot : snapshot.accounts;
+        this.userStakeAccountsByWallet = indexUserStakeAccountsByWallet(this.userStakeAccounts);
         this.userStakeSlot = Array.isArray(snapshot) ? null : snapshot.slot;
         this.sourceSlots.userStake = this.userStakeSlot;
         this.status.lastQueueScanAt = Math.floor(Date.now() / 1000);
@@ -287,6 +291,38 @@ export class StakingIndexer extends EventEmitter {
       analytics,
       provenance: buildProvenance({ metrics: this.metrics, analytics, sourceSlots: this.sourceSlots, scan }),
       recentEvents: this.events.slice(0, 100).map((event) => ({ ...event, evidence: buildEventEvidence(event) })),
+    };
+  }
+
+  getWalletProfile(wallet) {
+    if (!this.configData || !this.metrics) return null;
+    const profile = summarizeWalletProfile({
+      wallet,
+      configData: this.configData,
+      userStakeAccounts: this.userStakeAccountsByWallet.get(wallet) || [],
+      now: this.metrics.updatedAt || Math.floor(Date.now() / 1000),
+    });
+    const history = typeof this.store.queryEvents === 'function'
+      ? this.store.queryEvents({ wallet, walletExact: true, limit: 100, offset: 0 })
+      : {
+          items: this.events.filter((event) => event.wallet === wallet).slice(0, 100),
+          total: this.events.filter((event) => event.wallet === wallet).length,
+          offset: 0,
+          limit: 100,
+          hasMore: false,
+        };
+    const scanMode = this.status.userStakeScanMode || 'single-response-filtered';
+    return {
+      ...profile,
+      history,
+      provenance: {
+        commitment: 'finalized',
+        sourceSlot: this.sourceSlots.userStake ?? null,
+        observedAt: profile.updatedAt,
+        scanMode,
+        accuracy: 'Exact for active shares converted at the finalized current share price, pending amounts, withdrawable status and unlock timestamps.',
+        caveat: scanMode === 'paginated-filtered' ? null : USER_STAKE_SCAN_CAVEAT,
+      },
     };
   }
 

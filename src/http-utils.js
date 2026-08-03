@@ -11,6 +11,15 @@ export function isSafeWalletQuery(value) {
   return value === '' || /^[1-9A-HJ-NP-Za-km-z]{1,64}$/.test(value);
 }
 
+export function isExactPublicKey(value) {
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(String(value || ''))) return false;
+  try {
+    return decodeBase58(value).length === 32;
+  } catch {
+    return false;
+  }
+}
+
 export function writeSse(streams, event, payload) {
   if (!streams.size) return 0;
   const message = `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
@@ -57,3 +66,4 @@ export function maskRpcUrl(url) {
     return String(url).replace(/^https?:\/\//i, '').split('/')[0] || 'solana-rpc';
   }
 }
+import { decodeBase58 } from './base58.js';

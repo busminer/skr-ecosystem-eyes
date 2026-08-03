@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   closeSseStreams,
+  isExactPublicKey,
   isSafeWalletQuery,
   maskRpcUrl,
   parseIntegerParam,
@@ -22,6 +23,13 @@ test('isSafeWalletQuery allows base58-ish needles and empty string', () => {
   assert.equal(isSafeWalletQuery('So11111111111111111111111111111111111111112'), true);
   assert.equal(isSafeWalletQuery('bad wallet!'), false);
   assert.equal(isSafeWalletQuery('../etc/passwd'), false);
+});
+
+test('isExactPublicKey accepts only complete 32-byte Solana addresses', () => {
+  assert.equal(isExactPublicKey('So11111111111111111111111111111111111111112'), true);
+  assert.equal(isExactPublicKey('3xMZwaVNe4kH3722hEnT21MP4fg8EcWAV2QSFfQDW6Ma'), true);
+  assert.equal(isExactPublicKey('So1111'), false);
+  assert.equal(isExactPublicKey('../etc/passwd'), false);
 });
 
 test('maskRpcUrl never returns full credentialed URL path', () => {

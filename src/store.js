@@ -77,6 +77,7 @@ export class EventStore {
       CREATE INDEX IF NOT EXISTS events_block_time_idx ON events(block_time DESC);
       CREATE INDEX IF NOT EXISTS events_signature_idx ON events(signature);
       CREATE INDEX IF NOT EXISTS events_type_time_idx ON events(type, block_time DESC);
+      CREATE INDEX IF NOT EXISTS events_wallet_time_idx ON events(wallet, block_time DESC);
       CREATE TABLE IF NOT EXISTS metadata (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
@@ -155,7 +156,7 @@ export class EventStore {
     return rows.map(eventFromRow);
   }
 
-  queryEvents({ limit = 100, offset = 0, minimum = 0, type = '', wallet = '' } = {}) {
+  queryEvents({ limit = 100, offset = 0, minimum = 0, type = '', wallet = '', walletExact = false } = {}) {
     if (!this.db) return { items: [], total: 0, offset, limit, hasMore: false };
     const clauses = [];
     const parameters = [];
@@ -168,8 +169,13 @@ export class EventStore {
       parameters.push(minimum);
     }
     if (wallet) {
-      clauses.push('LOWER(wallet) LIKE ?');
-      parameters.push(`%${wallet.toLowerCase()}%`);
+      if (walletExact) {
+        clauses.push('wallet = ?');
+        parameters.push(wallet);
+      } else {
+        clauses.push('LOWER(wallet) LIKE ?');
+        parameters.push(`%${wallet.toLowerCase()}%`);
+      }
     }
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
     const total = Number(this.db.prepare(`SELECT COUNT(*) AS count FROM events ${where}`).get(...parameters).count || 0);

@@ -13,6 +13,7 @@ import {
   parseIntegerParam,
   writeSse,
 } from './http-utils.js';
+import { resolveWalletProfile } from './wallet-api.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -99,6 +100,11 @@ async function handleRequest(request, response) {
   if (url.pathname === '/api/queue') return sendJson(response, { items: indexer.metrics?.queue || [], updatedAt: indexer.metrics?.updatedAt || null });
   if (url.pathname === '/api/guardians') return sendJson(response, indexer.metrics?.guardians || { count: 0, top: [] });
   if (url.pathname === '/api/config') return sendJson(response, { programId: PROGRAM_ID, mint: MINT, stakeConfig: STAKE_CONFIG, stakeVault: STAKE_VAULT, readOnly: true });
+  if (url.pathname.startsWith('/api/wallet/')) {
+    const wallet = url.pathname.slice('/api/wallet/'.length);
+    const result = resolveWalletProfile(indexer, wallet);
+    return sendJson(response, result.payload, result.status);
+  }
   if (url.pathname === '/api/audience') return sendJson(response, audienceSummary());
   if (url.pathname === '/api/events') {
     const limit = parseIntegerParam(url.searchParams.get('limit'), { fallback: 100, min: 1, max: 200 });
