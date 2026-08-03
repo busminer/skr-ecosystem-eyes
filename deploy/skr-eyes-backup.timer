@@ -1,0 +1,11 @@
+[Unit]
+Description=Nightly SKR Eyes state backup
+
+[Timer]
+OnCalendar=*-*-* 03:20:00 Europe/Kyiv
+Persistent=true
+RandomizedDelaySec=10m
+Unit=skr-eyes-backup.service
+
+[Install]
+WantedBy=timers.target

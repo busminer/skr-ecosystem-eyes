@@ -12,7 +12,8 @@
   "scripts": {
     "start": "node src/server.js",
     "test": "node --test",
-    "check": "node scripts/check-syntax.mjs && node --test"
+    "check": "node scripts/check-syntax.mjs && node --test",
+    "backup:verify": "node scripts/verify-backup.mjs"
   },
   "engines": {
     "node": ">=22"

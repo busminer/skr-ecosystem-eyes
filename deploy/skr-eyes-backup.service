@@ -1,0 +1,21 @@
+[Unit]
+Description=Consistent SKR Eyes SQLite state backup
+After=skr-eyes.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+Environment=SKR_DATA_DIRECTORY=/var/lib/skr-ecosystem-eyes/data
+Environment=SKR_BACKUP_DIRECTORY=/var/backups/skr-eyes/state
+Environment=SKR_BACKUP_RETENTION_DAYS=14
+ExecStart=/opt/node-v22.23.2/bin/node /opt/skr-ecosystem-eyes-current/scripts/run-scheduled-backup.mjs
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/var/lib/skr-ecosystem-eyes/data
+ReadWritePaths=/var/backups/skr-eyes/state
+

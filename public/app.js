@@ -419,6 +419,41 @@ fetch('/api/config').then((response) => response.json()).then((config) => {
 }).catch(() => {});
 fetch('/api/state').then((response) => response.json()).then(renderState).catch(() => {});
 
+function renderAudience(stats) {
+  if (!stats) return;
+  setText('audienceLive', Number(stats.liveSessions || 0).toLocaleString('en-US'));
+  setText('audienceTotal', Number(stats.visitsTotal || 0).toLocaleString('en-US'));
+  const since = stats.trackingSince ? new Date(stats.trackingSince) : null;
+  setText('audienceSince', since && !Number.isNaN(since.valueOf())
+    ? `TRACKING SINCE ${since.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' }).toUpperCase()}`
+    : 'TRACKING SINCE —');
+}
+
+async function registerAudienceVisit() {
+  try {
+    let sessionId = sessionStorage.getItem('skr-audience-session');
+    if (!sessionId) {
+      sessionId = crypto.randomUUID();
+      sessionStorage.setItem('skr-audience-session', sessionId);
+    }
+    const response = await fetch('/api/audience/visit', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId }), keepalive: true,
+    });
+    if (!response.ok) throw new Error('Audience registration failed');
+    renderAudience(await response.json());
+    const heartbeat = () => fetch('/api/audience/heartbeat', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId }), keepalive: true,
+    }).then((reply) => reply.json()).then(renderAudience).catch(() => {});
+    setInterval(heartbeat, 30_000);
+  } catch {
+    fetch('/api/audience').then((response) => response.json()).then(renderAudience).catch(() => {});
+  }
+}
+
+registerAudienceVisit();
+
 function connect() {
   const stream = new EventSource('/api/stream');
   stream.addEventListener('state', (event) => renderState(JSON.parse(event.data)));
@@ -427,6 +462,9 @@ function connect() {
       const incoming = JSON.parse(message.data);
       routeNewEvents([...(incoming || []), ...(currentState?.recentEvents || [])]);
     } catch {}
+  });
+  stream.addEventListener('audience', (event) => {
+    try { renderAudience(JSON.parse(event.data)); } catch {}
   });
   stream.onerror = () => { stream.close(); $('liveDot').className = 'dot error'; setText('networkStatus', 'Reconnecting'); setTimeout(connect, 1500); };
 }

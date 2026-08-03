@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SolanaRpc } from './rpc.js';
 import { EventStore } from './store.js';
+import { AudienceStore, isValidAudienceSessionId } from './audience-store.js';
 import { StakingIndexer } from './indexer.js';
 import { PROGRAM_ID, MINT, STAKE_CONFIG, STAKE_VAULT } from './constants.js';
 import {
@@ -19,6 +20,7 @@ const HOST = process.env.HOST || '127.0.0.1';
 const PORT = Number(process.env.PORT || 4173);
 const rpc = new SolanaRpc();
 const store = new EventStore();
+const audience = new AudienceStore(path.resolve(process.env.ANALYTICS_DB_FILE || path.join(path.dirname(store.file), 'analytics.sqlite')));
 const indexer = new StakingIndexer({ rpc, store });
 const streams = new Set();
 const EVENT_TYPES = new Set(['stake', 'unstake', 'cancel_unstake', 'withdraw']);
@@ -46,6 +48,17 @@ function broadcast(event, payload) {
   writeSse(streams, event, payload);
 }
 
+const audienceSummary = () => audience.summary();
+
+async function readJsonBody(request, maximumBytes = 256) {
+  let body = '';
+  for await (const chunk of request) {
+    body += chunk;
+    if (Buffer.byteLength(body) > maximumBytes) throw Object.assign(new Error('Request body too large'), { status: 413 });
+  }
+  try { return JSON.parse(body || '{}'); } catch { throw Object.assign(new Error('Invalid JSON'), { status: 400 }); }
+}
+
 indexer.on('state', (state) => broadcast('state', state));
 indexer.on('events', (events) => broadcast('events', events));
 
@@ -67,6 +80,15 @@ async function serveStatic(requestPath, response) {
 
 async function handleRequest(request, response) {
   const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
+  if (request.method === 'POST' && (url.pathname === '/api/audience/visit' || url.pathname === '/api/audience/heartbeat')) {
+    if (!String(request.headers['content-type'] || '').toLowerCase().startsWith('application/json')) return sendJson(response, { error: 'JSON content type required' }, 415);
+    const payload = await readJsonBody(request);
+    if (!isValidAudienceSessionId(payload.sessionId)) return sendJson(response, { error: 'Invalid session identifier' }, 400);
+    const result = url.pathname.endsWith('/visit') ? audience.record(payload.sessionId) : { counted: false, heartbeat: audience.heartbeat(payload.sessionId) };
+    const summary = audienceSummary();
+    if (result.counted) broadcast('audience', summary);
+    return sendJson(response, { ...summary, counted: result.counted });
+  }
   if (request.method !== 'GET') return sendJson(response, { error: 'Read-only service' }, 405);
 
   if (url.pathname === '/api/health') {
@@ -77,6 +99,7 @@ async function handleRequest(request, response) {
   if (url.pathname === '/api/queue') return sendJson(response, { items: indexer.metrics?.queue || [], updatedAt: indexer.metrics?.updatedAt || null });
   if (url.pathname === '/api/guardians') return sendJson(response, indexer.metrics?.guardians || { count: 0, top: [] });
   if (url.pathname === '/api/config') return sendJson(response, { programId: PROGRAM_ID, mint: MINT, stakeConfig: STAKE_CONFIG, stakeVault: STAKE_VAULT, readOnly: true });
+  if (url.pathname === '/api/audience') return sendJson(response, audienceSummary());
   if (url.pathname === '/api/events') {
     const limit = parseIntegerParam(url.searchParams.get('limit'), { fallback: 100, min: 1, max: 200 });
     const offset = parseIntegerParam(url.searchParams.get('offset'), { fallback: 0, min: 0, max: 1_000_000 });
@@ -112,8 +135,11 @@ async function handleRequest(request, response) {
     });
     response.write(`: connected\n\nevent: state\ndata: ${JSON.stringify(indexer.getState())}\n\n`);
     streams.add(response);
-    const cleanup = () => streams.delete(response);
-    request.on('close', cleanup);
+    broadcast('audience', audienceSummary());
+    const cleanup = () => {
+      if (!streams.delete(response)) return;
+      broadcast('audience', audienceSummary());
+    };
     response.on('close', cleanup);
     response.on('error', cleanup);
     return;
@@ -126,7 +152,7 @@ async function handleRequest(request, response) {
 const server = http.createServer((request, response) => {
   handleRequest(request, response).catch((error) => {
     console.error('Request failed:', error.message);
-    if (!response.headersSent) sendJson(response, { error: 'Internal service error' }, 500);
+    if (!response.headersSent) sendJson(response, { error: error.status && error.status < 500 ? error.message : 'Internal service error' }, error.status || 500);
     else response.destroy();
   });
 });
@@ -141,18 +167,24 @@ function shutdown(signal) {
   shuttingDown = true;
   console.log(`Shutting down on ${signal}...`);
   indexer.stop();
+  audience.close();
   closeSseStreams(streams);
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 3_000).unref();
 }
 
-server.listen(PORT, HOST, () => {
-  console.log(`SKR Ecosystem Eyes running at http://${HOST}:${PORT}`);
-  indexer.start().catch((error) => {
-    indexer.recordError(error);
-    console.error('Indexer startup failed after retries:', error.message);
+async function start() {
+  await audience.load();
+  server.listen(PORT, HOST, () => {
+    console.log(`SKR Ecosystem Eyes running at http://${HOST}:${PORT}`);
+    indexer.start().catch((error) => {
+      indexer.recordError(error);
+      console.error('Indexer startup failed after retries:', error.message);
+    });
   });
-});
+}
+
+start().catch((error) => { console.error('Server startup failed:', error.message); process.exitCode = 1; });
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => shutdown(signal));
