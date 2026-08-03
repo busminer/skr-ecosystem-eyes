@@ -167,6 +167,7 @@ button{font:inherit}
 .chart svg{width:100%;height:100%;overflow:visible}.chart .empty,.empty{height:100%;display:grid;place-items:center;color:var(--ghost);font:10px/1.5 var(--mono)}
 .coverage{position:absolute;left:17px;bottom:11px;color:var(--ghost);font:9px var(--mono)}
 .integrity-list{display:grid;padding:3px 17px}.integrity-row{display:grid;grid-template-columns:1fr auto;gap:12px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.05);align-items:center}.integrity-row:last-child{border:0}.integrity-row span{display:grid;gap:4px;color:var(--fog);font:10px var(--mono)}.integrity-row span small{color:var(--ghost);font:9px var(--mono)}.integrity-row b{font:400 10px var(--mono)}.integrity-row b.ok{color:var(--green)}.integrity-row b.warn{color:var(--amber)}
+.integrity-row[data-provenance]{padding-right:68px}.integrity-row[data-provenance] b{min-width:0;margin-top:30px;text-align:right;overflow-wrap:anywhere}
 .integrity-foot{margin:3px 17px 15px;padding:11px;border-left:2px solid rgba(43,168,255,.45);background:rgba(43,168,255,.035);color:var(--muted);font:10px/1.55 var(--mono)}
 
 .operations-grid{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(310px,.75fr);gap:10px;margin-top:10px}
