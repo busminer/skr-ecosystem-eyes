@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="theme-color" content="#050607">
+  <title>Wallet position · SKR Eyes</title>
+  <link rel="icon" href="/assets/brand/skr-eyes-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/wallet.css?v=1">
+</head>
+<body>
+  <main class="wallet-shell">
+    <header class="wallet-header">
+      <a class="brand" href="/"><img src="/assets/brand/skr-eyes-mark.svg" alt=""><span><b>SKR Eyes</b><small>WALLET POSITION</small></span></a>
+      <a class="console-link" href="/">OPERATIONS CONSOLE ↗</a>
+    </header>
+
+    <section class="intro">
+      <p class="kicker">READ ONLY · NO WALLET CONNECTION</p>
+      <h1>Your staking position,<br>without handing us the keys.</h1>
+      <p>Enter a public Solana address. The page reads finalized SKR staking accounts and never requests a signature.</p>
+      <form id="walletForm">
+        <label for="walletInput">SOLANA WALLET ADDRESS</label>
+        <div class="address-control"><input id="walletInput" name="wallet" autocomplete="off" spellcheck="false" placeholder="Paste a public address" required><button type="submit">INSPECT</button></div>
+      </form>
+    </section>
+
+    <section id="profile" class="profile" hidden aria-live="polite">
+      <header class="profile-head"><div><p class="kicker">FINALIZED POSITION</p><h2 id="walletLabel">—</h2></div><div class="status" id="profileStatus">LOADING</div></header>
+      <div class="metric-grid">
+        <article><span>ACTIVE STAKED</span><strong id="activeStaked">—</strong><small>SKR</small></article>
+        <article><span>PENDING UNSTAKE</span><strong id="pendingUnstake">—</strong><small>SKR</small></article>
+        <article><span>WITHDRAWABLE NOW</span><strong id="withdrawable">—</strong><small>SKR</small></article>
+        <article><span>NEXT UNLOCK</span><strong id="nextUnlock">—</strong><small id="positionCount">— POSITIONS</small></article>
+      </div>
+      <div class="detail-grid">
+        <section class="panel"><header><h3>Positions</h3><span id="scanMode">FINALIZED</span></header><div id="positions" class="rows"></div></section>
+        <section class="panel"><header><h3>Recent evidence</h3><span>ON-CHAIN</span></header><div id="history" class="rows"></div></section>
+      </div>
+      <p class="caveat" id="caveat"></p>
+    </section>
+
+    <section id="message" class="message" hidden aria-live="polite"></section>
+    <footer>Independent community analytics · No connection, signing or custody · Wallet pages are excluded from search indexing.</footer>
+  </main>
+  <script type="module" src="/wallet-profile.js?v=1"></script>
+</body>
+</html>

@@ -64,7 +64,7 @@ async function readJsonBody(request, maximumBytes = 256) {
 indexer.on('state', (state) => broadcast('state', state));
 indexer.on('events', (events) => broadcast('events', events));
 
-async function serveStatic(requestUrl, response) {
+async function serveStatic(requestUrl, response, extraHeaders = {}) {
   const requestPath = requestUrl.pathname;
   const relative = requestPath === '/' ? 'index.html' : requestPath.slice(1);
   const file = path.resolve(PUBLIC, relative);
@@ -84,7 +84,7 @@ async function serveStatic(requestUrl, response) {
       : versioned
         ? 'public, max-age=31536000, immutable'
         : 'public, max-age=300';
-    response.writeHead(200, { ...SECURITY_HEADERS, 'content-type': types[extension] || 'application/octet-stream', 'cache-control': cacheControl });
+    response.writeHead(200, { ...SECURITY_HEADERS, ...extraHeaders, 'content-type': types[extension] || 'application/octet-stream', 'cache-control': cacheControl });
     response.end(await readFile(file));
     return true;
   } catch {
@@ -144,6 +144,10 @@ async function handleRequest(request, response) {
       (!minimum || Number(event.amount) >= minimum) &&
       (!walletNeedle || event.wallet?.toLowerCase().includes(walletNeedle)));
     return sendJson(response, { items: filtered.slice(offset, offset + limit), total: filtered.length, offset, limit, hasMore: offset + limit < filtered.length });
+  }
+  if (url.pathname === '/w' || url.pathname.startsWith('/w/')) {
+    const walletPageUrl = new URL('/wallet.html', url);
+    if (await serveStatic(walletPageUrl, response, { 'x-robots-tag': 'noindex, nofollow' })) return;
   }
   if (url.pathname === '/api/stream') {
     if (shuttingDown) return sendJson(response, { error: 'Shutting down' }, 503);
