@@ -83,16 +83,21 @@ test('closeSseStreams ends and clears all subscribers', () => {
   assert.deepEqual(ends, ['end']);
 });
 
-test('writeSse disconnects a slow client when its response buffer is full', () => {
+test('writeSse pauses a backpressured client instead of causing reconnect churn', () => {
   const streams = new Set();
   const slow = {
     writableEnded: false,
     destroyed: false,
+    once(event, callback) { this.drain = event === 'drain' ? callback : null; },
     write() { return false; },
     destroy() { this.destroyed = true; },
   };
   streams.add(slow);
   assert.equal(writeSse(streams, 'state', { ok: true }), 0);
-  assert.equal(streams.size, 0);
-  assert.equal(slow.destroyed, true);
+  assert.equal(streams.size, 1);
+  assert.equal(slow.destroyed, false);
+  assert.equal(slow.skrBackpressured, true);
+  slow.drain();
+  assert.equal(slow.skrBackpressured, false);
+  closeSseStreams(streams);
 });

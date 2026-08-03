@@ -14,6 +14,7 @@ import {
   writeSse,
 } from './http-utils.js';
 import { resolveWalletProfile } from './wallet-api.js';
+import { buildEventEvidence } from './event-evidence.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -70,7 +71,12 @@ async function serveStatic(requestPath, response) {
   try {
     if (!(await stat(file)).isFile()) return false;
     const extension = path.extname(file);
-    const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
+    const types = {
+      '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
+      '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml',
+      '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json; charset=utf-8',
+      '.webmanifest': 'application/manifest+json; charset=utf-8',
+    };
     response.writeHead(200, { ...SECURITY_HEADERS, 'content-type': types[extension] || 'application/octet-stream', 'cache-control': extension === '.html' ? 'no-store' : 'public, max-age=300' });
     response.end(await readFile(file));
     return true;
@@ -122,7 +128,8 @@ async function handleRequest(request, response) {
       return sendJson(response, { error: 'Invalid wallet query parameter' }, 400);
     }
     if (typeof store.queryEvents === 'function') {
-      return sendJson(response, store.queryEvents({ limit, offset, minimum, type, wallet }));
+      const result = store.queryEvents({ limit, offset, minimum, type, wallet });
+      return sendJson(response, { ...result, items: result.items.map((event) => ({ ...event, evidence: buildEventEvidence(event) })) });
     }
     const walletNeedle = wallet.toLowerCase();
     const filtered = indexer.events.filter((event) =>
@@ -141,10 +148,14 @@ async function handleRequest(request, response) {
     });
     response.write(`: connected\n\nevent: state\ndata: ${JSON.stringify(indexer.getState())}\n\n`);
     streams.add(response);
-    broadcast('audience', audienceSummary());
+    const heartbeat = setInterval(() => {
+      if (response.writableEnded || response.destroyed) return;
+      try { response.write(`: ping ${Date.now()}\n\n`); } catch { cleanup(); }
+    }, 15_000);
+    heartbeat.unref();
     const cleanup = () => {
+      clearInterval(heartbeat);
       if (!streams.delete(response)) return;
-      broadcast('audience', audienceSummary());
     };
     response.on('close', cleanup);
     response.on('error', cleanup);

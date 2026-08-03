@@ -4,14 +4,25 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="Live, read-only intelligence for the SKR staking ecosystem.">
+  <meta name="theme-color" content="#04070b">
+  <meta property="og:title" content="SKR Ecosystem Eyes — Operations Console">
+  <meta property="og:description" content="Independent, read-only intelligence for SKR staking on Solana.">
+  <meta property="og:image" content="https://skr.alexkosa.dev/assets/brand/skr-eyes-og.png">
+  <meta property="og:url" content="https://skr.alexkosa.dev/">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://skr.alexkosa.dev/assets/brand/skr-eyes-og.png">
   <title>SKR Ecosystem Eyes — Operations Console</title>
-  <link rel="icon" href="/assets/brand/skr-token-white.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/operations-console.css?v=7">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/brand/skr-eyes-mark.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <link rel="stylesheet" href="/operations-console.css?v=8">
 </head>
 <body>
   <div class="app-frame">
     <aside class="rail" aria-label="Operations Console navigation">
-      <a class="rail-brand" href="#overview" aria-label="SKR Ecosystem Eyes"><img src="/assets/brand/skr-token-white.svg" alt="SKR token mark"><span><strong>SKR Eyes</strong><small>OPERATIONS CONSOLE</small></span></a>
+      <a class="rail-brand" href="#overview" aria-label="SKR Ecosystem Eyes"><img src="/assets/brand/skr-eyes-mark.svg" alt="SKR Ecosystem Eyes mark"><span><strong>SKR Eyes</strong><small>OPERATIONS CONSOLE</small></span></a>
       <nav class="rail-nav">
         <a class="rail-link active" href="#overview" aria-label="Overview"><i>01</i><span>Overview</span></a>
         <a class="rail-link" href="#flows" aria-label="Capital flows"><i>02</i><span>Capital flows</span></a>
@@ -129,7 +140,7 @@
 
         <section class="operations-grid" id="activity">
           <article class="panel events-panel">
-            <header class="panel-head"><div><p class="panel-kicker">EVENT LEDGER</p><h2>Finalized staking activity</h2></div><div class="filters" id="filters"><button class="active" data-type="">ALL</button><button data-type="stake">STAKE</button><button data-type="unstake">UNSTAKE</button><button data-type="withdraw">WITHDRAW</button><button data-min="100000">WHALES</button></div></header>
+            <header class="panel-head"><div><p class="panel-kicker">EVENT LEDGER</p><h2>Finalized staking activity</h2><small class="filter-disclosure" id="eventFilterDisclosure">LOADING SIGNAL EVENTS…</small></div><div class="filters" id="filters"><button class="active" data-type="">ALL</button><button data-type="stake">STAKE</button><button data-type="unstake">UNSTAKE</button><button data-type="withdraw">WITHDRAW</button><button data-min="100000">WHALES</button><button data-dust="true" aria-pressed="false">INCLUDE DUST</button></div></header>
             <div class="table-wrap"><table><thead><tr><th>AGE</th><th>ACTION</th><th>WALLET</th><th class="right">MAGNITUDE / AMOUNT</th><th></th></tr></thead><tbody id="eventRows"><tr><td colspan="5" class="empty">SYNCING RECENT TRANSACTIONS…</td></tr></tbody></table></div>
           </article>
 
@@ -152,7 +163,7 @@
         </section>
       </main>
 
-      <footer class="footer"><span>SKR ECOSYSTEM EYES · INDEPENDENT OPERATIONS CONSOLE</span><div class="audience-stats" aria-label="Anonymous audience statistics"><span>LIVE SESSIONS <b id="audienceLive">—</b></span><span>TOTAL VISITS <b id="audienceTotal">—</b></span><span id="audienceSince">TRACKING SINCE —</span></div><div><a href="https://solanamobile.com/skr" target="_blank" rel="noopener">ABOUT SKR ↗</a><span id="footerStatus">BOOTING INDEXER…</span></div></footer>
+      <footer class="footer"><span>SKR ECOSYSTEM EYES · INDEPENDENT OPERATIONS CONSOLE</span><div><span>INDEXED SINCE AUG 2026</span><a href="https://solanamobile.com/skr" target="_blank" rel="noopener">ABOUT SKR ↗</a><span id="footerStatus">BOOTING INDEXER…</span></div></footer>
     </div>
   </div>
   <button class="drawer-scrim" id="drawerScrim" aria-label="Close evidence inspector" tabindex="-1"></button>
@@ -164,6 +175,6 @@
     <div class="drawer-status" id="drawerStatus"></div>
     <div class="drawer-body" id="drawerBody"><div class="empty">Select a metric or event to inspect its evidence.</div></div>
   </aside>
-  <script type="module" src="/app.js?v=24"></script>
+  <script type="module" src="/app.js?v=25"></script>
 </body>
 </html>

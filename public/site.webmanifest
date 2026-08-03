@@ -1,0 +1,13 @@
+{
+  "name": "SKR Ecosystem Eyes",
+  "short_name": "SKR Eyes",
+  "description": "Independent, read-only intelligence for SKR staking on Solana.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#04070b",
+  "theme_color": "#04070b",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

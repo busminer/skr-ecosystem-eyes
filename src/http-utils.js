@@ -29,11 +29,23 @@ export function writeSse(streams, event, payload) {
       streams.delete(response);
       continue;
     }
+    if (response.skrBackpressured) continue;
     try {
       const accepted = response.write(message);
       if (!accepted) {
-        streams.delete(response);
-        try { response.destroy(); } catch { /* ignore */ }
+        response.skrBackpressured = true;
+        const release = () => {
+          response.skrBackpressured = false;
+          if (response.skrBackpressureTimer) clearTimeout(response.skrBackpressureTimer);
+          response.skrBackpressureTimer = null;
+        };
+        response.once?.('drain', release);
+        response.skrBackpressureTimer = setTimeout(() => {
+          if (!response.skrBackpressured) return;
+          streams.delete(response);
+          try { response.destroy(); } catch { /* ignore */ }
+        }, 10_000);
+        response.skrBackpressureTimer.unref?.();
         continue;
       }
       written += 1;
@@ -48,6 +60,7 @@ export function writeSse(streams, event, payload) {
 export function closeSseStreams(streams) {
   for (const response of [...streams]) {
     streams.delete(response);
+    if (response.skrBackpressureTimer) clearTimeout(response.skrBackpressureTimer);
     try {
       response.write(': shutdown\n\n');
       response.end();

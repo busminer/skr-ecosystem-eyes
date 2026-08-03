@@ -6,15 +6,22 @@ const $ = (id) => document.getElementById(id);
 let currentState = null;
 let selectedRange = '24h';
 let filter = { type: '', min: 0 };
+let includeDust = false;
+let signalEvents = [];
+let signalEventTotal = 0;
+const SIGNAL_MIN_SKR = 10;
 let seenEvents = new Set();
 let eventsInitialized = false;
 let fieldAnnouncement = 0;
 let drawerTrigger = null;
 const capitalField = new CapitalField($('capitalCanvas'));
+['activeStaked','pendingUnstake','withdrawable','vaultBalance','sharePrice','activePositions','staked24','unstaked24','netFlow24','withdrawn24','pressureRatio']
+  .forEach((id) => $(id)?.classList.add('is-loading'));
 
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[character]));
 const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 });
-const precise = new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 });
+const precise = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+const evidencePrecision = new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 });
 const fmt = (value) => Number.isFinite(Number(value)) ? compact.format(Number(value)) : '—';
 const full = (value) => Number.isFinite(Number(value)) ? precise.format(Number(value)) : '—';
 const short = (value) => value ? `${value.slice(0, 4)}…${value.slice(-4)}` : '—';
@@ -34,7 +41,7 @@ const until = (timestamp) => {
   return `${Math.floor(seconds / 86400)}d ${Math.ceil((seconds % 86400) / 3600)}h`;
 };
 
-function setText(id, value) { const element = $(id); if (element) element.textContent = value; }
+function setText(id, value) { const element = $(id); if (element) { element.textContent = value; element.classList.remove('is-loading'); } }
 
 const eventLabel = (type) => ({ stake: 'STAKE', unstake: 'UNSTAKE', withdraw: 'EXIT CONFIRMED', cancel_unstake: 'CANCEL UNSTAKE' }[type] || String(type || 'EVENT').toUpperCase());
 const timestampLabel = (timestamp) => timestamp ? new Date(timestamp * 1000).toISOString().replace('.000Z', 'Z') : 'Not reported';
@@ -122,7 +129,7 @@ function openEventEvidence(event, trigger) {
     eyebrow: 'EVENT EVIDENCE',
     title: eventLabel(event.type),
     status: `${chip('FINALIZED', 'finalized')}${chip(String(amount.status || 'unavailable').toUpperCase(), amount.status)}${chip(`SLOT ${transaction.slot ?? 'N/A'}`)}`,
-    body: `<div class="evidence-summary"><span>EVENT AMOUNT</span><strong>${amount.value == null ? 'NOT AVAILABLE' : `${esc(full(amount.value))} SKR`}</strong><small>${esc(amount.method)}</small></div>
+    body: `<div class="evidence-summary"><span>EVENT AMOUNT</span><strong>${amount.value == null ? 'NOT AVAILABLE' : `${esc(evidencePrecision.format(amount.value))} SKR`}</strong><small>${esc(amount.method)}</small></div>
       <div class="evidence-section"><span>TRANSACTION PROOF</span><div class="evidence-facts">${fact('BLOCK TIME', timestampLabel(transaction.blockTime))}${fact('SLOT', transaction.slot)}${fact('INSTRUCTION', transaction.instructionIndex)}${fact('AGGREGATION', amount.aggregation?.toUpperCase() || 'PER INSTRUCTION')}${fact('RAW AMOUNT', amount.rawValue)}</div></div>
       <div class="evidence-section"><span>LINKED EVIDENCE</span>${sourceRows}</div>${caveat}`,
   }, trigger);
@@ -187,7 +194,9 @@ function renderMetrics(metrics) {
   setText('laneActive', `${fmt(metrics.activeStaked)} SKR`);
   setText('lanePending', `${fmt(metrics.pendingUnstake)} SKR`);
   setText('laneWithdrawable', `${fmt(metrics.withdrawable)} SKR`);
-  if (metrics.guardians) setText('guardianPools', `${full(metrics.guardians.count)} · TOP ${metrics.guardians.topConcentrationPercent.toFixed(1)}%`);
+  if (metrics.guardians) setText('guardianPools', metrics.guardians.count <= 1
+    ? 'SINGLE GUARDIAN PHASE · CONCENTRATION AT 2+ POOLS'
+    : `${full(metrics.guardians.count)} POOLS · TOP ${metrics.guardians.topConcentrationPercent.toFixed(2)}%`);
   renderUnlockHorizon(metrics.unlockHorizon, metrics.pendingUnstake);
   capitalField.setMetrics(metrics);
   renderQueue(metrics.queue || []);
@@ -248,15 +257,21 @@ function renderChart(hours) {
 }
 
 function renderEvents(events) {
-  const filtered = events.filter((event) => (!filter.type || event.type === filter.type) && (!filter.min || Number(event.amount) >= filter.min));
+  const source = includeDust ? events : signalEvents;
+  const filtered = source.filter((event) => (!filter.type || event.type === filter.type) && (!filter.min || Number(event.amount) >= filter.min));
   const rows = $('eventRows');
+  const persisted = Number(currentState?.status?.persistedEventCount || events.length);
+  const hidden = Math.max(0, persisted - signalEventTotal);
+  setText('eventFilterDisclosure', includeDust
+    ? `SHOWING RECENT DUST · SIGNAL MODE HIDES ${hidden.toLocaleString('en-US')} EVENTS BELOW ${SIGNAL_MIN_SKR.toLocaleString('en-US')} SKR`
+    : `SIGNAL MODE · HIDING ${hidden.toLocaleString('en-US')} EVENTS BELOW ${SIGNAL_MIN_SKR.toLocaleString('en-US')} SKR`);
   if (!filtered.length) { rows.innerHTML = '<tr><td colspan="5" class="empty">No matching events in local history.</td></tr>'; return; }
   const maximum = Math.max(...filtered.map((event) => Number(event.amount || 0)), 1);
   rows.innerHTML = filtered.slice(0, 100).map((event) => `<tr>
     <td class="event-age" title="${new Date(event.blockTime * 1000).toLocaleString()}">${ago(event.blockTime)} ago</td>
     <td class="event-action"><span class="action ${esc(event.type)}">${esc(eventLabel(event.type))}</span></td>
     <td class="event-wallet"><a class="tx-link" href="https://solscan.io/account/${esc(event.wallet)}" target="_blank" rel="noopener">${esc(short(event.wallet))}</a></td>
-    <td class="right amount event-amount">${event.amount == null ? '—' : `<span class="event-bar"><i style="width:${Math.max(3, Math.log10(Number(event.amount) + 1) / Math.log10(maximum + 1) * 100)}%"></i></span>${full(event.amount)} SKR`}</td>
+    <td class="right amount event-amount">${event.amount == null ? '—' : `<span class="event-bar"><i style="width:${Math.max(5, Math.log10(Number(event.amount) + 1) / Math.log10(maximum + 1) * 100)}%"></i></span>${full(event.amount)} SKR`}</td>
     <td class="right event-proof"><button class="evidence-button" data-event-id="${esc(event.id)}" aria-label="Inspect evidence for ${esc(eventLabel(event.type))}">PROOF</button></td>
   </tr>`).join('');
 }
@@ -320,6 +335,7 @@ function renderState(state) {
   const status = state.status || {};
   const recentlySynced = status.lastSyncAt && Math.floor(Date.now() / 1000) - status.lastSyncAt < 60;
     const freshness = status.freshness || (status.lastError ? 'stale' : recentlySynced ? 'fresh' : 'aging');
+    document.body.dataset.freshness = freshness;
     const live = !status.lastError && freshness !== 'stale' && freshness !== 'unknown' && (status.phase === 'live' || recentlySynced);
     $('liveDot').className = `dot ${live ? 'live' : freshness === 'stale' || status.lastError ? 'error' : ''}`;
     setText('networkStatus', freshness === 'stale' ? 'STALE' : live ? 'LIVE' : status.phase?.replaceAll('-', ' ').toUpperCase() || 'STARTING');
@@ -350,7 +366,14 @@ function renderState(state) {
 }
 
 document.querySelectorAll('#filters button').forEach((button) => button.addEventListener('click', () => {
-  document.querySelectorAll('#filters button').forEach((item) => item.classList.remove('active'));
+  if (button.dataset.dust) {
+    includeDust = !includeDust;
+    button.classList.toggle('active', includeDust);
+    button.setAttribute('aria-pressed', String(includeDust));
+    if (currentState) renderEvents(currentState.recentEvents || []);
+    return;
+  }
+  document.querySelectorAll('#filters button:not([data-dust])').forEach((item) => item.classList.remove('active'));
   button.classList.add('active');
   filter = { type: button.dataset.type || '', min: Number(button.dataset.min || 0) };
   if (currentState) renderEvents(currentState.recentEvents || []);
@@ -389,7 +412,7 @@ document.addEventListener('click', (event) => {
   }
   const eventButton = event.target.closest('[data-event-id]');
   if (eventButton) {
-    const item = currentState?.recentEvents?.find((candidate) => candidate.id === eventButton.dataset.eventId);
+    const item = [...signalEvents, ...(currentState?.recentEvents || [])].find((candidate) => candidate.id === eventButton.dataset.eventId);
     if (item) openEventEvidence(item, eventButton);
     return;
   }
@@ -418,6 +441,11 @@ fetch('/api/config').then((response) => response.json()).then((config) => {
   $('vaultLink').href = `https://solscan.io/account/${config.stakeVault}`;
 }).catch(() => {});
 fetch('/api/state').then((response) => response.json()).then(renderState).catch(() => {});
+fetch(`/api/events?limit=100&min=${SIGNAL_MIN_SKR}`).then((response) => response.json()).then((result) => {
+  signalEvents = result.items || [];
+  signalEventTotal = Number(result.total || signalEvents.length);
+  if (currentState) renderEvents(currentState.recentEvents || []);
+}).catch(() => {});
 
 function renderAudience(stats) {
   if (!stats) return;
@@ -454,8 +482,18 @@ async function registerAudienceVisit() {
 
 registerAudienceVisit();
 
+let reconnectDelay = 1_500;
+let offlineTimer = null;
+let reconnectTimer = null;
 function connect() {
   const stream = new EventSource('/api/stream');
+  stream.onopen = () => {
+    reconnectDelay = 1_500;
+    clearTimeout(offlineTimer);
+    clearTimeout(reconnectTimer);
+    $('liveDot').className = 'dot live';
+    setText('networkStatus', 'LIVE');
+  };
   stream.addEventListener('state', (event) => renderState(JSON.parse(event.data)));
   stream.addEventListener('events', (message) => {
     try {
@@ -466,7 +504,16 @@ function connect() {
   stream.addEventListener('audience', (event) => {
     try { renderAudience(JSON.parse(event.data)); } catch {}
   });
-  stream.onerror = () => { stream.close(); $('liveDot').className = 'dot error'; setText('networkStatus', 'Reconnecting'); setTimeout(connect, 1500); };
+  stream.onerror = () => {
+    stream.close();
+    clearTimeout(reconnectTimer);
+    $('liveDot').className = 'dot';
+    reconnectTimer = setTimeout(() => setText('networkStatus', 'RECONNECTING'), 5_000);
+    offlineTimer = setTimeout(() => { $('liveDot').className = 'dot error'; setText('networkStatus', 'OFFLINE'); }, 30_000);
+    const delay = reconnectDelay;
+    reconnectDelay = Math.min(30_000, Math.round(reconnectDelay * 1.8));
+    setTimeout(connect, delay);
+  };
 }
 connect();
 setInterval(() => { if (currentState) renderState(currentState); }, 10_000);
