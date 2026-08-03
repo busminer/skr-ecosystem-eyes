@@ -64,7 +64,8 @@ async function readJsonBody(request, maximumBytes = 256) {
 indexer.on('state', (state) => broadcast('state', state));
 indexer.on('events', (events) => broadcast('events', events));
 
-async function serveStatic(requestPath, response) {
+async function serveStatic(requestUrl, response) {
+  const requestPath = requestUrl.pathname;
   const relative = requestPath === '/' ? 'index.html' : requestPath.slice(1);
   const file = path.resolve(PUBLIC, relative);
   if (!file.startsWith(`${PUBLIC}${path.sep}`) && file !== path.join(PUBLIC, 'index.html')) return false;
@@ -77,7 +78,13 @@ async function serveStatic(requestPath, response) {
       '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json; charset=utf-8',
       '.webmanifest': 'application/manifest+json; charset=utf-8',
     };
-    response.writeHead(200, { ...SECURITY_HEADERS, 'content-type': types[extension] || 'application/octet-stream', 'cache-control': extension === '.html' ? 'no-store' : 'public, max-age=300' });
+    const versioned = requestUrl.searchParams.has('v');
+    const cacheControl = extension === '.html'
+      ? 'no-cache, must-revalidate'
+      : versioned
+        ? 'public, max-age=31536000, immutable'
+        : 'public, max-age=300';
+    response.writeHead(200, { ...SECURITY_HEADERS, 'content-type': types[extension] || 'application/octet-stream', 'cache-control': cacheControl });
     response.end(await readFile(file));
     return true;
   } catch {
@@ -162,7 +169,7 @@ async function handleRequest(request, response) {
     return;
   }
 
-  if (await serveStatic(url.pathname, response)) return;
+  if (await serveStatic(url, response)) return;
   sendJson(response, { error: 'Not found' }, 404);
 }
 

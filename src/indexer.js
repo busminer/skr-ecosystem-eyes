@@ -6,6 +6,7 @@ import { maskRpcUrl } from './http-utils.js';
 import { indexUserStakeAccountsByWallet, summarizeOnChainState, summarizeWalletProfile } from './metrics.js';
 import { buildProvenance, USER_STAKE_SCAN_CAVEAT } from './provenance.js';
 import { parseStakingTransaction } from './transaction.js';
+import { buildProtocolSnapshot } from './protocol-snapshot.js';
 
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
@@ -191,6 +192,12 @@ export class StakingIndexer extends EventEmitter {
         this.status.userStakePageCount = snapshot?.pageCount || 1;
       }
       this.metrics = summarizeOnChainState({ ...core, userStakeAccounts: this.userStakeAccounts });
+      this.store.recordProtocolSnapshot?.(buildProtocolSnapshot({
+        configData: core.configData,
+        vaultRaw: core.vaultRaw,
+        sourceSlots: core.sourceSlots,
+        unixTs: this.metrics.updatedAt,
+      }));
       this.status.lastMetricsAt = this.metrics.updatedAt;
       this.status.generalError = null;
       this.status.metricsError = null;

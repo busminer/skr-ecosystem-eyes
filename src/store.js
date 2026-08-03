@@ -43,6 +43,7 @@ export class EventStore {
     this.db = null;
     this.lastPrunedAt = 0;
     this.persistedEventCount = 0;
+    this.snapshotRetentionDays = Math.max(90, positiveInteger(process.env.SNAPSHOT_RETENTION_DAYS, 90));
   }
 
   async load() {
@@ -81,6 +82,32 @@ export class EventStore {
       CREATE TABLE IF NOT EXISTS metadata (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS protocol_snapshots (
+        slot INTEGER PRIMARY KEY CHECK(slot > 0),
+        unix_ts INTEGER NOT NULL CHECK(unix_ts > 0),
+        share_price TEXT NOT NULL,
+        total_shares TEXT NOT NULL,
+        active_staked TEXT NOT NULL,
+        vault_balance TEXT NOT NULL,
+        reward_index TEXT NOT NULL,
+        inserted_at INTEGER NOT NULL
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS protocol_snapshots_unix_ts_slot_idx
+        ON protocol_snapshots(unix_ts, slot);
+      CREATE TABLE IF NOT EXISTS protocol_snapshots_hourly (
+        hour_ts INTEGER PRIMARY KEY,
+        first_slot INTEGER NOT NULL,
+        last_slot INTEGER NOT NULL,
+        open_share_price TEXT NOT NULL,
+        high_share_price TEXT NOT NULL,
+        low_share_price TEXT NOT NULL,
+        close_share_price TEXT NOT NULL,
+        close_total_shares TEXT NOT NULL,
+        close_active_staked TEXT NOT NULL,
+        close_vault_balance TEXT NOT NULL,
+        close_reward_index TEXT NOT NULL,
+        sample_count INTEGER NOT NULL CHECK(sample_count > 0)
       );
     `);
     this.persistedEventCount = Number(this.db.prepare('SELECT COUNT(*) AS count FROM events').get().count || 0);
@@ -304,6 +331,79 @@ export class EventStore {
 
   count() {
     return this.db ? this.persistedEventCount : 0;
+  }
+
+  recordProtocolSnapshot(snapshot, { minimumIntervalSeconds = 300 } = {}) {
+    if (!this.db) throw new Error('EventStore.load() must be called before snapshot writes');
+    if (!Number.isSafeInteger(snapshot?.slot) || snapshot.slot <= 0 || !Number.isSafeInteger(snapshot?.unixTs) || snapshot.unixTs <= 0) {
+      throw new Error('Protocol snapshot requires a finalized positive slot and unix timestamp');
+    }
+    const latest = this.db.prepare('SELECT unix_ts AS unixTs, reward_index AS rewardIndex FROM protocol_snapshots ORDER BY unix_ts DESC, slot DESC LIMIT 1').get();
+    const rewardChanged = latest && String(latest.rewardIndex) !== String(snapshot.rewardIndex);
+    if (latest && !rewardChanged && snapshot.unixTs - Number(latest.unixTs) < minimumIntervalSeconds) return false;
+    const result = this.db.prepare(`
+      INSERT OR IGNORE INTO protocol_snapshots (
+        slot, unix_ts, share_price, total_shares, active_staked,
+        vault_balance, reward_index, inserted_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(snapshot.slot, snapshot.unixTs, String(snapshot.sharePrice), String(snapshot.totalShares), String(snapshot.activeStaked), String(snapshot.vaultBalance), String(snapshot.rewardIndex), Math.floor(Date.now() / 1000));
+    if (Number(result.changes || 0)) this.pruneProtocolSnapshots(false, snapshot.unixTs);
+    return Number(result.changes || 0) > 0;
+  }
+
+  queryProtocolSnapshots({ from = 0, to = Number.MAX_SAFE_INTEGER, limit = 10_000 } = {}) {
+    if (!this.db) return [];
+    return this.db.prepare(`
+      SELECT slot, unix_ts AS unixTs, share_price AS sharePrice,
+             total_shares AS totalShares, active_staked AS activeStaked,
+             vault_balance AS vaultBalance, reward_index AS rewardIndex
+      FROM protocol_snapshots
+      WHERE unix_ts >= ? AND unix_ts <= ?
+      ORDER BY unix_ts, slot
+      LIMIT ?
+    `).all(from, to, Math.max(1, Math.min(100_000, positiveInteger(limit, 10_000))));
+  }
+
+  pruneProtocolSnapshots(force = false, now = Math.floor(Date.now() / 1000)) {
+    if (!this.db) return 0;
+    const lastRun = Number(this.getMetadata('protocol_snapshot_pruned_at') || 0);
+    if (!force && now - lastRun < 86_400) return 0;
+    const cutoff = now - this.snapshotRetentionDays * 86_400;
+    const rows = this.db.prepare('SELECT * FROM protocol_snapshots WHERE unix_ts < ? ORDER BY unix_ts, slot').all(cutoff);
+    if (!rows.length) {
+      this.setMetadata('protocol_snapshot_pruned_at', String(now));
+      return 0;
+    }
+    const groups = new Map();
+    for (const row of rows) {
+      const hour = Math.floor(Number(row.unix_ts) / 3_600) * 3_600;
+      const group = groups.get(hour) || [];
+      group.push(row);
+      groups.set(hour, group);
+    }
+    const insert = this.db.prepare(`
+      INSERT OR REPLACE INTO protocol_snapshots_hourly (
+        hour_ts, first_slot, last_slot, open_share_price, high_share_price,
+        low_share_price, close_share_price, close_total_shares,
+        close_active_staked, close_vault_balance, close_reward_index, sample_count
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      for (const [hour, samples] of groups) {
+        const first = samples[0];
+        const last = samples.at(-1);
+        const prices = samples.map((row) => Number(row.share_price));
+        insert.run(hour, first.slot, last.slot, first.share_price, String(Math.max(...prices)), String(Math.min(...prices)), last.share_price, last.total_shares, last.active_staked, last.vault_balance, last.reward_index, samples.length);
+      }
+      this.db.prepare('DELETE FROM protocol_snapshots WHERE unix_ts < ?').run(cutoff);
+      this.db.prepare(`INSERT INTO metadata(key, value) VALUES('protocol_snapshot_pruned_at', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(String(now));
+      this.db.exec('COMMIT');
+    } catch (error) {
+      try { this.db.exec('ROLLBACK'); } catch { /* preserve original error */ }
+      throw error;
+    }
+    return rows.length;
   }
 
   close() {
