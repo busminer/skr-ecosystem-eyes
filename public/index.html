@@ -6,7 +6,7 @@
   <meta name="description" content="Live, read-only intelligence for the SKR staking ecosystem.">
   <title>SKR Ecosystem Eyes — Operations Console</title>
   <link rel="icon" href="/assets/brand/skr-token-white.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/operations-console.css?v=4">
+  <link rel="stylesheet" href="/operations-console.css?v=7">
 </head>
 <body>
   <div class="app-frame">
@@ -26,7 +26,7 @@
         <a class="identity" href="#overview">
           <span class="identity-copy"><strong>Network overview</strong><small>SKR STAKING · SOLANA MAINNET</small></span>
         </a>
-        <div class="range-control" aria-label="History range"><button class="active">24H</button><button disabled>7D</button><button disabled>30D</button><span>LOCAL INDEX</span></div>
+        <div class="range-control" aria-label="History range"><button data-range="1h">1H</button><button class="active" data-range="24h">24H</button><button data-range="7d">7D</button><button data-range="30d">30D</button><span>LOCAL INDEX</span></div>
         <div class="top-system">
           <span id="clock">--:--:-- UTC</span>
           <b><i id="liveDot" class="dot"></i> <span id="networkStatus">CONNECTING</span></b>
@@ -38,13 +38,23 @@
       </nav>
 
       <main class="stage">
-        <div class="disclosure"><strong>INDEPENDENT COMMUNITY ANALYTICS · NOT AFFILIATED WITH SOLANA FOUNDATION OR SOLANA MOBILE</strong><span>NO WALLET · NO SIGNING · FINALIZED DATA</span></div>
+        <div class="mobile-range-control" aria-label="History range">
+          <button data-range="1h">1H</button><button class="active" data-range="24h">24H</button><button data-range="7d">7D</button><button data-range="30d">30D</button>
+        </div>
+        <div class="disclosure"><strong>INDEPENDENT COMMUNITY ANALYTICS</strong><span>READ ONLY · NO WALLET · FINALIZED SOLANA DATA</span></div>
 
         <section class="ops-brief" aria-label="Generated network brief">
           <div class="brief-verdict"><span>GENERATED STATE VERDICT</span><strong id="systemVerdict">PARTIAL VIEW</strong><small id="verdictDetail">WAITING FOR A COMPLETE 24H WINDOW</small></div>
           <div class="brief-stat"><span>DATA FRESHNESS</span><strong id="briefFreshness">SCANNING</strong><small>CONFIG · VAULT · USERSTAKE</small></div>
           <div class="brief-stat"><span>HISTORY COVERAGE</span><strong id="briefCoverage">LOCAL</strong><small>NEVER IMPLIED BEYOND INDEXED DATA</small></div>
           <div class="brief-stat"><span>TRUST MODEL</span><strong>ON-CHAIN FIRST</strong><small>INDEPENDENTLY DERIVED TOTALS</small></div>
+        </section>
+
+        <section class="signal-strip" aria-label="Selected-range flow signals">
+          <article class="signal stake" data-provenance="flow24h"><header><span id="rangeStakedLabel">24H STAKED</span><b>↗ IN</b></header><strong id="staked24">—</strong><small id="stakeEvents24">— EVENTS</small></article>
+          <article class="signal unstake" data-provenance="flow24h"><header><span id="rangeUnstakedLabel">24H UNSTAKED</span><b>↘ OUT</b></header><strong id="unstaked24">—</strong><small id="unstakeEvents24">EXIT PRESSURE</small></article>
+          <article class="signal" data-provenance="flow24h"><header><span id="rangeNetLabel">24H NET ACTIVE FLOW</span><b id="netArrow">→</b></header><strong id="netFlow24">—</strong><small id="uniqueWallets24">STAKE − UNSTAKE · — WALLETS</small></article>
+          <article class="signal withdraw" data-provenance="flow24h"><header><span id="rangeWithdrawnLabel">24H WITHDRAWN</span><b>⇥ EXIT</b></header><strong id="withdrawn24">—</strong><small>TOKENS EXITED VAULT</small></article>
         </section>
 
         <section class="command-grid" id="overview" aria-label="SKR network state">
@@ -95,13 +105,6 @@
             </div>
             <div class="mini-queue" id="miniQueue"><div class="empty">Scanning exit queue…</div></div>
           </article>
-        </section>
-
-        <section class="signal-strip" aria-label="24 hour flow signals">
-          <article class="signal stake" data-provenance="flow24h"><header><span>24H STAKED</span><b>↗ IN</b></header><strong id="staked24">—</strong><small id="stakeEvents24">— EVENTS</small></article>
-          <article class="signal unstake" data-provenance="flow24h"><header><span>24H UNSTAKED</span><b>↘ OUT</b></header><strong id="unstaked24">—</strong><small id="unstakeEvents24">EXIT PRESSURE</small></article>
-          <article class="signal" data-provenance="flow24h"><header><span>24H NET ACTIVE FLOW</span><b id="netArrow">→</b></header><strong id="netFlow24">—</strong><small id="uniqueWallets24">STAKE − UNSTAKE · — WALLETS</small></article>
-          <article class="signal withdraw" data-provenance="flow24h"><header><span>24H WITHDRAWN</span><b>⇥ EXIT</b></header><strong id="withdrawn24">—</strong><small>TOKENS EXITED VAULT</small></article>
         </section>
 
         <section class="analytics-grid" id="flows">
@@ -161,6 +164,6 @@
     <div class="drawer-status" id="drawerStatus"></div>
     <div class="drawer-body" id="drawerBody"><div class="empty">Select a metric or event to inspect its evidence.</div></div>
   </aside>
-  <script type="module" src="/app.js?v=20"></script>
+  <script type="module" src="/app.js?v=23"></script>
 </body>
 </html>

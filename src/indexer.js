@@ -75,6 +75,12 @@ export class StakingIndexer extends EventEmitter {
       phase: this.status.phase,
       rpc: this.status.rpc,
       scanRpc: this.status.scanRpc,
+      activeRpc: maskRpcUrl(this.rpc?.lastSuccessfulUrl || this.rpc?.url),
+      fallbackRpcs: Array.isArray(this.rpc?.fallbackUrls)
+        ? this.rpc.fallbackUrls.map((url) => maskRpcUrl(url))
+        : [],
+      rpcFailoverCount: Number(this.rpc?.failoverCount || 0),
+      eventSyncMode: typeof this.rpc?.getTransactionsSince === 'function' ? 'batched-full' : 'standard',
       lastError: this.status.lastError,
       metricsError: this.status.metricsError,
       eventError: this.status.eventError,
@@ -204,18 +210,22 @@ export class StakingIndexer extends EventEmitter {
     this.syncing = true;
     try {
       const cursor = this.store.getCursor?.() || this.signatureCursor;
+      const batched = Boolean(cursor && typeof this.rpc.getTransactionsSince === 'function');
       const signatures = cursor
-        ? await this.rpc.getSignaturesSince(cursor)
+        ? batched
+          ? await this.rpc.getTransactionsSince(cursor)
+          : await this.rpc.getSignaturesSince(cursor)
         : await this.rpc.getRecentSignatures(initial ? this.initialBackfillLimit : 25);
       this.status.lastSignatureBatchSize = signatures.length;
       const added = [];
-      for (const item of [...signatures].reverse()) {
+      const ordered = batched ? signatures : [...signatures].reverse();
+      for (const item of ordered) {
         if (item.err) {
           this.store.setCursor?.(item.signature);
           this.signatureCursor = item.signature;
           continue;
         }
-        const transaction = await this.rpc.getTransaction(item.signature);
+        const transaction = item.transaction || await this.rpc.getTransaction(item.signature);
         if (!transaction) throw new Error(`Finalized transaction was unavailable: ${item.signature}`);
         const parsed = parseStakingTransaction(transaction, BigInt(Math.round((this.metrics?.sharePrice || 1) * 1e9)));
         const unique = parsed.filter((event) => !this.known.has(event.id));
@@ -231,7 +241,7 @@ export class StakingIndexer extends EventEmitter {
         }
         this.store.setCursor?.(item.signature);
         this.signatureCursor = item.signature;
-        await delay(50);
+        if (!batched) await delay(50);
       }
       if (added.length) this.emit('events', added);
       this.refreshAnalytics(false);

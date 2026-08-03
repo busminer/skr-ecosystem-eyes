@@ -1,8 +1,10 @@
-import { CapitalField } from './capital-field.js?v=9';
+import { CapitalField } from './capital-field.js?v=10';
 import { collectUnseenEvents, normalizeCapitalEvent, shouldAnimateCapitalEvent } from './capital-events.js?v=5';
+import { buildRangeView } from './range-view.js?v=2';
 
 const $ = (id) => document.getElementById(id);
 let currentState = null;
+let selectedRange = '24h';
 let filter = { type: '', min: 0 };
 let seenEvents = new Set();
 let eventsInitialized = false;
@@ -42,7 +44,7 @@ const sourceRow = ({ label, account, slot }) => `<div class="evidence-source"><d
 
 function metricDisplay(key) {
   const metrics = currentState?.metrics || {};
-  const day = currentState?.analytics?.windows?.['24h'] || {};
+  const day = currentState?.analytics?.windows?.[selectedRange] || {};
   return {
     activeStaked: `${full(metrics.activeStaked)} SKR`,
     sharePrice: full(metrics.sharePrice),
@@ -193,8 +195,14 @@ function renderMetrics(metrics) {
 }
 
 function renderAnalytics(analytics) {
-  const day = analytics?.windows?.['24h'];
+  const view = buildRangeView(analytics, selectedRange);
+  const day = view.flow;
   if (!day) return;
+  const rangeLabel = view.label;
+  setText('rangeStakedLabel', `${rangeLabel} STAKED`);
+  setText('rangeUnstakedLabel', `${rangeLabel} UNSTAKED`);
+  setText('rangeNetLabel', `${rangeLabel} NET ACTIVE FLOW`);
+  setText('rangeWithdrawnLabel', `${rangeLabel} WITHDRAWN`);
   setText('staked24', `+${fmt(day.staked)} SKR`);
   setText('unstaked24', `−${fmt(day.unstaked)} SKR`);
   const net = day.netFlow;
@@ -205,18 +213,10 @@ function renderAnalytics(analytics) {
   setText('stakeEvents24', `${full(day.events)} INDEXED EVENTS`);
   setText('uniqueWallets24', `STAKE − UNSTAKE · ${full(day.wallets)} WALLETS`);
   setText('coverage', analytics.coverageFrom ? `LOCAL HISTORY FROM ${new Date(analytics.coverageFrom * 1000).toLocaleString()}` : 'HISTORY COVERAGE BEGINS WHEN THIS INDEXER STARTS.');
-  const coverageSeconds = analytics.coverageFrom ? Math.floor(Date.now() / 1000) - analytics.coverageFrom : 0;
-  const completeWindow = coverageSeconds >= 86_400;
-  const grossFlow = Number(day.staked || 0) + Number(day.unstaked || 0);
-  const flowRatio = grossFlow > 0 ? Number(day.netFlow || 0) / grossFlow : 0;
-  const verdict = completeWindow
-    ? flowRatio >= .1 ? ['ACCUMULATING', 'positive', `NET FLOW IS ${(flowRatio * 100).toFixed(1)}% OF GROSS FLOW`]
-      : flowRatio <= -.1 ? ['EXIT PRESSURE RISING', 'negative', `NET FLOW IS ${(flowRatio * 100).toFixed(1)}% OF GROSS FLOW`]
-        : ['BALANCED', 'balanced', `NET FLOW WITHIN ±10% OF GROSS FLOW`]
-    : ['PARTIAL VIEW', '', coverageSeconds > 0 ? `${Math.min(23, Math.floor(coverageSeconds / 3_600))}H OF 24H WINDOW INDEXED` : 'WAITING FOR INDEX COVERAGE'];
+  const verdict = view.verdict;
   setText('systemVerdict', verdict[0]);
   setText('verdictDetail', verdict[2]);
-  setText('briefCoverage', completeWindow ? '24H COMPLETE' : `${Math.min(23, Math.floor(coverageSeconds / 3_600))}H / 24H`);
+  setText('briefCoverage', view.coverageLabel);
   document.querySelector('.brief-verdict')?.classList.remove('positive', 'negative', 'balanced');
   if (verdict[1]) document.querySelector('.brief-verdict')?.classList.add(verdict[1]);
   renderChart(analytics.hourly || []);
@@ -253,11 +253,11 @@ function renderEvents(events) {
   if (!filtered.length) { rows.innerHTML = '<tr><td colspan="5" class="empty">No matching events in local history.</td></tr>'; return; }
   const maximum = Math.max(...filtered.map((event) => Number(event.amount || 0)), 1);
   rows.innerHTML = filtered.slice(0, 100).map((event) => `<tr>
-    <td title="${new Date(event.blockTime * 1000).toLocaleString()}">${ago(event.blockTime)} ago</td>
-    <td><span class="action ${esc(event.type)}">${esc(eventLabel(event.type))}</span></td>
-    <td><a class="tx-link" href="https://solscan.io/account/${esc(event.wallet)}" target="_blank" rel="noopener">${esc(short(event.wallet))}</a></td>
-    <td class="right amount">${event.amount == null ? '—' : `<span class="event-bar"><i style="width:${Math.max(3, Math.log10(Number(event.amount) + 1) / Math.log10(maximum + 1) * 100)}%"></i></span>${full(event.amount)} SKR`}</td>
-    <td class="right"><button class="evidence-button" data-event-id="${esc(event.id)}" aria-label="Inspect evidence for ${esc(eventLabel(event.type))}">PROOF</button></td>
+    <td class="event-age" title="${new Date(event.blockTime * 1000).toLocaleString()}">${ago(event.blockTime)} ago</td>
+    <td class="event-action"><span class="action ${esc(event.type)}">${esc(eventLabel(event.type))}</span></td>
+    <td class="event-wallet"><a class="tx-link" href="https://solscan.io/account/${esc(event.wallet)}" target="_blank" rel="noopener">${esc(short(event.wallet))}</a></td>
+    <td class="right amount event-amount">${event.amount == null ? '—' : `<span class="event-bar"><i style="width:${Math.max(3, Math.log10(Number(event.amount) + 1) / Math.log10(maximum + 1) * 100)}%"></i></span>${full(event.amount)} SKR`}</td>
+    <td class="right event-proof"><button class="evidence-button" data-event-id="${esc(event.id)}" aria-label="Inspect evidence for ${esc(eventLabel(event.type))}">PROOF</button></td>
   </tr>`).join('');
 }
 
@@ -354,6 +354,16 @@ document.querySelectorAll('#filters button').forEach((button) => button.addEvent
   button.classList.add('active');
   filter = { type: button.dataset.type || '', min: Number(button.dataset.min || 0) };
   if (currentState) renderEvents(currentState.recentEvents || []);
+}));
+
+document.querySelectorAll('[data-range]').forEach((button) => button.addEventListener('click', () => {
+  selectedRange = button.dataset.range || '24h';
+  document.querySelectorAll('[data-range]').forEach((item) => {
+    const active = item.dataset.range === selectedRange;
+    item.classList.toggle('active', active);
+    item.setAttribute('aria-pressed', String(active));
+  });
+  if (currentState) renderAnalytics(currentState.analytics);
 }));
 
 document.querySelectorAll('[data-provenance]').forEach((element) => {

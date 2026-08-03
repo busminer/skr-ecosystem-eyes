@@ -92,7 +92,7 @@ export function buildProvenance({ metrics = {}, analytics = {}, sourceSlots = {}
       scanMode: positionScanMode,
     }),
     flow24h: record({
-      title: '24-hour capital flow',
+      title: 'Indexed capital flow',
       sources: [program],
       derivation: 'Locally indexed finalized stake, unstake and withdraw instructions inside the selected time window.',
       accuracy: 'Exact for indexed stake and withdraw amounts; historical unstake SKR is estimated with the current share price.',

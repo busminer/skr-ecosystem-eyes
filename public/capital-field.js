@@ -185,10 +185,10 @@ export class CapitalField {
       ctx.fillStyle = colors[lane];
       ctx.globalAlpha = .72;
       ctx.font = `${this.mobile ? 10 : 11}px "Fragment Mono", monospace`;
-      ctx.textAlign = 'left';
+      ctx.textAlign = lane === 0 ? 'left' : 'center';
       const key = lane === 0 ? 'STAKE  →  STAKING VAULT' : '←  UNSTAKE  ·  HELD IN VAULT';
-      const keyPoint = this.lanePoint(lane, .08);
-      ctx.fillText(key, keyPoint.x, keyPoint.y - (lane === 0 ? 14 : 12));
+      const keyPoint = this.lanePoint(lane, lane === 0 ? .08 : .34);
+      ctx.fillText(key, keyPoint.x, keyPoint.y - (lane === 0 ? 14 : 18));
       ctx.restore();
     }
   }

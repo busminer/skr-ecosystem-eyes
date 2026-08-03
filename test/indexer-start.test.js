@@ -151,6 +151,44 @@ test('indexer checkpoints each completed signature before a later rate-limit fai
   assert.equal(indexer.status.lastSyncAt, undefined);
 });
 
+test('indexer consumes batched transactions without individual transaction lookups', async () => {
+  let savedCursor = 'known-cursor';
+  let transactionLookups = 0;
+  const store = {
+    limit: 100,
+    append() {},
+    count() { return 0; },
+    getCursor() { return savedCursor; },
+    setCursor(value) { savedCursor = value; },
+    summarize() { return null; },
+  };
+  const transaction = {
+    slot: 1,
+    blockTime: 1,
+    meta: { err: null, innerInstructions: [] },
+    transaction: { signatures: ['new-signature'], message: { accountKeys: [], instructions: [] } },
+  };
+  const rpc = {
+    url: 'https://rpc.example',
+    scanUrl: 'https://rpc.example',
+    async getTransactionsSince() {
+      return [{ signature: 'new-signature', err: null, transaction }];
+    },
+    async getTransaction() {
+      transactionLookups += 1;
+      return transaction;
+    },
+  };
+  const indexer = new StakingIndexer({ rpc, store });
+  indexer.metrics = { sharePrice: 1 };
+
+  await indexer.syncEvents();
+
+  assert.equal(savedCursor, 'new-signature');
+  assert.equal(transactionLookups, 0);
+  assert.equal(indexer.status.lastSignatureBatchSize, 1);
+});
+
 test('a successful event sync does not hide an outstanding metrics failure', async () => {
   const store = {
     limit: 100,
