@@ -34,6 +34,7 @@ await emit('app.js', (content) => content
 await emit('operations-console.css');
 await emit('wallet-profile.js');
 await emit('wallet.css');
+await emit('wallet-overrides.css');
 
 for (const [htmlName, replacements] of Object.entries({
   'index.html': [
@@ -42,6 +43,7 @@ for (const [htmlName, replacements] of Object.entries({
   ],
   'wallet.html': [
     [/\/(?:build\/wallet\.[a-f0-9]{10}|wallet)\.css(?:\?v=\d+)?/g, outputs.get('wallet.css')],
+    [/\/(?:build\/wallet-overrides\.[a-f0-9]{10}|wallet-overrides)\.css(?:\?v=\d+)?/g, outputs.get('wallet-overrides.css')],
     [/\/(?:build\/wallet-profile\.[a-f0-9]{10}|wallet-profile)\.js(?:\?v=\d+)?/g, outputs.get('wallet-profile.js')],
   ],
 })) {
