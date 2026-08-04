@@ -14,9 +14,12 @@
     "test": "node --test",
     "check": "node scripts/check-syntax.mjs && node --test",
     "backup:verify": "node scripts/verify-backup.mjs",
+    "build:public": "node scripts/build-public-assets.mjs",
     "analyze:events": "node scripts/analyze-event-distribution.mjs",
+    "analyze:rewards": "node scripts/analyze-rewards-history.mjs",
     "release:purge": "node scripts/purge-cloudflare-cache.mjs",
-    "release:verify": "node scripts/verify-public-release.mjs"
+    "release:verify": "node scripts/verify-public-release.mjs",
+    "release:finalize": "node scripts/finalize-public-release.mjs"
   },
   "engines": {
     "node": ">=22"

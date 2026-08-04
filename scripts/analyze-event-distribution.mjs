@@ -58,5 +58,20 @@ for (const threshold of thresholds) {
   simulations[threshold] = { ...byType, total, observedDays: observedSeconds / 86_400, projectedPerWeek: total / (observedSeconds / 604_800) };
 }
 
-console.log(JSON.stringify({ file: path.resolve(file), integrity, newest, coverageFrom, coverageDays: (newest - coverageFrom) / 86_400, totalEvents: Number(db.prepare('SELECT COUNT(*) AS value FROM events').get().value || 0), percentilePoints, distributions, simulations }, null, 2));
+const hourlyRows = db.prepare(`
+  SELECT CAST((block_time - ?) / 3600 AS INTEGER) AS bucket,
+         COUNT(*) AS all_count,
+         SUM(CASE WHEN amount >= 10 THEN 1 ELSE 0 END) AS signal_count
+  FROM events
+  WHERE block_time > ? AND block_time <= ?
+  GROUP BY bucket ORDER BY bucket
+`).all(newest - 86_400, newest - 86_400, newest);
+const quietHours = {
+  observedBuckets: hourlyRows.length,
+  emptyAbove10: hourlyRows.filter((row) => Number(row.signal_count) === 0).length,
+  minimumAbove10: hourlyRows.length ? Math.min(...hourlyRows.map((row) => Number(row.signal_count))) : 0,
+  maximumAbove10: hourlyRows.length ? Math.max(...hourlyRows.map((row) => Number(row.signal_count))) : 0,
+};
+
+console.log(JSON.stringify({ file: path.resolve(file), integrity, newest, coverageFrom, coverageDays: (newest - coverageFrom) / 86_400, totalEvents: Number(db.prepare('SELECT COUNT(*) AS value FROM events').get().value || 0), percentilePoints, distributions, simulations, quietHours }, null, 2));
 db.close();

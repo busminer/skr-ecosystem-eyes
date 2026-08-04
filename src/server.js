@@ -78,10 +78,10 @@ async function serveStatic(requestUrl, response, extraHeaders = {}) {
       '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json; charset=utf-8',
       '.webmanifest': 'application/manifest+json; charset=utf-8',
     };
-    const versioned = requestUrl.searchParams.has('v');
+    const fingerprinted = /^\/build\/[a-z0-9-]+\.[a-f0-9]{10}\.(?:css|js)$/.test(requestPath);
     const cacheControl = extension === '.html'
       ? 'no-cache, must-revalidate'
-      : versioned
+      : fingerprinted
         ? 'public, max-age=31536000, immutable'
         : 'public, max-age=300';
     response.writeHead(200, { ...SECURITY_HEADERS, ...extraHeaders, 'content-type': types[extension] || 'application/octet-stream', 'cache-control': cacheControl });
