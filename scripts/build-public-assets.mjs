@@ -13,6 +13,7 @@ for (const entry of await readdir(outputRoot)) {
 
 const digest = (content) => createHash('sha256').update(content).digest('hex').slice(0, 10);
 const outputs = new Map();
+const sibling = (sourceName) => `./${path.posix.basename(outputs.get(sourceName))}`;
 
 async function emit(sourceName, transform = (content) => content) {
   const source = await readFile(path.join(publicRoot, sourceName), 'utf8');
@@ -26,11 +27,11 @@ async function emit(sourceName, transform = (content) => content) {
 
 await emit('capital-events.js');
 await emit('range-view.js');
-await emit('capital-field.js', (content) => content.replace('./capital-events.js?v=5', `.${outputs.get('capital-events.js')}`));
+await emit('capital-field.js', (content) => content.replace('./capital-events.js?v=5', sibling('capital-events.js')));
 await emit('app.js', (content) => content
-  .replace('./capital-field.js?v=10', `.${outputs.get('capital-field.js')}`)
-  .replace('./capital-events.js?v=5', `.${outputs.get('capital-events.js')}`)
-  .replace('./range-view.js?v=2', `.${outputs.get('range-view.js')}`));
+  .replace('./capital-field.js?v=10', sibling('capital-field.js'))
+  .replace('./capital-events.js?v=5', sibling('capital-events.js'))
+  .replace('./range-view.js?v=2', sibling('range-view.js')));
 await emit('operations-console.css');
 await emit('wallet-profile.js');
 await emit('wallet.css');

@@ -1,6 +1,6 @@
-import { CapitalField } from './build/capital-field.57e34f6640.js';
-import { collectUnseenEvents, normalizeCapitalEvent, shouldAnimateCapitalEvent } from './build/capital-events.61cda934a5.js';
-import { buildRangeView } from './build/range-view.a8e192ad84.js';
+import { CapitalField } from './capital-field.13b44e7a11.js';
+import { collectUnseenEvents, normalizeCapitalEvent, shouldAnimateCapitalEvent } from './capital-events.61cda934a5.js';
+import { buildRangeView } from './range-view.a8e192ad84.js';
 
 const $ = (id) => document.getElementById(id);
 let currentState = null;

@@ -1,4 +1,4 @@
-import { capitalConcurrency, normalizeCapitalEvent, progressForDirection, shouldAnimateCapitalEvent } from './build/capital-events.61cda934a5.js';
+import { capitalConcurrency, normalizeCapitalEvent, progressForDirection, shouldAnimateCapitalEvent } from './capital-events.61cda934a5.js';
 
 const COLORS = {
   blue: '#28a9ff',
