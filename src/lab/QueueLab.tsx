@@ -33,10 +33,13 @@ export function QueueLab() {
     }
   }, []);
 
+  // A screen left open in a pocket keeps its timer but stops asking, and asks
+  // once immediately when the app is looked at again.
   useEffect(() => {
     void load();
-    const timer = setInterval(() => void load(), REFRESH_MS);
-    return () => clearInterval(timer);
+    const timer = setInterval(() => { if (AppState.currentState === 'active') void load(); }, REFRESH_MS);
+    const subscription = AppState.addEventListener('change', (next) => { if (next === 'active') void load(); });
+    return () => { clearInterval(timer); subscription.remove(); };
   }, [load]);
 
   useEffect(() => {

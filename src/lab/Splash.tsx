@@ -10,6 +10,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { prefValue, prefsReady } from '../prefs';
 import { colors, font, spacing } from '../theme';
 
 // The opening: a device stands facing you, turns the way a person turns, and
@@ -47,8 +48,14 @@ export function Splash({ onDone }: { onDone: () => void }) {
   const leave = useSharedValue(0);
 
   useEffect(() => {
+    let gone = false;
     const players: Array<ReturnType<typeof createAudioPlayer>> = [];
-    const voice = (volume: number) => {
+    // The switch on Flow says whether this phone makes sounds at all, and the
+    // opening is a sound like any other. It used to play regardless, so the one
+    // person who had turned sound off got a chime on every single launch.
+    const voice = async (volume: number) => {
+      await prefsReady;
+      if (gone || !prefValue('sound', true)) return;
       try {
         const player = createAudioPlayer(require('../../assets/sound/wake.wav'));
         player.volume = volume;
@@ -58,8 +65,8 @@ export function Splash({ onDone }: { onDone: () => void }) {
         // A launch that cannot make a sound is still a launch.
       }
     };
-    const sound = setTimeout(() => voice(0.55), SOUND_AT);
-    const echo = setTimeout(() => voice(ECHO_VOLUME), ECHO_AT);
+    const sound = setTimeout(() => void voice(0.55), SOUND_AT);
+    const echo = setTimeout(() => void voice(ECHO_VOLUME), ECHO_AT);
 
     enter.value = withTiming(1, { duration: ENTER_MS, easing: Easing.out(Easing.cubic) });
     turn.value = withDelay(TURN_AT, withTiming(1, { duration: TURN_MS, easing: Easing.inOut(Easing.cubic) }));
@@ -75,6 +82,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
     }));
 
     return () => {
+      gone = true;
       clearTimeout(sound);
       clearTimeout(echo);
       players.forEach((item) => item.remove());

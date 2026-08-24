@@ -4,7 +4,7 @@ import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { colors, font, radius, spacing, type } from '../../theme';
 import { Button, Evidence, Eyebrow, Panel } from '../kit';
-import { FIRST_STAKE_RENT_LAMPORTS, MIN_STAKE_RAW, fromRaw, toRaw } from './stakeTx';
+import { FIRST_STAKE_RENT_LAMPORTS, MIN_STAKE_RAW, fromRaw, toRaw, tooPrecise } from './stakeTx';
 import { useStakeRun } from './useStakeRun';
 
 const COUNTS = [1, 4, 8, 16];
@@ -26,7 +26,8 @@ export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; h
   // transactions to send. The total is the product, and it is always visible.
   const perPart = useMemo(() => toRaw(amount), [amount]);
   const totalRaw = perPart * BigInt(split);
-  const tooSmall = perPart > 0n && perPart < MIN_STAKE_RAW;
+  const overPrecise = tooPrecise(amount);
+  const tooSmall = !overPrecise && perPart > 0n && perPart < MIN_STAKE_RAW;
   const ready = perPart >= MIN_STAKE_RAW && phase === 'idle';
   const working = phase === 'preparing' || phase === 'signing' || phase === 'sending';
 
@@ -38,7 +39,7 @@ export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; h
             <Eyebrow>Stake SKR</Eyebrow>
             <Text style={styles.title}>Add to your position</Text>
           </View>
-          <Pressable accessibilityRole="button" onPress={onClose} style={styles.close}><Text style={styles.closeText}>×</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={onClose} style={styles.close}><Text style={styles.closeText}>×</Text></Pressable>
         </View>
 
         {run == null ? (
@@ -57,10 +58,12 @@ export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; h
                 />
                 <Text style={styles.amountUnit}>SKR</Text>
               </View>
-              <Text style={[styles.hint, tooSmall && styles.warn]}>
-                {tooSmall
-                  ? 'A single transaction cannot stake less than 1 SKR.'
-                  : 'This is what one transaction stakes. The total is this amount times the count below.'}
+              <Text style={[styles.hint, (tooSmall || overPrecise) && styles.warn]}>
+                {overPrecise
+                  ? 'SKR has six decimal places. Shorten the amount — the extra digits cannot be staked.'
+                  : tooSmall
+                    ? 'A single transaction cannot stake less than 1 SKR.'
+                    : 'This is what one transaction stakes. The total is this amount times the count below.'}
               </Text>
             </Panel>
 

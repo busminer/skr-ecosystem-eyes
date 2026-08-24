@@ -11,8 +11,20 @@ export class ApiError extends Error {
   }
 }
 
+// A request that never answers is worse than one that fails: the caller waits
+// for it forever while the next poll starts another beside it. The position age
+// service has always had a deadline; every other read now has one too.
+const TIMEOUT_MS = 20_000;
+
 async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, { headers: { accept: 'application/json' } });
+  const controller = new AbortController();
+  const deadline = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, { headers: { accept: 'application/json' }, signal: controller.signal });
+  } finally {
+    clearTimeout(deadline);
+  }
   if (!response.ok) {
     let detail = '';
     try {

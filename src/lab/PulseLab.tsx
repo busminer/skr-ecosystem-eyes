@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { AppState, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { fetchEcosystemState } from '../api';
 import { compact, integer, relativeTime } from '../format';
 import { colors, font, spacing, type } from '../theme';
@@ -41,10 +41,13 @@ export function PulseLab({ onOpenQueue }: { onOpenQueue: () => void }) {
     }
   }, []);
 
+  // A screen left open in a pocket keeps its timer but stops asking, and asks
+  // once immediately when the app is looked at again.
   useEffect(() => {
     void load();
-    const timer = setInterval(() => void load(), REFRESH_MS);
-    return () => clearInterval(timer);
+    const timer = setInterval(() => { if (AppState.currentState === 'active') void load(); }, REFRESH_MS);
+    const subscription = AppState.addEventListener('change', (next) => { if (next === 'active') void load(); });
+    return () => { clearInterval(timer); subscription.remove(); };
   }, [load]);
 
   const metrics = state?.metrics;

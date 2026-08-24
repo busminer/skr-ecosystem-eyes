@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Haptics from 'expo-haptics';
@@ -9,6 +9,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { fetchEcosystemState } from './src/api';
 import { configureNotifications } from './src/notifications';
+import { hydratePrefs } from './src/prefs';
 import { prepareSound } from './src/sound';
 import { colors, font, spacing, type } from './src/theme';
 import type { Freshness, FreshnessDetail } from './src/types';
@@ -76,35 +77,54 @@ export default function App() {
   const [detail, setDetail] = useState<FreshnessDetail | null>(null);
   const [stamps, setStamps] = useState<{ metrics: number | null; events: number | null; queue: number | null }>({ metrics: null, events: null, queue: null });
   const [opening, setOpening] = useState(true);
+  const appState = useRef(AppState.currentState);
+  const reading = useRef(false);
   const finishOpening = useCallback(() => setOpening(false), []);
   const [fontsLoaded] = useFonts({
     Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold, Geist_900Black,
     GeistMono_400Regular, GeistMono_600SemiBold, GeistMono_700Bold, GeistMono_900Black,
   });
 
-  useEffect(() => { void configureNotifications(); void prepareSound(); }, []);
+  useEffect(() => { void hydratePrefs(); void configureNotifications(); void prepareSound(); }, []);
   // Nothing else hides the native splash, so the first painted frame does it.
   useEffect(() => { if (fontsLoaded) void SplashScreen.hideAsync().catch(() => undefined); }, [fontsLoaded]);
   useEffect(() => {
     const unavailable: FreshnessDetail = { overall: 'unavailable', metrics: 'unavailable', events: 'unavailable', queue: 'unavailable' };
     // One read serves both the word and the clock it is measured against.
-    const read = () => fetchEcosystemState().then((state) => {
-      // An older server sends only the one word; then every tab shares it.
-      setDetail(state.status.freshnessDetail ?? {
-        overall: state.status.freshness,
-        metrics: state.status.freshness,
-        events: state.status.freshness,
-        queue: state.status.freshness,
-      });
-      setStamps({
-        metrics: state.status.lastMetricsAt,
-        events: state.status.lastEventAt ?? null,
-        queue: state.status.lastQueueScanAt,
-      });
-    }).catch(() => setDetail(unavailable));
+    const read = () => {
+      // A phone in a pocket must not keep asking the server for news. Flow has
+      // said this since it was written; the bar at the top had not, so a
+      // backgrounded app went on pulling the whole state every 30 seconds.
+      if (appState.current !== 'active') return Promise.resolve();
+      // A read that has not come back yet is not helped by starting another
+      // one beside it. Two answers in flight can also land out of order and
+      // let the older one overwrite the newer.
+      if (reading.current) return Promise.resolve();
+      reading.current = true;
+      return fetchEcosystemState().then((state) => {
+        // An older server sends only the one word; then every tab shares it.
+        setDetail(state.status.freshnessDetail ?? {
+          overall: state.status.freshness,
+          metrics: state.status.freshness,
+          events: state.status.freshness,
+          queue: state.status.freshness,
+        });
+        setStamps({
+          metrics: state.status.lastMetricsAt,
+          events: state.status.lastEventAt ?? null,
+          queue: state.status.lastQueueScanAt,
+        });
+      }).catch(() => setDetail(unavailable)).finally(() => { reading.current = false; });
+    };
     void read();
     const timer = setInterval(() => void read(), 30_000);
-    return () => clearInterval(timer);
+    // Coming back to the app should not mean waiting out the rest of a poll
+    // that was skipped while it was away.
+    const subscription = AppState.addEventListener('change', (next) => {
+      appState.current = next;
+      if (next === 'active') void read();
+    });
+    return () => { clearInterval(timer); subscription.remove(); };
   }, []);
 
   const select = useCallback((next: Tab) => {
@@ -151,6 +171,7 @@ export default function App() {
               <Pressable
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
+                hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
                 key={item.key}
                 onPress={() => select(item.key)}
                 style={({ pressed }) => [styles.navItem, pressed && styles.navPressed]}

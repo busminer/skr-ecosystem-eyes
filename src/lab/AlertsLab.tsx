@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
 import { resolveAlertThresholds } from '../alertThresholds';
@@ -14,6 +14,8 @@ import { Button, Evidence, Eyebrow, Hairline, Panel } from './kit';
 
 export function AlertsLab() {
   const [granted, setGranted] = useState<boolean | null>(null);
+  // False once Android has refused for good and stopped showing its dialog.
+  const [canAsk, setCanAsk] = useState(true);
   const [state, setState] = useState<EcosystemState | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   // The one alert that exists, and the truth about whether it is armed — read
@@ -24,7 +26,10 @@ export function AlertsLab() {
   const [largeAlerts, setLargeAlerts] = usePref('alert:large', true);
 
   useEffect(() => {
-    Notifications.getPermissionsAsync().then((result) => setGranted(result.granted)).catch(() => setGranted(null));
+    Notifications.getPermissionsAsync().then((result) => {
+      setGranted(result.granted);
+      setCanAsk(result.canAskAgain !== false);
+    }).catch(() => setGranted(null));
     fetchEcosystemState().then(setState).catch(() => undefined);
     void readSessionAddress().then(async (address) => {
       if (!address) return setArmed(false);
@@ -33,10 +38,26 @@ export function AlertsLab() {
     }).catch(() => setArmed(false));
   }, []);
 
+  // Android stops showing the dialog once it has been refused for good. Asking
+  // again then does nothing at all, and a button that does nothing is worse
+  // than no button: the only way back is the system settings, so offer that.
   const ask = useCallback(async () => {
-    const result = await Notifications.requestPermissionsAsync();
-    setGranted(result.granted);
-    setStatus(result.granted ? 'This phone can now wake you.' : 'Android is holding notifications back for this app.');
+    try {
+      const result = await Notifications.requestPermissionsAsync();
+      setGranted(result.granted);
+      setCanAsk(result.canAskAgain !== false);
+      setStatus(result.granted
+        ? 'This phone can now wake you.'
+        : result.canAskAgain === false
+          ? 'Android will not ask again. Turn notifications on for SKR Eyes in the system settings.'
+          : 'Android is holding notifications back for this app.');
+    } catch {
+      setStatus('Android did not answer the permission request. Try again, or turn notifications on in the system settings.');
+    }
+  }, []);
+
+  const openSettings = useCallback(() => {
+    void Linking.openSettings().catch(() => setStatus('This phone would not open its settings screen.'));
   }, []);
 
   const toggleUnlock = useCallback(async (next: boolean) => {
@@ -85,7 +106,13 @@ export function AlertsLab() {
             </Text>
           </View>
         </View>
-        {!granted ? <View style={styles.permissionAction}><Button label="Allow notifications" onPress={() => void ask()} /></View> : null}
+        {!granted ? (
+          <View style={styles.permissionAction}>
+            {canAsk
+              ? <Button label="Allow notifications" onPress={() => void ask()} />
+              : <Button label="Open settings" onPress={openSettings} />}
+          </View>
+        ) : null}
       </Panel>
 
       <Panel style={styles.panel}>

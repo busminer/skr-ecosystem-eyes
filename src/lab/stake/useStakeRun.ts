@@ -198,14 +198,36 @@ export function useStakeRun(wallet: string | null) {
       const unsigned = slices.map((amountRaw, index) => buildStakeTransaction({ user, guardianPool, amountRaw, blockhash, nonce: index }));
 
       setPhase('signing');
-      handedToWallet = true;
       const signatures = await transact(async (adapter) => {
         await adapter.authorize({ chain: 'solana:mainnet', identity: APP_IDENTITY });
+        // Only past this line can anything have reached the chain. Authorising
+        // does not broadcast, so a wallet that is missing, refuses the app or
+        // refuses the batch size fails here — and the person deserves to be
+        // told plainly that nothing was sent, not warned about money that
+        // never moved.
+        handedToWallet = true;
         return adapter.signAndSendTransactions({ transactions: unsigned, minContextSlot: slot });
       }) as string[];
 
       if (!Array.isArray(signatures) || signatures.length === 0) throw new Error('The wallet returned no signatures.');
-      if (signatures.length !== unsigned.length) throw new Error('The wallet handled only part of the request.');
+
+      if (signatures.length !== unsigned.length) {
+        // A short answer is the dangerous one: the wallet broadcasts as it
+        // signs, so the signatures it did return are probably already on the
+        // chain. Throwing them away would leave the person with a warning and
+        // no way to check. Save them first, then say what happened — the run
+        // survives the restart and the app resumes asking the chain about it.
+        const answered: StakePart[] = [];
+        signatures.forEach((signature, index) => {
+          const amountRaw = slices[index];
+          if (typeof signature !== 'string' || !signature || amountRaw == null) return;
+          answered.push({ index, amountRaw: amountRaw.toString(), wire: null, signature, state: 'sent' as PartState });
+        });
+        if (answered.length > 0) {
+          commit({ wallet, guardianPool: guardianPool.toBase58(), createdAt: Date.now(), parts: answered });
+        }
+        throw new Error('The wallet handled only part of the request.');
+      }
 
       const prepared: StakePart[] = signatures.map((signature, index) => {
         const amountRaw = slices[index];
@@ -258,6 +280,11 @@ function explainAfterWallet(caught: unknown): string {
   const text = raw.toLowerCase();
   if (text.includes('declin') || text.includes('cancel') || text.includes('reject') || text.includes('user_declin')) {
     return 'You cancelled in the wallet. If you had already approved a batch before cancelling, check your position below before staking the same amount again.';
+  }
+  // A wallet that refuses the number of payloads refuses the whole batch: the
+  // protocol answers before it signs anything, so this one can be said plainly.
+  if (text.includes('too_many') || text.includes('too many') || text.includes('payload')) {
+    return 'Your wallet accepts fewer transactions in one approval. Choose 8 or 4 and try again. Nothing was sent.';
   }
   return 'The wallet stopped part way through and did not say how much it had already sent. Refresh your position before staking this amount again — some of it may already be on the chain.';
 }

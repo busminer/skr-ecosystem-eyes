@@ -21,6 +21,8 @@ import { Eyebrow, Panel } from './kit';
 const POLL_MS = 6_000;
 const HEADLINE_POLL_MS = 90_000;
 const FEED_LIMIT = 60;
+// How many event ids the screen keeps in mind before it starts forgetting.
+const SEEN_LIMIT = 600;
 const HAPTIC_GAP_MS = 260;
 // A large move announces itself, but never more than once every few seconds,
 // however busy the chain gets.
@@ -74,11 +76,22 @@ function ago(blockTime: number, now: number): string {
   return `${Math.floor(seconds / DAY_SECONDS)}d`;
 }
 
+// The feed is polled every six seconds, so a request that hangs would pile the
+// next one on top of it. It gets a deadline shorter than the gap between polls
+// it would otherwise block.
+const EVENTS_TIMEOUT_MS = 15_000;
+
 async function fetchEvents(minimum: number, limit: number): Promise<FlowEvent[]> {
-  const response = await fetch(`${API_BASE_URL}/api/events?limit=${limit}&min=${minimum}`, { headers: { accept: 'application/json' } });
-  if (!response.ok) throw new Error(String(response.status));
-  const payload = await response.json() as { items?: FlowEvent[] };
-  return payload.items ?? [];
+  const controller = new AbortController();
+  const deadline = setTimeout(() => controller.abort(), EVENTS_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/events?limit=${limit}&min=${minimum}`, { headers: { accept: 'application/json' }, signal: controller.signal });
+    if (!response.ok) throw new Error(String(response.status));
+    const payload = await response.json() as { items?: FlowEvent[] };
+    return payload.items ?? [];
+  } finally {
+    clearTimeout(deadline);
+  }
 }
 
 // The pinned block. Within a day it is today's biggest move; if the day was
@@ -219,6 +232,12 @@ export function FlowLab({ active }: { active: boolean }) {
       const arrived = items.filter((item) => item.id && !seen.current.has(item.id));
       if (arrived.length === 0) return;
       arrived.forEach((item) => seen.current.add(item.id));
+      // Left open for an evening the screen would otherwise remember every
+      // event it ever saw. Only the recent past can repeat inside one page of
+      // the feed, so anything older than a few pages is safe to forget.
+      if (seen.current.size > SEEN_LIMIT) {
+        seen.current = new Set([...seen.current].slice(-FEED_LIMIT * 2));
+      }
       setEvents((current) => [...arrived, ...current].slice(0, FEED_LIMIT));
       setArrivals((current) => current + arrived.length);
       // One tap per batch, never a machine-gun. A large move gets its own
@@ -283,10 +302,12 @@ export function FlowLab({ active }: { active: boolean }) {
           <Text style={styles.title}>{arrivals > 0 ? `${arrivals} landed while you watched` : 'Watching the chain'}</Text>
         </View>
         <View style={styles.headSwitches}>
-          <Pressable onPress={() => { void Haptics.selectionAsync(); setHaptics(!haptics); }} style={styles.hapticToggle}>
+          <Pressable accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={() => { void Haptics.selectionAsync(); setHaptics(!haptics); }} style={styles.hapticToggle}>
             <Text style={[styles.hapticLabel, haptics && styles.hapticOn]}>{haptics ? 'BUZZ ON' : 'BUZZ OFF'}</Text>
           </Pressable>
           <Pressable
+            accessibilityRole="button"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={() => { void Haptics.selectionAsync(); const next = !sound; setSound(next); if (next) playCue('surge', 0.6); }}
             style={styles.hapticToggle}
           >
@@ -317,6 +338,9 @@ export function FlowLab({ active }: { active: boolean }) {
           const on = option.key === filter;
           return (
             <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
               key={option.key}
               onPress={() => { void Haptics.selectionAsync(); setFilter(option.key); }}
               style={[styles.filter, on && styles.filterOn]}

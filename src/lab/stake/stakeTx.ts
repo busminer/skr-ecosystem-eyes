@@ -18,6 +18,7 @@ const SYSTEM_PROGRAM = new PublicKey('11111111111111111111111111111111');
 const STAKE_DISCRIMINATOR = Buffer.from([206, 176, 202, 18, 200, 209, 179, 108]);
 
 export const TOKEN_DECIMALS = 6;
+const MAX_U64 = (1n << 64n) - 1n;
 export const TOKEN_SCALE = 1_000_000n;
 export const MIN_STAKE_RAW = 1_000_000n;
 // Proven by simulation: a first stake creates the 169-byte position account and
@@ -94,12 +95,25 @@ export function buildStakeTransaction({ user, guardianPool, amountRaw, blockhash
   return new VersionedTransaction(message);
 }
 
+// SKR has six decimals, so a seventh digit cannot be staked. Quietly dropping
+// it would stake less than the person typed and say nothing about it, so a
+// number carrying more precision than the token has is refused instead.
+export function tooPrecise(amount: string): boolean {
+  const clean = amount.replace(',', '.').trim();
+  const fraction = clean.split('.')[1];
+  return (fraction?.length ?? 0) > TOKEN_DECIMALS;
+}
+
 export function toRaw(amount: string): bigint {
   const clean = amount.replace(',', '.').trim();
   if (!/^\d*\.?\d*$/.test(clean) || clean === '' || clean === '.') return 0n;
+  if (tooPrecise(clean)) return 0n;
   const [whole = '', fraction = ''] = clean.split('.');
   const padded = (fraction + '000000').slice(0, TOKEN_DECIMALS);
-  return BigInt(whole || '0') * TOKEN_SCALE + BigInt(padded || '0');
+  const raw = BigInt(whole || '0') * TOKEN_SCALE + BigInt(padded || '0');
+  // The instruction writes the amount as an unsigned 64-bit number. Anything
+  // that would not fit is not a stake, it is a typo.
+  return raw > MAX_U64 ? 0n : raw;
 }
 
 export function fromRaw(raw: bigint): string {

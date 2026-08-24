@@ -141,8 +141,9 @@ export function MyLab() {
   useEffect(() => {
     const wallet = profile?.wallet;
     if (!wallet) return;
-    const timer = setInterval(() => void inspect(wallet, true), 60_000);
-    return () => clearInterval(timer);
+    const timer = setInterval(() => { if (AppState.currentState === 'active') void inspect(wallet, true); }, 60_000);
+    const subscription = AppState.addEventListener('change', (next) => { if (next === 'active') void inspect(wallet, true); });
+    return () => { clearInterval(timer); subscription.remove(); };
   }, [inspect, profile?.wallet]);
 
   const disconnect = useCallback(async () => {

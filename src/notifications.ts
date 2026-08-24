@@ -66,11 +66,20 @@ export async function scheduleUnlockAlerts(profile: WalletProfile): Promise<numb
   ].filter((plan) => plan.at > now + 5_000);
 
   const notificationIds: string[] = [];
-  for (const plan of plans) {
-    notificationIds.push(await Notifications.scheduleNotificationAsync({
-      content: { title: plan.title, body: plan.body, sound: 'default', data: { wallet: profile.wallet, unlockAt } },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(plan.at), channelId: CHANNEL_ID },
-    }));
+  try {
+    for (const plan of plans) {
+      notificationIds.push(await Notifications.scheduleNotificationAsync({
+        content: { title: plan.title, body: plan.body, sound: 'default', data: { wallet: profile.wallet, unlockAt } },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(plan.at), channelId: CHANNEL_ID },
+      }));
+    }
+  } catch (caught) {
+    // The ids are only written down once every reminder exists. If the second
+    // one fails, the first is already scheduled and nothing would remember it:
+    // the screen would say the alert is off while the phone still went off,
+    // and there would be no way left to cancel it. Take it back first.
+    await Promise.all(notificationIds.map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => undefined)));
+    throw caught;
   }
   await AsyncStorage.setItem(`${STORAGE_PREFIX}${profile.wallet}`, JSON.stringify({ unlockAt, notificationIds } satisfies StoredSchedule));
   return notificationIds.length;
