@@ -5,7 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Haptics from 'expo-haptics';
 import { Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold, Geist_900Black } from '@expo-google-fonts/geist';
 import { GeistMono_400Regular, GeistMono_600SemiBold, GeistMono_700Bold, GeistMono_900Black } from '@expo-google-fonts/geist-mono';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { fetchEcosystemState } from './src/api';
 import { configureNotifications } from './src/notifications';
@@ -70,6 +70,38 @@ function Age({ stamp }: { stamp: number | null | undefined }) {
   }, []);
   const text = shortAge(stamp);
   return text ? <Text style={styles.statusAge}>{text}</Text> : null;
+}
+
+// The row of tabs, and the one thing standing between it and the system.
+//
+// A phone on gesture navigation gives back a thin strip, and a fixed 12 was
+// enough for it. A phone on three-button navigation takes about four times
+// that, and the system's own back, home and recents sat straight on top of our
+// labels — the app looked like a single page with no way out of it. The bar now
+// asks the phone how much room it is actually leaving and takes the larger of
+// the two answers.
+function TabBar({ tab, onSelect }: { tab: Tab; onSelect: (next: Tab) => void }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[styles.nav, { paddingBottom: Math.max(spacing.md, insets.bottom + spacing.xs) }]}>
+      {tabs.map((item) => {
+        const active = item.key === tab;
+        return (
+          <Pressable
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+            key={item.key}
+            onPress={() => onSelect(item.key)}
+            style={({ pressed }) => [styles.navItem, pressed && styles.navPressed]}
+          >
+            <View style={[styles.navBar, active && styles.navBarActive]} />
+            <Text style={[styles.navLabel, active && styles.navLabelActive]}>{item.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
 }
 
 export default function App() {
@@ -164,24 +196,7 @@ export default function App() {
 
         {opening ? <Splash onDone={finishOpening} /> : null}
 
-        <View style={styles.nav}>
-          {tabs.map((item) => {
-            const active = item.key === tab;
-            return (
-              <Pressable
-                accessibilityRole="tab"
-                accessibilityState={{ selected: active }}
-                hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-                key={item.key}
-                onPress={() => select(item.key)}
-                style={({ pressed }) => [styles.navItem, pressed && styles.navPressed]}
-              >
-                <View style={[styles.navBar, active && styles.navBarActive]} />
-                <Text style={[styles.navLabel, active && styles.navLabelActive]}>{item.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <TabBar tab={tab} onSelect={select} />
       </SafeAreaView>
     </SafeAreaProvider>
   );
