@@ -1,10 +1,25 @@
 # SKR Ecosystem Eyes
 
-Independent, read-only intelligence for the SKR staking ecosystem on Solana.
+Independent intelligence for the SKR staking ecosystem on Solana: a read-only
+web service and API, and **SKR Eyes**, an Android app for Seeker that also stakes
+through your own wallet.
 
 **Live community beta:** [skr.alexkosa.dev](https://skr.alexkosa.dev/)
 
-![Node 22+](https://img.shields.io/badge/Node-22%2B-68f5b2?style=flat-square) ![Dependencies](https://img.shields.io/badge/runtime_dependencies-0-68f5b2?style=flat-square) ![Mode](https://img.shields.io/badge/mode-read--only-8b7cff?style=flat-square)
+![Node 22+](https://img.shields.io/badge/Node-22%2B-68f5b2?style=flat-square) ![Dependencies](https://img.shields.io/badge/runtime_dependencies-0-68f5b2?style=flat-square) ![Service](https://img.shields.io/badge/web_service-read--only-8b7cff?style=flat-square)
+
+## SKR Eyes — the Android app
+
+The Solana dApp Store build lives on the [`skr-eyes-app`](../../tree/skr-eyes-app)
+branch, and the submitted APK is attached to the [`v1.0.0`](../../releases/tag/v1.0.0)
+release.
+
+Unlike this web service, the app can also **stake**. It prepares the transactions
+and your own wallet signs and broadcasts them through the Mobile Wallet Adapter.
+It never asks for a seed phrase, never holds keys and never takes custody of funds.
+
+SKR Eyes is not affiliated with, endorsed by or sponsored by Solana Foundation or
+Solana Mobile.
 
 ## What works now
 
