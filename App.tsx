@@ -56,6 +56,21 @@ function shortAge(stamp: number | null | undefined): string | null {
   return `${Math.round(seconds / 3_600)}h`;
 }
 
+// The age has to count up on its own. The state poll speaks once every 30
+// seconds, and the bar is redrawn only when it answers — so between answers the
+// number sat still, and the next thing that happened to redraw the bar, usually
+// a tab switch, made it jump. The ticker lives in here and not in App so that
+// one second does not redraw every screen behind it.
+function Age({ stamp }: { stamp: number | null | undefined }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => tick((count) => count + 1), 1_000);
+    return () => clearInterval(timer);
+  }, []);
+  const text = shortAge(stamp);
+  return text ? <Text style={styles.statusAge}>{text}</Text> : null;
+}
+
 export default function App() {
   const [tab, setTab] = useState<Tab>('pulse');
   const [detail, setDetail] = useState<FreshnessDetail | null>(null);
@@ -103,7 +118,6 @@ export default function App() {
 
   const source = TAB_SOURCE[tab];
   const freshness: Freshness | null = detail ? detail[source] : null;
-  const age = source === 'overall' ? null : shortAge(stamps[source]);
   const tone = freshness ? freshnessTone[freshness] : colors.faint;
 
   return (
@@ -116,7 +130,7 @@ export default function App() {
           <View style={styles.status}>
             <View style={[styles.statusDot, { backgroundColor: tone }]} />
             <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.statusText, { color: tone }]}>{(freshness ?? 'syncing').toUpperCase()}</Text>
-            {age ? <Text style={styles.statusAge}>{age}</Text> : null}
+            {source === 'overall' ? null : <Age stamp={stamps[source]} />}
           </View>
         </View>
 
