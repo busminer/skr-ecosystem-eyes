@@ -168,8 +168,8 @@ SHOTS = [
      "What you hold, how long you have held it, your weight in the vault — and Stake SKR."),
     ("cap-queue.png", "What is leaving, and when",
      "The 48 hour exit queue, soonest first, so a wave never arrives as a surprise."),
-    ("cap-alerts.png", "Woken by your own unlock",
-     "Alerts are scheduled on this phone. No push server, no account, no address leaves it."),
+    ("cap-alerts.png", "Alerts that live on your phone",
+     "Scheduled by the phone itself — no push server, no account, and no address leaves it."),
 ]
 
 
