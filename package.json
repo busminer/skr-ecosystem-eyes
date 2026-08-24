@@ -1,0 +1,54 @@
+{
+  "name": "skr-eyes-lab",
+  "version": "0.2.0",
+  "private": true,
+  "main": "./index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "prebuild": "expo prebuild -p android",
+    "postinstall": "patch-package",
+    "brand:assets": "node scripts/generate-brand-assets.mjs",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck"
+  },
+  "dependencies": {
+    "@expo-google-fonts/geist": "^0.4.2",
+    "@expo-google-fonts/geist-mono": "^0.4.3",
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@shopify/react-native-skia": "2.6.2",
+    "@solana-mobile/mobile-wallet-adapter-protocol": "^2.2.9",
+    "@solana-mobile/mobile-wallet-adapter-protocol-web3js": "^2.2.9",
+    "@solana/web3.js": "^1.98.4",
+    "buffer": "^6.0.3",
+    "expo": "~57.0.6",
+    "expo-audio": "^57.0.4",
+    "expo-blur": "~57.0.2",
+    "expo-constants": "~57.0.5",
+    "expo-font": "~57.0.1",
+    "expo-haptics": "~57.0.1",
+    "expo-linear-gradient": "~57.0.1",
+    "expo-notifications": "~57.0.8",
+    "expo-splash-screen": "~57.0.5",
+    "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.2",
+    "react": "19.2.3",
+    "react-native": "0.86.0",
+    "react-native-get-random-values": "~1.11.0",
+    "react-native-reanimated": "4.5.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-svg": "15.15.4"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.14",
+    "patch-package": "^8.0.1",
+    "typescript": "~6.0.3"
+  },
+  "expo": {
+    "autolinking": {
+      "exclude": [
+        "@shopify/react-native-skia"
+      ]
+    }
+  }
+}

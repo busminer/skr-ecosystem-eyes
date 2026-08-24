@@ -1,0 +1,440 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
+import { API_BASE_URL } from '../api';
+import { compact, shortAddress } from '../format';
+import { usePref } from '../prefs';
+import { readSeenAt, writeSeenAt } from './away';
+import { playCue } from '../sound';
+import { colors, font, radius, spacing, type } from '../theme';
+import { Eyebrow, Panel } from './kit';
+
+// The live floor of the vault. Every line here is a finalized transaction that
+// actually happened: nothing is invented to fill the silence, and when the
+// chain is quiet the screen is quiet too.
+//
+// Almost all real traffic is one and two SKR dust, so dust streams past as a
+// thin line while the day's biggest move stays pinned at the top. The stream
+// gives the feeling of a live chain; the pinned block gives the meaning.
+
+const POLL_MS = 6_000;
+const HEADLINE_POLL_MS = 90_000;
+const FEED_LIMIT = 60;
+const HAPTIC_GAP_MS = 260;
+// A large move announces itself, but never more than once every few seconds,
+// however busy the chain gets.
+const SURGE_GAP_MS = 6_000;
+// Whole SKR on purpose: the server parses `min` as an integer and refuses a
+// fraction, so a threshold like 0.5 would silently return nothing.
+const BIG_EVENT = 100_000;
+// Big moves earn a card, but only the two most recent ones. Any older large
+// event folds into a single summary line so the feed never becomes a wall.
+const BIG_CARDS_OPEN = 2;
+const HEADLINE_MINIMUM = 50_000;
+const DAY_SECONDS = 86_400;
+
+const FILTERS = [
+  { key: 'all', label: 'ALL', min: 0 },
+  { key: '1k', label: '1K+', min: 1_000 },
+  { key: '100k', label: '100K+', min: 100_000 },
+] as const;
+
+type FilterKey = typeof FILTERS[number]['key'];
+
+type FlowEvent = {
+  id: string;
+  signature: string;
+  slot: number;
+  blockTime: number;
+  type: string;
+  wallet: string;
+  amount: number | null;
+};
+
+const TONE: Record<string, string> = {
+  stake: colors.positive,
+  unstake: colors.negative,
+  withdraw: colors.pending,
+  cancel_unstake: colors.accent,
+};
+
+const VERB: Record<string, string> = {
+  stake: 'staked',
+  unstake: 'asked out',
+  withdraw: 'withdrew',
+  cancel_unstake: 'cancelled exit',
+};
+
+function ago(blockTime: number, now: number): string {
+  const seconds = Math.max(0, now - blockTime);
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3_600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < DAY_SECONDS) return `${Math.floor(seconds / 3_600)}h`;
+  return `${Math.floor(seconds / DAY_SECONDS)}d`;
+}
+
+async function fetchEvents(minimum: number, limit: number): Promise<FlowEvent[]> {
+  const response = await fetch(`${API_BASE_URL}/api/events?limit=${limit}&min=${minimum}`, { headers: { accept: 'application/json' } });
+  if (!response.ok) throw new Error(String(response.status));
+  const payload = await response.json() as { items?: FlowEvent[] };
+  return payload.items ?? [];
+}
+
+// The pinned block. Within a day it is today's biggest move; if the day was
+// quiet it says so and shows the last big one instead of pretending.
+function Headline({ event, now }: { event: FlowEvent; now: number }) {
+  const tone = TONE[event.type] ?? colors.muted;
+  const today = now - event.blockTime <= DAY_SECONDS;
+  return (
+    <Panel style={[styles.headline, { borderColor: tone }]} tone={tone}>
+      <View style={styles.headlineTop}>
+        <Eyebrow tone={tone}>{today ? 'Biggest seen today' : 'Last big move'}</Eyebrow>
+        <Text style={styles.headlineTime}>{ago(event.blockTime, now)} ago</Text>
+      </View>
+      <View style={styles.headlineRow}>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.headlineAmount}>
+          {event.amount != null ? compact(event.amount) : '—'}
+        </Text>
+        <Text style={styles.headlineUnit}>SKR</Text>
+        <Text style={[styles.headlineKind, { color: tone }]}>{(VERB[event.type] ?? event.type).toUpperCase()}</Text>
+      </View>
+      <View style={styles.headlineFoot}>
+        <Text style={styles.wallet}>{shortAddress(event.wallet)}</Text>
+        <Text style={styles.slot}>slot {event.slot.toLocaleString('en-US')}</Text>
+      </View>
+    </Panel>
+  );
+}
+
+function BigEvent({ event, now }: { event: FlowEvent; now: number }) {
+  const tone = TONE[event.type] ?? colors.muted;
+  return (
+    <Animated.View entering={FadeInDown.duration(280)} layout={Layout.duration(220)}>
+      <Panel style={styles.card} tone={tone}>
+        <View style={styles.cardTop}>
+          <Text style={[styles.kind, { color: tone }]}>{(VERB[event.type] ?? event.type).toUpperCase()}</Text>
+          <Text style={styles.time}>{ago(event.blockTime, now)} ago</Text>
+        </View>
+        <View style={styles.amountRow}>
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.amount}>
+            {event.amount != null ? compact(event.amount) : 'amount unavailable'}
+          </Text>
+          {event.amount != null ? <Text style={styles.unit}>SKR</Text> : null}
+        </View>
+        <View style={styles.cardFoot}>
+          <Text style={styles.wallet}>{shortAddress(event.wallet)}</Text>
+          <Text style={styles.slot}>slot {event.slot.toLocaleString('en-US')}</Text>
+        </View>
+      </Panel>
+    </Animated.View>
+  );
+}
+
+function FoldedBig({ count, total, expanded, onPress }: { count: number; total: number; expanded: boolean; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.folded, pressed && styles.foldedPressed]}>
+      <View style={styles.foldedMark} />
+      <Text style={styles.foldedText}>
+        {expanded ? 'Fold the older large moves' : `${count} more large move${count === 1 ? '' : 's'}`}
+      </Text>
+      <Text style={styles.foldedTotal}>{expanded ? '' : `${compact(total)} SKR`}</Text>
+      <Text style={styles.foldedChevron}>{expanded ? '×' : '+'}</Text>
+    </Pressable>
+  );
+}
+
+function SmallEvent({ event, now }: { event: FlowEvent; now: number }) {
+  const tone = TONE[event.type] ?? colors.muted;
+  return (
+    <Animated.View entering={FadeInDown.duration(220)} layout={Layout.duration(200)} style={styles.row}>
+      <View style={[styles.rowMark, { backgroundColor: tone }]} />
+      <Text style={[styles.rowKind, { color: tone }]}>{(VERB[event.type] ?? event.type).toUpperCase()}</Text>
+      <Text numberOfLines={1} style={styles.rowAmount}>{event.amount != null ? compact(event.amount) : '—'}</Text>
+      <Text numberOfLines={1} style={styles.rowWallet}>{shortAddress(event.wallet)}</Text>
+      <Text style={styles.rowTime}>{ago(event.blockTime, now)}</Text>
+    </Animated.View>
+  );
+}
+
+export function FlowLab({ active }: { active: boolean }) {
+  const [events, setEvents] = useState<FlowEvent[]>([]);
+  const [big, setBig] = useState<FlowEvent | null>(null);
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1_000));
+  const [live, setLive] = useState(false);
+  const [haptics, setHaptics] = usePref('buzz', true);
+  const [sound, setSound] = usePref('sound', true);
+  const [filter, setFilter] = useState<FilterKey>('all');
+  const [arrivals, setArrivals] = useState(0);
+  const [openOlder, setOpenOlder] = useState(false);
+  const [away, setAway] = useState<{ count: number; biggest: FlowEvent } | null>(null);
+  const [largeAlerts] = usePref('alert:large', true);
+  const seen = useRef<Set<string>>(new Set());
+  const lastHaptic = useRef(0);
+  const lastSurge = useRef(0);
+  const appState = useRef(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (next) => { appState.current = next; });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Math.floor(Date.now() / 1_000)), 1_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const minimum = FILTERS.find((option) => option.key === filter)?.min ?? 0;
+
+  // What landed above the threshold since this screen was last watched. The
+  // mark is moved forward as soon as the answer is known, so the same news is
+  // never told twice.
+  useEffect(() => {
+    if (!active || !largeAlerts) return;
+    let alive = true;
+    void (async () => {
+      const seenAt = await readSeenAt();
+      const items = await fetchEvents(BIG_EVENT, 25).catch(() => [] as FlowEvent[]);
+      if (!alive) return;
+      const missed = items.filter((item) => item.blockTime > seenAt && (item.amount ?? 0) >= BIG_EVENT);
+      if (seenAt > 0 && missed.length > 0) {
+        setAway({ count: missed.length, biggest: missed.reduce((peak, item) => ((item.amount ?? 0) > (peak.amount ?? 0) ? item : peak)) });
+      }
+      await writeSeenAt(Math.floor(Date.now() / 1_000));
+    })();
+    return () => { alive = false; };
+  }, [active, largeAlerts]);
+
+  const pull = useCallback(async (fresh: boolean) => {
+    // A phone in a pocket must not keep asking the server for news.
+    if (!fresh && appState.current !== 'active') return;
+    try {
+      const items = await fetchEvents(minimum, 25);
+      setLive(true);
+      if (fresh) {
+        seen.current = new Set(items.map((item) => item.id));
+        setEvents(items.slice(0, FEED_LIMIT));
+        return;
+      }
+      const arrived = items.filter((item) => item.id && !seen.current.has(item.id));
+      if (arrived.length === 0) return;
+      arrived.forEach((item) => seen.current.add(item.id));
+      setEvents((current) => [...arrived, ...current].slice(0, FEED_LIMIT));
+      setArrivals((current) => current + arrived.length);
+      // One tap per batch, never a machine-gun. A large move gets its own
+      // answer: two firm knocks and the vault chime, so a person watching the
+      // feed feels it land without having to read.
+      const stamp = Date.now();
+      if (appState.current !== 'active') return;
+      const heavy = arrived.some((item) => (item.amount ?? 0) >= BIG_EVENT);
+
+      if (heavy && stamp - lastSurge.current > SURGE_GAP_MS) {
+        lastSurge.current = stamp;
+        lastHaptic.current = stamp;
+        if (haptics) {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
+          setTimeout(() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined); }, 160);
+        }
+        if (sound) playCue('surge', 0.6);
+      } else if (haptics && stamp - lastHaptic.current > HAPTIC_GAP_MS) {
+        lastHaptic.current = stamp;
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+      }
+    } catch {
+      setLive(false);
+    }
+  }, [haptics, minimum, sound]);
+
+  // The pinned block asks the server for large events only, so it is not
+  // limited to whatever happens to be in the last page of the feed.
+  const pullHeadline = useCallback(async () => {
+    if (appState.current !== 'active') return;
+    try {
+      const items = await fetchEvents(HEADLINE_MINIMUM, 20);
+      if (items.length === 0) return;
+      const stamp = Math.floor(Date.now() / 1_000);
+      const withinDay = items.filter((item) => stamp - item.blockTime <= DAY_SECONDS);
+      const pool = withinDay.length > 0 ? withinDay : items;
+      setBig(pool.reduce((peak, item) => ((item.amount ?? 0) > (peak.amount ?? 0) ? item : peak)));
+    } catch {
+      // The pinned block keeps its last honest answer.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!active) return;
+    void pull(true);
+    const timer = setInterval(() => void pull(false), POLL_MS);
+    return () => clearInterval(timer);
+  }, [active, pull]);
+
+  useEffect(() => {
+    if (!active) return;
+    void pullHeadline();
+    const timer = setInterval(() => void pullHeadline(), HEADLINE_POLL_MS);
+    return () => clearInterval(timer);
+  }, [active, pullHeadline]);
+
+  return (
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <View style={styles.head}>
+        <View style={styles.headCopy}>
+          <Eyebrow tone={live ? colors.positive : colors.pending}>{live ? 'Live from the vault' : 'Reconnecting'}</Eyebrow>
+          <Text style={styles.title}>{arrivals > 0 ? `${arrivals} landed while you watched` : 'Watching the chain'}</Text>
+        </View>
+        <View style={styles.headSwitches}>
+          <Pressable onPress={() => { void Haptics.selectionAsync(); setHaptics(!haptics); }} style={styles.hapticToggle}>
+            <Text style={[styles.hapticLabel, haptics && styles.hapticOn]}>{haptics ? 'BUZZ ON' : 'BUZZ OFF'}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => { void Haptics.selectionAsync(); const next = !sound; setSound(next); if (next) playCue('surge', 0.6); }}
+            style={styles.hapticToggle}
+          >
+            <Text style={[styles.hapticLabel, sound && styles.hapticOn]}>{sound ? 'SOUND ON' : 'SOUND OFF'}</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {away ? (
+        <Pressable accessibilityRole="button" onPress={() => { void Haptics.selectionAsync(); setAway(null); }}>
+          <Panel style={styles.away} tone={colors.metal}>
+            <View style={styles.awayTop}>
+              <Eyebrow tone={colors.metal}>While you were away</Eyebrow>
+              <Text style={styles.awayClose}>×</Text>
+            </View>
+            <Text style={styles.awayText}>
+              {away.count === 1 ? 'One large move landed' : `${away.count} large moves landed`}
+              {away.biggest.amount != null ? `, the biggest ${compact(away.biggest.amount)} SKR ${VERB[away.biggest.type] ?? away.biggest.type}` : ''}.
+            </Text>
+          </Panel>
+        </Pressable>
+      ) : null}
+
+      {big ? <Headline event={big} now={now} /> : null}
+
+      <View style={styles.filters}>
+        {FILTERS.map((option) => {
+          const on = option.key === filter;
+          return (
+            <Pressable
+              key={option.key}
+              onPress={() => { void Haptics.selectionAsync(); setFilter(option.key); }}
+              style={[styles.filter, on && styles.filterOn]}
+            >
+              <Text style={[styles.filterLabel, on && styles.filterLabelOn]}>{option.label}</Text>
+            </Pressable>
+          );
+        })}
+        <Text style={styles.filterNote}>{minimum > 0 ? `only ${compact(minimum)} SKR and up` : 'everything, dust included'}</Text>
+      </View>
+
+      {events.length === 0 ? (
+        <Panel style={styles.empty}>
+          <Text style={styles.emptyText}>Waiting for the next finalized event of this size.</Text>
+        </Panel>
+      ) : null}
+
+      <View style={styles.feed}>
+        {(() => {
+          const bigIds = events.filter((event) => (event.amount ?? 0) >= BIG_EVENT).map((event) => event.id);
+          const foldedIds = new Set(bigIds.slice(BIG_CARDS_OPEN));
+          const foldedTotal = events
+            .filter((event) => foldedIds.has(event.id))
+            .reduce((sum, event) => sum + (event.amount ?? 0), 0);
+          let foldRendered = false;
+          const nodes: React.ReactNode[] = [];
+
+          for (const event of events) {
+            const isBig = (event.amount ?? 0) >= BIG_EVENT;
+            if (isBig && foldedIds.has(event.id) && !openOlder) {
+              if (!foldRendered) {
+                foldRendered = true;
+                nodes.push(
+                  <FoldedBig
+                    key="folded"
+                    count={foldedIds.size}
+                    total={foldedTotal}
+                    expanded={false}
+                    onPress={() => { void Haptics.selectionAsync(); setOpenOlder(true); }}
+                  />,
+                );
+              }
+              continue;
+            }
+            nodes.push(isBig
+              ? <BigEvent key={event.id} event={event} now={now} />
+              : <SmallEvent key={event.id} event={event} now={now} />);
+          }
+
+          if (openOlder && foldedIds.size > 0) {
+            nodes.push(
+              <FoldedBig
+                key="folded-close"
+                count={foldedIds.size}
+                total={foldedTotal}
+                expanded
+                onPress={() => { void Haptics.selectionAsync(); setOpenOlder(false); }}
+              />,
+            );
+          }
+          return nodes;
+        })()}
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.bg },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 130, gap: spacing.md },
+  head: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.md },
+  headCopy: { flex: 1 },
+  title: { color: colors.text, fontFamily: font.semibold, fontSize: 17, marginTop: spacing.xs },
+  headSwitches: { alignItems: 'flex-end', gap: spacing.xs },
+  hapticToggle: { borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.pill, paddingHorizontal: 11, paddingVertical: 5 },
+  hapticLabel: { color: colors.faint, fontFamily: font.semibold, fontSize: 11, letterSpacing: 0.8 },
+  hapticOn: { color: colors.accent },
+  away: { padding: spacing.md, gap: spacing.sm },
+  awayTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  awayClose: { color: colors.faint, fontFamily: font.regular, fontSize: 18, lineHeight: 20 },
+  awayText: { color: colors.text, fontFamily: font.medium, ...type.body },
+  headline: { padding: spacing.md, gap: spacing.sm },
+  headlineTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headlineTime: { color: colors.muted, fontFamily: font.regular, ...type.micro },
+  headlineRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  headlineAmount: { color: colors.text, fontFamily: font.black, fontVariant: ['tabular-nums'], fontSize: 30, letterSpacing: -1 },
+  headlineUnit: { color: colors.muted, fontFamily: font.semibold, fontSize: 12 },
+  headlineKind: { marginLeft: 'auto', fontFamily: font.bold, fontSize: 11, letterSpacing: 1 },
+  headlineFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  filters: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  filter: { borderWidth: 1, borderColor: colors.line, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5 },
+  filterOn: { borderColor: colors.accentDim, backgroundColor: colors.panelHi },
+  filterLabel: { color: colors.faint, fontFamily: font.semibold, fontSize: 11.5, letterSpacing: 0.6 },
+  filterLabelOn: { color: colors.accent },
+  filterNote: { marginLeft: 'auto', color: colors.faint, fontFamily: font.regular, ...type.micro },
+  feed: { gap: spacing.sm },
+  card: { padding: spacing.md, gap: spacing.sm, marginVertical: spacing.xs },
+  cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  kind: { fontFamily: font.bold, fontSize: 11, letterSpacing: 1 },
+  time: { color: colors.faint, fontFamily: font.regular, ...type.micro },
+  amountRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  amount: { color: colors.text, fontFamily: font.bold, fontVariant: ['tabular-nums'], fontSize: 26, letterSpacing: -0.8 },
+  unit: { color: colors.muted, fontFamily: font.medium, fontSize: 12 },
+  cardFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  wallet: { color: colors.muted, fontFamily: font.mono, ...type.micro },
+  slot: { color: colors.faint, fontFamily: font.mono, ...type.micro },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 9, paddingHorizontal: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.line },
+  rowMark: { width: 3, height: 18, borderRadius: 2 },
+  rowKind: { width: 96, color: colors.muted, fontFamily: font.semibold, fontSize: 11, letterSpacing: 0.6 },
+  rowAmount: { width: 74, color: colors.text, fontFamily: font.semibold, fontSize: 13.5, fontVariant: ['tabular-nums'] },
+  rowWallet: { flex: 1, color: colors.faint, fontFamily: font.mono, ...type.micro },
+  rowTime: { color: colors.faint, fontFamily: font.regular, ...type.micro },
+  folded: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.card, backgroundColor: colors.panel, marginVertical: spacing.xs },
+  foldedPressed: { opacity: 0.85 },
+  foldedMark: { width: 3, height: 18, borderRadius: 2, backgroundColor: colors.metal },
+  foldedText: { color: colors.text, fontFamily: font.semibold, fontSize: 13 },
+  foldedTotal: { marginLeft: 'auto', color: colors.muted, fontFamily: font.semibold, fontSize: 13, fontVariant: ['tabular-nums'] },
+  foldedChevron: { color: colors.accent, fontFamily: font.bold, fontSize: 16, width: 16, textAlign: 'center' },
+  empty: { padding: spacing.lg },
+  emptyText: { color: colors.muted, fontFamily: font.regular, ...type.body },
+});

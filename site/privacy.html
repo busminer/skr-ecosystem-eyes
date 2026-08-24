@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — SKR Eyes</title>
+<meta name="description" content="What SKR Eyes stores, what it never collects, and how to delete everything it keeps.">
+<link rel="icon" href="/img/mark.png">
+<link rel="stylesheet" href="/styles.css?v=51c1c78a">
+</head>
+<body>
+<header class="bar">
+  <a class="brand" href="/">
+    <img src="/img/mark.png" alt="" width="28" height="28">
+    <span>SKR EYES</span>
+  </a>
+  <nav>
+    <a href="/">Overview</a>
+    <a href="/privacy" aria-current="page">Privacy</a>
+    <a href="/terms">Terms</a>
+  </nav>
+</header>
+
+<main class="doc">
+  <p class="eyebrow">Legal</p>
+  <h1>Privacy Policy</h1>
+  <p class="lede">SKR Eyes has no accounts, no sign-up and no analytics. This page explains exactly what the app keeps, what leaves your phone, and how to erase it.</p>
+  <p class="stamp">Last updated 23 August 2026</p>
+
+  <h2>Who is responsible</h2>
+  <p>SKR Eyes is an independent product built and operated by Alex Kosa. Questions about this policy or about your data go to <a href="mailto:skr-eyes@alexkosa.dev">skr-eyes@alexkosa.dev</a>.</p>
+
+  <h2>What SKR Eyes never collects</h2>
+  <ul>
+    <li>No name, email, phone number or any other identity information.</li>
+    <li>No account: there is nothing to register and nothing to log in to.</li>
+    <li>No seed phrase and no private key. The app cannot read them; they stay inside Seed Vault on your phone.</li>
+    <li>No analytics, no advertising identifiers, no tracking pixels, no third-party SDKs that profile you.</li>
+    <li>No contacts, photos, location or files.</li>
+  </ul>
+
+  <h2>What is stored on your phone</h2>
+  <p>All of this lives only on the device and never leaves it:</p>
+  <ul>
+    <li>The public address of the wallet you connected, and the name the wallet reported for it, so the app does not ask you to reconnect on every launch.</li>
+    <li>Your alert settings and any unlock reminders scheduled with the Android notification system.</li>
+    <li>An unfinished stake run, if one was interrupted: the transaction signatures already produced, so the app can ask the blockchain what happened to them instead of creating new transactions.</li>
+  </ul>
+
+  <h2>How to delete it</h2>
+  <p>Open <strong>Me</strong> and tap <strong>Disconnect</strong>. That erases the stored address, the wallet name and any saved run. Uninstalling the app removes everything else, including scheduled notifications. There is no server-side copy to request, because there is no account.</p>
+
+  <h2>What leaves your phone</h2>
+  <p>To show your position, the app sends the <em>public</em> wallet address you chose to our server at <code>skr.alexkosa.dev</code>, which reads publicly available Solana blockchain data for that address and answers. A public address is not secret: it is visible to anyone on the blockchain by design.</p>
+  <p>The app also asks our server for a recent blockhash before preparing a stake, and asks it whether a given transaction signature has confirmed.</p>
+  <p>When you stake, the transactions are approved and broadcast by your wallet application through its own infrastructure. SKR Eyes does not transmit your transactions itself and cannot alter what your wallet signs.</p>
+
+  <h2>Server logs</h2>
+  <p>Like any website, our server and the Cloudflare network in front of it process the IP address of a request in order to deliver a response. We do not build profiles from this, do not sell it, and do not connect it to wallet addresses. The staking route identifies clients only through a salted in-memory counter used for rate limiting; it is never written to disk.</p>
+
+  <h2>Third parties</h2>
+  <ul>
+    <li><strong>Cloudflare</strong> delivers this site and the app's API.</li>
+    <li><strong>A Solana RPC provider</strong> is used by our server to read the blockchain. The app never contacts it directly and never holds its credentials.</li>
+    <li><strong>Your wallet application</strong> handles approval and broadcasting of transactions under its own privacy policy.</li>
+  </ul>
+
+  <h2>Children</h2>
+  <p>SKR Eyes is not directed at children and is not intended for anyone under 13.</p>
+
+  <h2>Changes</h2>
+  <p>If this policy changes, the date at the top changes with it, and the previous text remains in the public repository's history.</p>
+
+  <h2>Not affiliated</h2>
+  <p>SKR Eyes is an independent product. It is not affiliated with, endorsed by or sponsored by Solana Foundation or Solana Mobile.</p>
+</main>
+
+<footer class="foot">
+  <p>SKR Eyes · independent SKR staking analytics · not affiliated with Solana Foundation or Solana Mobile</p>
+  <p><a href="/">Overview</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/support">Support</a></p>
+</footer>
+</body>
+</html>

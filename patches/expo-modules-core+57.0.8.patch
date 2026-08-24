@@ -1,0 +1,9 @@
+diff --git a/node_modules/expo-modules-core/android/cmake/main.cmake b/node_modules/expo-modules-core/android/cmake/main.cmake
+--- a/node_modules/expo-modules-core/android/cmake/main.cmake
++++ b/node_modules/expo-modules-core/android/cmake/main.cmake
+@@ -65,4 +65,5 @@ target_link_libraries(
+   ${JSEXECUTOR_LIB}
+   ${NEW_ARCHITECTURE_DEPENDENCIES}
+   expo-modules-jsi
++  c++_shared
+ )

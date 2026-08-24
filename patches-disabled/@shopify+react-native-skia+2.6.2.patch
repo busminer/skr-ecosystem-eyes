@@ -1,0 +1,18 @@
+diff --git a/node_modules/@shopify/react-native-skia/android/CMakeLists.txt b/node_modules/@shopify/react-native-skia/android/CMakeLists.txt
+index 2d5b9c1..42e8e34 100644
+--- a/node_modules/@shopify/react-native-skia/android/CMakeLists.txt
++++ b/node_modules/@shopify/react-native-skia/android/CMakeLists.txt
+@@ -391,12 +391,14 @@ endif()
+ if(SK_GRAPHITE)
+     target_link_libraries(${PACKAGE_NAME}
+         ${COMMON_LIBS}
++        c++_shared
+         dawn_combined
+     )
+ else()
+     target_link_libraries(${PACKAGE_NAME}
+         ${COMMON_LIBS}
++        c++_shared
+         -lGLESv2
+         -lEGL
+     )

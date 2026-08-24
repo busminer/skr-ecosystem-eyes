@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- SKR Eyes app mark — "Split Lens". Chosen by Alex on 2026-08-23 from ten
+       studies. The eye is the product's name; the lens at its centre is the
+       camera the whole idea started from; the two halves of the eye differ in
+       tone the way the vault has two sides, what goes in and what leaves. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0A1016"/>
+      <stop offset="1" stop-color="#05070A"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#A6F2FF"/>
+      <stop offset=".5" stop-color="#56D9F5"/>
+      <stop offset="1" stop-color="#2A889D"/>
+    </linearGradient>
+    <radialGradient id="lens" cx=".34" cy=".3" r=".72">
+      <stop offset="0" stop-color="#4F7584"/>
+      <stop offset=".16" stop-color="#203B46"/>
+      <stop offset=".52" stop-color="#081116"/>
+      <stop offset="1" stop-color="#010203"/>
+    </radialGradient>
+    <radialGradient id="iris" cx=".42" cy=".38" r=".68">
+      <stop offset="0" stop-color="#F0D898"/>
+      <stop offset=".4" stop-color="#D6B56A"/>
+      <stop offset=".75" stop-color="#745625"/>
+      <stop offset="1" stop-color="#211707"/>
+    </radialGradient>
+    <filter id="drop" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#000" flood-opacity=".5"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" rx="230" fill="url(#bg)"/>
+
+  <g filter="url(#drop)">
+    <path d="M205 512 C305 295 430 248 512 248 C594 248 719 295 819 512 C719 729 594 776 512 776 C430 776 305 729 205 512 Z"
+          fill="#070B0E" stroke="url(#cyan)" stroke-width="18"/>
+    <path d="M213 512 C320 386 416 348 512 348 L512 676 C416 676 320 638 213 512 Z" fill="#101A21"/>
+    <path d="M811 512 C704 386 608 348 512 348 L512 676 C608 676 704 638 811 512 Z" fill="#16242D"/>
+    <circle cx="512" cy="512" r="128" fill="url(#lens)" stroke="#3A5B68" stroke-width="12"/>
+    <circle cx="512" cy="512" r="66" fill="url(#iris)"/>
+    <circle cx="512" cy="512" r="28" fill="#020304"/>
+    <circle cx="486" cy="482" r="13" fill="#F4FBFD" opacity=".9"/>
+  </g>
+</svg>

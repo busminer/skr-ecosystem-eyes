@@ -1,0 +1,7 @@
+{
+  "viewBox": "0 0 64 64",
+  "outerRadius": 25,
+  "segments": [[0, 50], [72, 140], [158, 212], [235, 330]],
+  "ringRadius": 12,
+  "pupilRadius": 4
+}

@@ -1,0 +1,184 @@
+/* SKR Eyes site — the app's own language: near-black, one accent, one metal,
+   hairlines instead of boxes, and one number louder than the rest. */
+
+:root {
+  --bg: #04070B;
+  --panel: #0A1017;
+  --panel-hi: #0E1721;
+  --line: #15212C;
+  --line-strong: #22323F;
+  --text: #F2F7FB;
+  --muted: #8296A8;
+  --faint: #54677A;
+  --accent: #56E0FF;
+  --metal: #C9A96A;
+  --positive: #7CF0BC;
+  --pending: #FFC46B;
+  --radius: 16px;
+  --sans: "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  --mono: "Geist Mono", ui-monospace, SFMono-Regular, "JetBrains Mono", Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  background: rgba(4, 7, 11, 0.86);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  font-size: 13px;
+}
+.brand:hover { text-decoration: none; }
+
+.bar nav { display: flex; gap: 18px; font-size: 14px; }
+.bar nav a { color: var(--muted); }
+.bar nav a[aria-current="page"] { color: var(--text); }
+
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+
+.eyebrow {
+  color: var(--faint);
+  font-size: 12px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  margin: 0 0 10px;
+}
+
+.hero { padding: 92px 0 64px; display: flex; align-items: center; justify-content: space-between; gap: 48px; }
+.hero-copy { flex: 1 1 auto; min-width: 0; }
+.hero h1 {
+  font-size: clamp(38px, 7vw, 68px);
+  line-height: 1.02;
+  letter-spacing: -2px;
+  margin: 0 0 20px;
+  max-width: 16ch;
+}
+.hero .lede { font-size: clamp(18px, 2.2vw, 22px); color: var(--text); max-width: 54ch; margin: 0 0 18px; }
+.hero .lede-more { font-size: 17px; color: var(--muted); max-width: 56ch; margin: 0 0 18px; }
+.hero .signature { font-size: 15px; color: var(--metal); margin: 0 0 30px; }
+
+.cta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.button {
+  display: inline-block;
+  background: var(--accent);
+  color: #04070B;
+  font-weight: 700;
+  padding: 14px 22px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+.button:hover { text-decoration: none; filter: brightness(1.06); }
+.button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line-strong); }
+
+.note { color: var(--faint); font-size: 14px; }
+
+/* Three slices of the running app. They are cropped screenshots, so they are
+   shown as slices on purpose: the top edge is square where the crop begins,
+   and the bottom fades into the page instead of ending in a hard cut. */
+.slices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 26px;
+  margin: 56px 0 0;
+}
+.slice { margin: 0; }
+.slice img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: var(--radius) var(--radius) 4px 4px;
+  background: var(--panel);
+  -webkit-mask-image: linear-gradient(to bottom, #000 56%, transparent 92%);
+  mask-image: linear-gradient(to bottom, #000 56%, transparent 92%);
+}
+.slice figcaption { color: var(--muted); font-size: 15px; margin-top: -46px; }
+.slice figcaption b { display: block; color: var(--text); font-size: 17px; margin-bottom: 4px; }
+.slices-note { margin: 26px 0 0; }
+
+.section { padding: 64px 0; border-top: 1px solid var(--line); }
+.section h2 { font-size: clamp(26px, 3.6vw, 38px); letter-spacing: -1px; margin: 0 0 14px; }
+.section p.sub { color: var(--muted); max-width: 62ch; margin: 0 0 36px; }
+
+.screens { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 28px; }
+.screen { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+.screen img { width: 100%; height: auto; border-radius: 12px; display: block; border: 1px solid var(--line); }
+.screen h3 { margin: 18px 0 6px; font-size: 18px; }
+.screen p { margin: 0; color: var(--muted); font-size: 15px; }
+
+.rows { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.row { background: var(--panel); padding: 22px 24px; display: grid; grid-template-columns: 168px 1fr; gap: 20px; }
+.row dt { color: var(--accent); font-family: var(--mono); font-size: 13px; letter-spacing: 0.4px; margin: 0; }
+.row dd { margin: 0; color: var(--muted); }
+.row dd strong { color: var(--text); font-weight: 600; }
+
+.callout {
+  border: 1px solid var(--line-strong);
+  border-left: 2px solid var(--metal);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--panel-hi);
+  padding: 22px 24px;
+  color: var(--muted);
+}
+.callout strong { color: var(--text); }
+
+.foot {
+  border-top: 1px solid var(--line);
+  margin-top: 72px;
+  padding: 28px 24px 48px;
+  text-align: center;
+  color: var(--faint);
+  font-size: 13px;
+}
+.foot p { margin: 6px 0; }
+.foot a { color: var(--muted); }
+
+/* Legal pages read like documents, not like a landing. */
+.doc { max-width: 760px; margin: 0 auto; padding: 64px 24px 24px; }
+.doc h1 { font-size: clamp(30px, 5vw, 44px); letter-spacing: -1.4px; margin: 0 0 16px; }
+.doc h2 { font-size: 21px; letter-spacing: -0.4px; margin: 44px 0 12px; }
+.doc p, .doc li { color: var(--muted); }
+.doc .lede { color: var(--text); font-size: 19px; }
+.doc .stamp { color: var(--faint); font-size: 14px; font-family: var(--mono); }
+.doc ul { padding-left: 20px; }
+.doc li { margin: 8px 0; }
+.doc code { font-family: var(--mono); font-size: 0.92em; color: var(--text); background: var(--panel); padding: 2px 6px; border-radius: 6px; }
+.doc strong { color: var(--text); }
+
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  .row { grid-template-columns: 1fr; gap: 6px; }
+  .bar { padding: 12px 16px; }
+  .bar nav { gap: 12px; font-size: 13px; }
+}

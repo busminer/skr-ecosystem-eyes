@@ -1,0 +1,299 @@
+/* The opening animation, living in the hero: a device turns, the eye comes out
+   of its camera and blinks. Ported from the study Alex brought, with three
+   changes — it loops, it sits in a fixed box beside the headline, and it stops
+   completely for anyone who asked their system to reduce motion. */
+
+.wink {
+  position: relative;
+  width: 320px;
+  height: 340px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+.wink .aura {
+  position: absolute;
+  width: 78%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(83,215,242,.11), rgba(83,215,242,.035) 42%, transparent 71%);
+}
+
+.wink .device {
+  position: absolute;
+  width: 128px;
+  height: 270px;
+  border-radius: 20px;
+  transform-origin: center;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  box-shadow: 0 32px 66px rgba(0,0,0,.48);
+}
+
+.wink .front-face {
+  background: linear-gradient(145deg, #233039 0%, #0c1216 43%, #030506 100%);
+  border: 1.5px solid #31454f;
+  animation: winkFront 6.4s cubic-bezier(.58,.03,.18,1) infinite both;
+  z-index: 4;
+}
+
+.wink .screen {
+  position: absolute;
+  inset: 4px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(155deg, #0e171c, #010203 72%);
+  border: 1px solid rgba(167,228,239,.10);
+}
+
+.wink .earpiece {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  width: 22px;
+  height: 2px;
+  border-radius: 4px;
+  background: #293c45;
+  transform: translateX(-50%);
+}
+
+.wink .selfie {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: #1f3a44;
+}
+
+.wink .rear-face {
+  background: linear-gradient(143deg, #33444d 0%, #1e2b32 16%, #141d22 53%, #182329 75%, #293a43 100%);
+  border: 1.5px solid #415761;
+  animation: winkRear 6.4s cubic-bezier(.58,.03,.18,1) infinite both;
+  z-index: 3;
+}
+
+.wink .main-camera {
+  position: absolute;
+  left: 17px;
+  top: 16px;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: #020405;
+  z-index: 8;
+  transform-style: preserve-3d;
+}
+
+.wink .main-metal-ring {
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid #435762;
+  background: #090d0f;
+}
+
+.wink .main-lens {
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 37% 31%, #56717c 0 6%, #233b45 11%, #071014 42%, #010203 78%);
+  animation: winkLens 6.4s ease infinite both;
+}
+
+.wink .human-eye {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46px;
+  height: 32px;
+  transform: translate(-50%,-50%) scale(.14);
+  opacity: 0;
+  z-index: 20;
+  animation: winkEye 6.4s cubic-bezier(.16,.84,.22,1) infinite both;
+}
+
+.wink .eye-ball {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 52% 48% 51% 49% / 50% 51% 49% 50%;
+  background:
+    radial-gradient(ellipse at 37% 31%, #fff 0 15%, transparent 29%),
+    radial-gradient(ellipse at 47% 45%, #f9f8f3 0 45%, #e4e1d9 66%, #a7a29a 86%, #596168 100%);
+  box-shadow: 0 8px 17px rgba(0,0,0,.55), inset 5px 3px 7px rgba(255,255,255,.30);
+}
+
+.wink .iris {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  transform: translate(-50%,-50%);
+  background:
+    repeating-conic-gradient(from 5deg, rgba(247,211,131,.18) 0 4deg, rgba(92,62,24,.22) 4deg 8deg),
+    radial-gradient(circle, #d8b16a 0 23%, #9f7136 38%, #5d3e1d 60%, #24170a 83%);
+}
+
+.wink .pupil {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  transform: translate(-50%,-50%);
+  border-radius: 50%;
+  background: #010202;
+}
+
+.wink .spark {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  width: 4px;
+  height: 4px;
+  left: 5px;
+  top: 4px;
+  opacity: .92;
+}
+
+.wink .lid {
+  position: absolute;
+  left: -2px;
+  width: 50px;
+  height: 19px;
+  z-index: 30;
+  background: linear-gradient(180deg, #596168, #242d32 78%);
+}
+
+.wink .lid-top { top: -21px; border-radius: 55% 55% 45% 45%; animation: winkLidTop 6.4s ease-in-out infinite both; }
+.wink .lid-bottom { bottom: -21px; border-radius: 45% 45% 55% 55%; background: linear-gradient(180deg, #263036, #515a60); animation: winkLidBottom 6.4s ease-in-out infinite both; }
+
+.wink .camera-pill {
+  position: absolute;
+  left: 16px;
+  top: 44px;
+  width: 25px;
+  height: 50px;
+  border-radius: 13px;
+  background: #030506;
+  border: 2px solid #354a54;
+  z-index: 4;
+}
+
+.wink .pill-lens {
+  position: absolute;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle at 37% 31%, #40565f 0 7%, #17272e 15%, #05090b 47%, #010203 79%);
+  border: 1px solid #1b2a30;
+}
+
+.wink .pill-one { top: 6px; }
+.wink .pill-two { bottom: 6px; }
+
+.wink .flash {
+  position: absolute;
+  left: 50px;
+  top: 45px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 32%, #dfe7e4, #9daaaa 44%, #657279 71%, #343f44);
+}
+
+.wink .vault-panel {
+  position: absolute;
+  left: -1px;
+  top: 102px;
+  width: 46px;
+  height: 66px;
+  border-radius: 0 8px 8px 0;
+  background: linear-gradient(145deg, #11191e 0%, #050809 55%, #263941 100%);
+  border-top: 1px solid rgba(255,255,255,.05);
+  border-right: 1px solid rgba(255,255,255,.055);
+}
+
+.wink .vault-ring {
+  position: absolute;
+  left: 10px;
+  top: 9px;
+  width: 11px;
+  height: 11px;
+  border: 1px solid #86989f;
+  border-radius: 50%;
+  opacity: .75;
+}
+
+.wink .side-button {
+  position: absolute;
+  right: -3px;
+  top: 100px;
+  width: 3px;
+  height: 22px;
+  border-radius: 0 3px 3px 0;
+  background: #74858c;
+}
+
+@keyframes winkFront {
+  0%, 12% { transform: rotateY(0deg); opacity: 1; }
+  31% { transform: rotateY(89deg); opacity: 1; }
+  32%, 100% { transform: rotateY(93deg); opacity: 0; }
+}
+
+@keyframes winkRear {
+  0%, 26% { transform: rotateY(-91deg); opacity: 0; }
+  32% { transform: rotateY(-82deg); opacity: 1; }
+  43%, 92% { transform: rotateY(0deg); opacity: 1; }
+  100% { transform: rotateY(-91deg); opacity: 0; }
+}
+
+@keyframes winkLens {
+  0%, 44% { opacity: 1; transform: scale(1); }
+  51%, 80% { opacity: .12; transform: scale(.75); }
+  90%, 100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes winkEye {
+  0%, 45% { opacity: 0; transform: translate(-50%,-50%) scale(.12); }
+  51% { opacity: .58; transform: translate(-50%,-50%) scale(.48); }
+  58% { opacity: 1; transform: translate(-50%,-50%) scale(.88); }
+  63%, 78% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+  84% { opacity: .92; transform: translate(-50%,-50%) scale(.72); }
+  90%, 100% { opacity: 0; transform: translate(-50%,-50%) scale(.12); }
+}
+
+@keyframes winkLidTop {
+  0%, 65%, 68%, 74%, 100% { top: -21px; }
+  70.5% { top: 4px; }
+}
+
+@keyframes winkLidBottom {
+  0%, 65%, 68%, 74%, 100% { bottom: -21px; }
+  70.5% { bottom: 4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wink .front-face,
+  .wink .rear-face,
+  .wink .main-lens,
+  .wink .human-eye,
+  .wink .lid-top,
+  .wink .lid-bottom { animation: none; }
+  .wink .front-face { transform: rotateY(0deg); opacity: 1; }
+  .wink .rear-face { opacity: 0; }
+}
+
+@media (max-width: 900px) {
+  .wink { display: none; }
+}
