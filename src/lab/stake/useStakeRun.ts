@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { PublicKey } from '@solana/web3.js';
@@ -19,8 +20,16 @@ import { buildStakeTransaction, DEFAULT_GUARDIAN_POOL, equalParts } from './stak
 // submissions a minute, which a sixteen-part run exceeds at once.
 
 const RUN_KEY = 'skr.lab.stake.run';
-const POLL_MS = 2_500;
-const POLL_ATTEMPTS = 40;
+
+// One question at a time, and never faster than the gateway's sixty reads a
+// minute. Asking about all sixteen parts at once would be 384 requests a
+// minute and the gateway would start refusing us halfway through a run.
+const POLL_SPACING_MS = 1_200;
+
+// How long the app keeps asking before it stops and says so. Three minutes is
+// long past the point where a live transaction confirms; anything still silent
+// after that is a question for the chain later, not a spinner now.
+const POLL_DEADLINE_MS = 180_000;
 
 const APP_IDENTITY = { name: 'SKR Eyes', uri: 'https://skr.alexkosa.dev', icon: 'favicon.ico' };
 
@@ -63,6 +72,9 @@ export function useStakeRun(wallet: string | null) {
   const [uncertain, setUncertain] = useState(false);
   const runRef = useRef<StakeRun | null>(null);
   const drainRef = useRef<(() => Promise<void>) | null>(null);
+  // One sweep at a time. Returning from the background must not start a second
+  // one alongside the first and double our questions to the gateway.
+  const drainingRef = useRef(false);
 
   const commit = useCallback((next: StakeRun | null) => {
     runRef.current = next;
@@ -101,6 +113,24 @@ export function useStakeRun(wallet: string | null) {
     }).catch(() => undefined);
   }, [wallet]);
 
+  // Android throttles an app's timers once it is out of sight, and the wallet
+  // approval puts this app out of sight by design. A run that was half asked
+  // about could sit there frozen, showing "landing" over transactions that
+  // reached the chain minutes ago — which reads as the staking having stopped.
+  //
+  // Nothing was ever lost: every signature is written to disk the moment the
+  // wallet returns it, and the chain is the judge. What was lost was the
+  // asking. So the moment the app is looked at again, the asking resumes.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      const parts = runRef.current?.parts ?? [];
+      const open = parts.some((part) => part.state !== 'confirmed' && part.state !== 'failed');
+      if (open) void drainRef.current?.();
+    });
+    return () => subscription.remove();
+  }, []);
+
   const patchPart = useCallback((index: number, patch: Partial<StakePart>) => {
     const current = runRef.current;
     if (!current) return;
@@ -108,65 +138,101 @@ export function useStakeRun(wallet: string | null) {
     commit({ ...current, parts });
   }, [commit]);
 
-  const awaitConfirmation = useCallback(async (signature: string): Promise<'confirmed' | 'failed' | 'unknown'> => {
-    for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-      try {
-        const status = await fetchStatus(signature);
-        if (status?.err) return 'failed';
-        if (status?.confirmationStatus === 'confirmed' || status?.confirmationStatus === 'finalized') return 'confirmed';
-      } catch {
-        // A dropped status read says nothing about the transaction; keep asking.
-      }
+  const askOnce = useCallback(async (signature: string): Promise<'confirmed' | 'failed' | null> => {
+    try {
+      const status = await fetchStatus(signature);
+      if (status?.err) return 'failed';
+      if (status?.confirmationStatus === 'confirmed' || status?.confirmationStatus === 'finalized') return 'confirmed';
+    } catch {
+      // A dropped status read says nothing about the transaction. Ask again.
     }
-    // We ran out of patience, not out of chain. Saying "failed" here would
-    // invite the person to stake again on top of a transaction that may well
-    // have landed.
-    return 'unknown';
+    return null;
   }, []);
 
+  // Asking about the parts, round by round.
+  //
+  // This used to walk the parts in order and sit on each one for up to a
+  // hundred seconds before moving to the next. With sixteen parts that is
+  // twenty-six minutes in the worst case, and one slow part froze every part
+  // behind it — which is what "the staking stopped" looked like from outside.
+  //
+  // Now every unresolved part is asked about once per round, in turn, so a
+  // silent one costs the others one question each and nothing more. The pace
+  // is deliberately slow: the gateway allows sixty reads a minute and refuses
+  // the rest, so the run has to stay inside that on its own.
   const drain = useCallback(async () => {
-    const current = runRef.current;
-    if (!current) return;
+    if (drainingRef.current) return;
+    drainingRef.current = true;
     setPhase('sending');
 
-    for (const part of current.parts) {
-      const live = runRef.current?.parts.find((item) => item.index === part.index);
-      if (!live || live.state === 'confirmed' || live.state === 'failed') continue;
-      // An unknown part is exactly the one worth asking about again.
-      if (!live.signature) {
-        patchPart(part.index, { state: 'failed', error: 'This part was never broadcast.' });
-        continue;
+    try {
+      const started = Date.now();
+
+      for (;;) {
+        const parts = runRef.current?.parts ?? [];
+        const open = parts.filter((part) => part.state !== 'confirmed' && part.state !== 'failed');
+        if (open.length === 0) break;
+
+        let answered = false;
+        for (const part of open) {
+          // A part with no signature never left the phone, and no amount of
+          // asking the chain will change that.
+          if (!part.signature) {
+            patchPart(part.index, { state: 'failed', error: 'This part was never broadcast.' });
+            answered = true;
+            continue;
+          }
+          if (part.state === 'pending') patchPart(part.index, { state: 'sent' });
+
+          const outcome = await askOnce(part.signature);
+          if (outcome) {
+            answered = true;
+            patchPart(part.index, {
+              state: outcome,
+              error: outcome === 'failed' ? 'The chain rejected this part.' : null,
+            });
+            void Haptics.notificationAsync(
+              outcome === 'confirmed'
+                ? Haptics.NotificationFeedbackType.Success
+                : Haptics.NotificationFeedbackType.Warning,
+            ).catch(() => undefined);
+          }
+          await new Promise((resolve) => setTimeout(resolve, POLL_SPACING_MS));
+        }
+
+        if (Date.now() - started > POLL_DEADLINE_MS) {
+          for (const part of runRef.current?.parts ?? []) {
+            if (part.state === 'confirmed' || part.state === 'failed') continue;
+            patchPart(part.index, {
+              state: 'unknown',
+              error: 'The chain has not answered about this part yet. Its signature is saved — ask again before staking it a second time.',
+            });
+          }
+          break;
+        }
+
+        // Nothing moved this round and nothing is left to ask: stop rather
+        // than spin.
+        if (!answered && open.every((part) => !part.signature)) break;
       }
 
-      patchPart(part.index, { state: 'sent' });
-      const outcome = await awaitConfirmation(live.signature);
-      patchPart(part.index, {
-        state: outcome,
-        error: outcome === 'failed'
-          ? 'The chain rejected this part.'
-          : outcome === 'unknown'
-            ? 'The chain has not answered about this part yet. Its signature is saved — ask again before staking it a second time.'
-            : null,
-      });
-      if (outcome === 'confirmed') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      else void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
+      const finished = runRef.current?.parts ?? [];
+      const failed = finished.filter((part) => part.state === 'failed').length;
+      const unknown = finished.filter((part) => part.state === 'unknown').length;
+      if (failed > 0 || unknown > 0) {
+        const summary = [
+          failed > 0 ? `${failed} rejected by the chain` : '',
+          unknown > 0 ? `${unknown} still unanswered` : '',
+        ].filter(Boolean).join(', ');
+        setError(`Of ${finished.length} parts: ${summary}. Every signature is saved. Ask again before you stake the same amount a second time.`);
+        setPhase('error');
+        return;
+      }
+      setPhase('done');
+    } finally {
+      drainingRef.current = false;
     }
-
-    const finished = runRef.current?.parts ?? [];
-    const failed = finished.filter((part) => part.state === 'failed').length;
-    const unknown = finished.filter((part) => part.state === 'unknown').length;
-    if (failed > 0 || unknown > 0) {
-      const parts = [
-        failed > 0 ? `${failed} rejected by the chain` : '',
-        unknown > 0 ? `${unknown} still unanswered` : '',
-      ].filter(Boolean).join(', ');
-      setError(`Of ${finished.length} parts: ${parts}. Every signature is saved. Ask again before you stake the same amount a second time.`);
-      setPhase('error');
-      return;
-    }
-    setPhase('done');
-  }, [awaitConfirmation, patchPart]);
+  }, [askOnce, patchPart]);
 
   const start = useCallback(async (perPartRaw: bigint, parts: number) => {
     if (!wallet) return;
