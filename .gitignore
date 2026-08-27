@@ -15,3 +15,6 @@ android/
 *.aab
 *.jks
 *.keystore
+
+# Signed builds. Kept next to the code they came from, never committed.
+builds/
