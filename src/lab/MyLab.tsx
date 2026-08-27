@@ -13,6 +13,7 @@ import { fetchWalletAge, type PositionAge } from './age';
 import { forgetStakeRun } from './stake/useStakeRun';
 import { Button, Evidence, Eyebrow, Meter, Panel, Tile } from './kit';
 import { StakerCard } from './StakerCard';
+import { shareStakerCard } from './shareCard';
 import { StakeSheet } from './stake/StakeSheet';
 
 // The card is the reason to open the app daily, so the phone remembers who
@@ -35,6 +36,8 @@ export function MyLab() {
   const [age, setAge] = useState<PositionAge | null>(null);
   const [ageError, setAgeError] = useState<string | null>(null);
   const [networkStake, setNetworkStake] = useState<number | null>(null);
+  const [networkPositions, setNetworkPositions] = useState<number | null>(null);
+  const [sharing, setSharing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [readAt, setReadAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +46,10 @@ export function MyLab() {
   const [staking, setStaking] = useState(false);
 
   useEffect(() => {
-    fetchEcosystemState().then((state) => setNetworkStake(state.metrics?.activeStaked ?? null)).catch(() => undefined);
+    fetchEcosystemState().then((state) => {
+      setNetworkStake(state.metrics?.activeStaked ?? null);
+      setNetworkPositions(state.metrics?.totalPositions ?? null);
+    }).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -129,6 +135,29 @@ export function MyLab() {
     }
   }, [profile]);
 
+  // The picture is built from what the chain proved, and from nothing else.
+  // A fact still on its way is left off the card rather than guessed at.
+  const shareCard = useCallback(async () => {
+    if (!profile) return;
+    setSharing(true);
+    setError(null);
+    try {
+      void Haptics.selectionAsync();
+      await shareStakerCard({
+        name: walletLabel || shortAddress(profile.wallet),
+        days: age?.days ?? null,
+        exactDays: age?.exact ?? false,
+        firstSeenAt: age?.firstSeenAt ?? null,
+        positionSkr: profile.totals.activeStaked,
+        networkPositions,
+      });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'The card could not be drawn');
+    } finally {
+      setSharing(false);
+    }
+  }, [age, networkPositions, profile, walletLabel]);
+
   const claimed = Boolean(profile?.found);
   const share = profile && networkStake ? (profile.totals.activeStaked / networkStake) * 100 : null;
   const nextUnlock = profile?.nextUnlockAt ?? null;
@@ -199,6 +228,12 @@ export function MyLab() {
           </Panel>
 
           <Button label="Stake SKR" onPress={() => { void Haptics.selectionAsync(); setStaking(true); }} />
+          <Button
+            label={sharing ? 'Drawing your card…' : 'Share your card'}
+            onPress={() => void shareCard()}
+            disabled={sharing || busy}
+            tone={colors.metal}
+          />
 
           <View style={styles.actions}>
             <Button fill label={alertStatus ? 'Alerts armed' : 'Wake me at unlock'} onPress={() => void enableAlerts()} disabled={busy || !nextUnlock} ghost />

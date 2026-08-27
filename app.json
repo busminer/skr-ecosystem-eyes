@@ -56,7 +56,8 @@
           "resizeMode": "contain"
         }
       ],
-      "./plugins/withReleaseSigning"
+      "./plugins/withReleaseSigning",
+      "expo-sharing"
     ],
     "extra": {
       "apiBaseUrl": "https://skr.alexkosa.dev"
