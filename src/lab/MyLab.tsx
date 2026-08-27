@@ -13,12 +13,17 @@ import { fetchWalletAge, type PositionAge } from './age';
 import { forgetStakeRun } from './stake/useStakeRun';
 import { Button, Evidence, Eyebrow, Meter, Panel, Tile } from './kit';
 import { StakerCard, cardFacts } from './StakerCard';
+import type { CardFacts } from './cardArt';
 import { CardExporter, shareCardPng } from './shareCard';
 import type { CardHandle } from './cardArt';
 import { StakeSheet } from './stake/StakeSheet';
 
 // The card is the reason to open the app daily, so the phone remembers who
 // you are. Only the public address and the name the wallet gave us are stored.
+
+// Kept beside the session key rather than inside it: disconnecting has to erase
+// this too, and one key per thing is how that stays obvious.
+const CARD_KEY = 'skr-eyes.card';
 
 function countdown(seconds: number): string {
   const safe = Math.max(0, Math.floor(seconds));
@@ -48,6 +53,16 @@ export function MyLab() {
   // unlock-alert button calls itself, so writing a note about the card into it
   // makes the button claim alerts were armed when none were.
   const [shareNote, setShareNote] = useState<string | null>(null);
+  // The last card this phone drew, kept on disk.
+  //
+  // Everything the card shows arrives over the network, so a cold start used to
+  // mean several seconds of empty space where the card belongs — and a cold
+  // start is exactly what a share can cause, because the share sheet puts this
+  // app in the background where Android is free to end it. Coming back to a
+  // blank Me tab reads as "my card is gone", which is the one thing this screen
+  // must never say. So the numbers are written down after each successful read
+  // and drawn immediately on the next launch, then replaced by the live ones.
+  const [remembered, setRemembered] = useState<CardFacts | null>(null);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1_000));
   const [staking, setStaking] = useState(false);
 
@@ -56,6 +71,19 @@ export function MyLab() {
       setNetworkStake(state.metrics?.activeStaked ?? null);
       setNetworkPositions(state.metrics?.totalPositions ?? null);
     }).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(CARD_KEY).then((raw) => {
+      if (cancelled || !raw) return;
+      try {
+        setRemembered(JSON.parse(raw) as CardFacts);
+      } catch {
+        // A card we cannot read is a card we do not have.
+      }
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -153,15 +181,31 @@ export function MyLab() {
       const png = await cardArt.current?.toPng();
       if (!png) throw new Error('The card is not ready yet');
       const shared = await shareCardPng(png, cardFacts(profile, age, walletLabel, networkPositions));
-      setShareNote(shared.copied
-        ? 'Caption copied. Paste it next to the picture.'
-        : 'This phone would not take the caption — type it yourself.');
+      setShareNote(shared.carried
+        ? null
+        : shared.copied
+          ? 'Caption copied. Paste it next to the picture.'
+          : 'This phone would not take the caption — type it yourself.');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'The card could not be drawn');
     } finally {
       setSharing(false);
     }
   }, [age, networkPositions, profile, walletLabel]);
+
+  const live = profile ? cardFacts(profile, age, walletLabel, networkPositions) : null;
+
+  // Written down only when the card is worth remembering: a profile that was
+  // read and an age that finished walking. Half a card saved now is half a card
+  // shown on the next launch.
+  useEffect(() => {
+    if (!live || live.days == null) return;
+    void AsyncStorage.setItem(CARD_KEY, JSON.stringify(live)).catch(() => undefined);
+    setRemembered(live);
+    // The facts are a fresh object each render; the values inside it are what
+    // matter, so the write is keyed on those.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live?.name, live?.days, live?.exactDays, live?.firstSeenAt, live?.positionSkr, live?.networkPositions]);
 
   const claimed = Boolean(profile?.found);
   const share = profile && networkStake ? (profile.totals.activeStaked / networkStake) * 100 : null;
@@ -183,6 +227,8 @@ export function MyLab() {
   const disconnect = useCallback(async () => {
     const previous = profile?.wallet ?? address;
     await AsyncStorage.removeItem(SESSION_KEY).catch(() => undefined);
+    await AsyncStorage.removeItem(CARD_KEY).catch(() => undefined);
+    setRemembered(null);
     await forgetStakeRun().catch(() => undefined);
     if (previous) await clearStoredSchedule(previous).catch(() => undefined);
     setProfile(null);
@@ -201,6 +247,7 @@ export function MyLab() {
         claimed={claimed}
         name={walletLabel}
         networkPositions={networkPositions}
+        fallback={remembered}
         width={width - spacing.lg * 2}
       />
 

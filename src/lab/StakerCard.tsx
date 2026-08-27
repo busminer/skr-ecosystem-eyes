@@ -34,16 +34,34 @@ export function cardFacts(
   };
 }
 
-export function StakerCard({ profile, age, share, claimed, name, networkPositions, width }: {
+export function StakerCard({ profile, age, share, claimed, name, networkPositions, fallback, width }: {
   profile: WalletProfile | null;
   age: PositionAge | null;
   share: number | null;
   claimed: boolean;
   name?: string | null;
   networkPositions: number | null;
+  // The last card this phone drew. Shown while the live one is still on its
+  // way, so a cold start never has a hole where the card belongs.
+  fallback?: CardFacts | null;
   width: number;
 }) {
-  const facts = cardFacts(profile, age, name ?? null, networkPositions);
+  // Merged field by field rather than card-or-card. The profile comes back in
+  // under a second and the age takes several, so an all-or-nothing swap makes
+  // the day count appear, vanish, and appear again — which looks like a fault
+  // in the number itself. Anything the live read has not answered yet keeps
+  // showing what it said last time.
+  const live = cardFacts(profile, age, name ?? null, networkPositions);
+  const facts: CardFacts = fallback
+    ? {
+        name: profile ? live.name : fallback.name,
+        days: live.days ?? fallback.days,
+        exactDays: live.days != null ? live.exactDays : fallback.exactDays,
+        firstSeenAt: live.firstSeenAt ?? fallback.firstSeenAt,
+        positionSkr: live.positionSkr ?? fallback.positionSkr,
+        networkPositions: live.networkPositions ?? fallback.networkPositions,
+      }
+    : live;
 
   return (
     <View style={styles.card}>
@@ -55,7 +73,12 @@ export function StakerCard({ profile, age, share, claimed, name, networkPosition
       </View>
 
       <View style={styles.body}>
-        {claimed ? (
+        {/* Nothing is said here while the remembered card is standing in. The
+            card above is already showing this person their own numbers, and a
+            line under it asking them to connect a wallet contradicts what they
+            are looking at. The tab below already offers the connect button for
+            anyone who really has no session. */}
+        {!claimed && fallback ? null : claimed ? (
           <View style={styles.stats}>
             <View style={styles.stat}>
               <Text style={styles.statLabel}>WEIGHT</Text>

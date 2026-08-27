@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Clipboard from 'expo-clipboard';
+import { getSkrShare } from '../../modules/skr-share';
 import { CardArt, EXPORT_HEIGHT, EXPORT_WIDTH, type CardFacts, type CardHandle } from './cardArt';
 
 // Exporting the card is a second, full-size copy of the same drawing.
@@ -52,18 +53,26 @@ export async function shareCardPng(base64: string, facts: CardFacts) {
   if (file.exists) file.delete();
   file.create();
   file.write(base64, { encoding: 'base64' });
-  if (!(await Sharing.isAvailableAsync())) throw new Error('This phone has nothing to share with.');
-
-  // Copied before the sheet opens, not after: once the sheet is up this app is
-  // in the background and the write can be refused.
   const caption = captionFor(facts);
-  // Whether the copy worked is reported rather than assumed. A note saying the
-  // caption is on the clipboard, shown after a copy that quietly failed, sends
-  // somebody to paste nothing into a post they have already started.
-  const copied = await Clipboard.setStringAsync(caption).then(() => true).catch(() => false);
 
+  // The good path: one Android intent carrying the picture and the caption
+  // together, so the caption lands in the post instead of in the clipboard.
+  const native = getSkrShare();
+  if (native) {
+    await native.shareImageWithText(file.uri, caption, 'Your SKR staker card');
+    return { uri: file.uri, caption, carried: true, copied: false };
+  }
+
+  // The fallback, for a build without the module compiled in. Whether the copy
+  // worked is reported rather than assumed: a note saying the caption is on the
+  // clipboard, shown after a copy that quietly failed, sends somebody to paste
+  // nothing into a post they have already started. Copied before the sheet
+  // opens, because once it is up this app is in the background and the write
+  // can be refused.
+  if (!(await Sharing.isAvailableAsync())) throw new Error('This phone has nothing to share with.');
+  const copied = await Clipboard.setStringAsync(caption).then(() => true).catch(() => false);
   await Sharing.shareAsync(file.uri, { mimeType: 'image/png', dialogTitle: 'Your SKR staker card' });
-  return { uri: file.uri, caption, copied };
+  return { uri: file.uri, caption, carried: false, copied };
 }
 
 const styles = StyleSheet.create({
