@@ -15,7 +15,7 @@ import { CardArt, EXPORT_HEIGHT, EXPORT_WIDTH, type CardFacts, type CardHandle }
 export const CardExporter = forwardRef<CardHandle, { facts: CardFacts }>(function CardExporter({ facts }, ref) {
   return (
     <View style={styles.stage} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <CardArt ref={ref} facts={facts} width={EXPORT_WIDTH} />
+      <CardArt ref={ref} facts={facts} width={EXPORT_WIDTH} post />
     </View>
   );
 });

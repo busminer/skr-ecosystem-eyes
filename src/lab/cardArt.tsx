@@ -2,9 +2,12 @@ import { forwardRef, useImperativeHandle, useRef } from 'react';
 import Svg, {
   Circle,
   Defs,
+  Ellipse,
+  G,
   Image as SvgImage,
   LinearGradient,
   RadialGradient,
+  Rect,
   Stop,
   Text as SvgText,
   TSpan,
@@ -28,6 +31,10 @@ import Svg, {
 // layout is written once and never recomputed.
 export const ART_WIDTH = 1672;
 export const ART_HEIGHT = 941;
+
+// 1600x900 is what X shows in the timeline.
+export const EXPORT_WIDTH = 1600;
+export const EXPORT_HEIGHT = 900;
 
 // Two ways of framing the same drawing.
 //
@@ -53,9 +60,28 @@ export function frameRatio(frame: Frame) {
   return frame.height / frame.width;
 }
 
-// 1600x900 is what X shows in the timeline.
-export const EXPORT_WIDTH = 1600;
-export const EXPORT_HEIGHT = 900;
+// Where the object really is inside the canvas, measured off the cut-out asset
+// rather than guessed: the body runs x=173..1498, y=49..792, and the reflection
+// trails off below it to the bottom edge.
+const BODY = { left: 173, top: 49, width: 1325, height: 743 };
+
+// How the card is composed for a post.
+//
+// The picture is not simply the artwork with its white removed. Transparency is
+// the wrong thing to hand a timeline: X flattens alpha against a colour of its
+// own choosing, so the same file lands differently for different people, and
+// the object floated in the raw canvas with 30 units of air above it and 150
+// below — which reads as a mistake, not as a composition. So the post gets a
+// backdrop we drew and a placement we chose: the body sits centred across the
+// width with equal margins, a little above centre, and its reflection dissolves
+// into the backdrop instead of being cut off by the edge of the file.
+const POST = {
+  bodyWidth: 1230,
+  bodyTop: 82,
+};
+const POST_SCALE = POST.bodyWidth / BODY.width;
+const POST_TX = (EXPORT_WIDTH - POST.bodyWidth) / 2 - BODY.left * POST_SCALE;
+const POST_TY = POST.bodyTop - BODY.top * POST_SCALE;
 
 // The calm part of the display. The notch takes the lower left, the portal ring
 // takes everything right of x=950, so the text lives in the upper left corner
@@ -159,8 +185,8 @@ function EyeInRing() {
   );
 }
 
-export const CardArt = forwardRef<CardHandle, { facts: CardFacts; width: number; frame?: Frame }>(
-  function CardArt({ facts, width, frame = FULL_FRAME }, ref) {
+export const CardArt = forwardRef<CardHandle, { facts: CardFacts; width: number; frame?: Frame; post?: boolean }>(
+  function CardArt({ facts, width, frame = FULL_FRAME, post = false }, ref) {
     const svg = useRef<Svg>(null);
 
     useImperativeHandle(ref, () => ({
@@ -189,8 +215,8 @@ export const CardArt = forwardRef<CardHandle, { facts: CardFacts; width: number;
       <Svg
         ref={svg}
         width={width}
-        height={Math.round(width * frameRatio(frame))}
-        viewBox={`${frame.x} ${frame.y} ${frame.width} ${frame.height}`}
+        height={post ? Math.round(width * (EXPORT_HEIGHT / EXPORT_WIDTH)) : Math.round(width * frameRatio(frame))}
+        viewBox={post ? `0 0 ${EXPORT_WIDTH} ${EXPORT_HEIGHT}` : `${frame.x} ${frame.y} ${frame.width} ${frame.height}`}
       >
         <Defs>
           {/* Brushed steel: bright at the top, a light band across the middle
@@ -221,8 +247,47 @@ export const CardArt = forwardRef<CardHandle, { facts: CardFacts; width: number;
             <Stop offset="0.72" stopColor="#9DFFE0" stopOpacity="0" />
             <Stop offset="1" stopColor="#9DFFE0" stopOpacity="0.55" />
           </RadialGradient>
+          {/* The backdrop for a post. Near-black rather than black: a true
+              black would make the card's own bezel disappear into it, and the
+              object has to sit in a room, not in a void. */}
+          <LinearGradient id="room" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor="#06070A" />
+            <Stop offset="0.55" stopColor="#0A0C10" />
+            <Stop offset="1" stopColor="#0E1116" />
+          </LinearGradient>
+          <RadialGradient id="spill" cx="0.5" cy="0.5" r="0.5">
+            <Stop offset="0" stopColor="#4FE3C4" stopOpacity="0.16" />
+            <Stop offset="0.55" stopColor="#2A8F9B" stopOpacity="0.06" />
+            <Stop offset="1" stopColor="#2A8F9B" stopOpacity="0" />
+          </RadialGradient>
+          {/* The reflection runs past the bottom of the file. Rather than let
+              the edge chop it, the backdrop is drawn back over it so it dies
+              out on its own. */}
+          <LinearGradient id="dissolve" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor="#0C0F14" stopOpacity="0" />
+            <Stop offset="0.62" stopColor="#0D1015" stopOpacity="0.72" />
+            <Stop offset="1" stopColor="#0E1116" stopOpacity="1" />
+          </LinearGradient>
         </Defs>
 
+        {post ? (
+          <>
+            <Rect x={0} y={0} width={EXPORT_WIDTH} height={EXPORT_HEIGHT} fill="url(#room)" />
+            {/* The ring is the only light in the picture, so it has to spill
+                onto the room behind the card. Without this the card reads as a
+                cut-out pasted on a dark rectangle, which is exactly what it
+                would be. */}
+            <Ellipse
+              cx={POST_TX + RING.x * POST_SCALE}
+              cy={POST_TY + RING.y * POST_SCALE}
+              rx={620}
+              ry={520}
+              fill="url(#spill)"
+            />
+          </>
+        ) : null}
+
+        <G transform={post ? `translate(${POST_TX} ${POST_TY}) scale(${POST_SCALE})` : undefined}>
         <SvgImage href={BACKGROUND} x={0} y={0} width={ART_WIDTH} height={ART_HEIGHT} preserveAspectRatio="xMidYMid meet" />
 
         <EyeInRing />
@@ -262,6 +327,11 @@ export const CardArt = forwardRef<CardHandle, { facts: CardFacts; width: number;
         <Embossed x={ART_WIDTH - 262} y={704} size={17} family={SORA.regular} fill="#FBFAF5" opacity={0.62} anchor="end">
           skr.alexkosa.dev
         </Embossed>
+        </G>
+
+        {post ? (
+          <Rect x={0} y={EXPORT_HEIGHT - 160} width={EXPORT_WIDTH} height={160} fill="url(#dissolve)" />
+        ) : null}
       </Svg>
     );
   },
