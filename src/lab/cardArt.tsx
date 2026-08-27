@@ -124,7 +124,13 @@ function formatDate(seconds: number) {
 // the two copies were blurred drop-shadows; here they are hard copies of the
 // glyphs, and at the study's values they read as double vision rather than as
 // depth.
-function Embossed({ x, y, size, family, fill, opacity = 1, letterSpacing = 0, anchor = 'start', children }: {
+//
+// Small text gets a halo as well: an offset shadow only darkens one side, which
+// is enough on the calm upper left but not down by the ring, where the glyph
+// has bright reflection on every side of it at once. The halo is a stroked copy
+// of the same text drawn underneath the filled one — a real outline, so the
+// letters keep their own weight instead of being fattened by a centred stroke.
+function Embossed({ x, y, size, family, fill, opacity = 1, letterSpacing = 0, anchor = 'start', halo = 0, children }: {
   x: number;
   y: number;
   size: number;
@@ -133,6 +139,7 @@ function Embossed({ x, y, size, family, fill, opacity = 1, letterSpacing = 0, an
   opacity?: number;
   letterSpacing?: number;
   anchor?: 'start' | 'end';
+  halo?: number;
   children: string;
 }) {
   const common = { fontSize: size, fontFamily: family, letterSpacing, textAnchor: anchor } as const;
@@ -140,6 +147,20 @@ function Embossed({ x, y, size, family, fill, opacity = 1, letterSpacing = 0, an
     <>
       <SvgText {...common} x={x - 2} y={y + 2} fill="#000A0E" fillOpacity={0.8}>{children}</SvgText>
       <SvgText {...common} x={x + 1} y={y - 1} fill="#C8FFF4" fillOpacity={0.22}>{children}</SvgText>
+      {halo > 0 ? (
+        <SvgText
+          {...common}
+          x={x}
+          y={y}
+          fill="none"
+          stroke="#00141C"
+          strokeOpacity={0.92}
+          strokeWidth={halo}
+          strokeLinejoin="round"
+        >
+          {children}
+        </SvgText>
+      ) : null}
       <SvgText {...common} x={x} y={y} fill={fill} fillOpacity={opacity}>{children}</SvgText>
     </>
   );
@@ -292,7 +313,7 @@ export const CardArt = forwardRef<CardHandle, { facts: CardFacts; width: number;
 
         <EyeInRing />
 
-        <Embossed x={TEXT_LEFT} y={165} size={19} family={SORA.semibold} fill="#FBFAF5" opacity={0.62} letterSpacing={6}>
+        <Embossed x={TEXT_LEFT} y={165} size={19} family={SORA.semibold} fill="#FBFAF5" opacity={0.7} letterSpacing={6} halo={4}>
           SKR STAKER
         </Embossed>
 
@@ -310,21 +331,25 @@ export const CardArt = forwardRef<CardHandle, { facts: CardFacts; width: number;
             running right now", so the badge would have gone to people who left
             and came back. */}
         {line.length > 0 ? (
-          <Embossed x={TEXT_LEFT} y={412} size={24} family={SORA.regular} fill="#FBFAF5" opacity={0.86}>
+          <Embossed x={TEXT_LEFT} y={412} size={24} family={SORA.regular} fill="#FBFAF5" opacity={0.92} halo={4}>
             {line.join(' · ')}
           </Embossed>
         ) : null}
 
         {facts.positionSkr != null ? (
-          <Embossed x={545} y={668} size={20} family={SORA.regular} fill="#FBFAF5" opacity={0.72}>
+          <Embossed x={545} y={668} size={20} family={SORA.regular} fill="#FBFAF5" opacity={0.9} halo={5}>
             {`Position ${grouped(facts.positionSkr)} SKR`}
           </Embossed>
         ) : null}
 
-        <Embossed x={ART_WIDTH - 262} y={674} size={22} family={SORA.semibold} fill="#FBFAF5" opacity={0.92} letterSpacing={5} anchor="end">
+        <Embossed x={ART_WIDTH - 262} y={674} size={22} family={SORA.semibold} fill="#FBFAF5" opacity={1} letterSpacing={5} anchor="end" halo={6}>
           SKR EYES
         </Embossed>
-        <Embossed x={ART_WIDTH - 262} y={704} size={17} family={SORA.regular} fill="#FBFAF5" opacity={0.62} anchor="end">
+        {/* The smallest thing on the card and the one sitting closest to the
+            ring's own glow, so it carries the heaviest halo and no dimming at
+            all. It is also the only part that has a job after the picture
+            leaves us: it is how somebody finds this. */}
+        <Embossed x={ART_WIDTH - 262} y={706} size={19} family={SORA.semibold} fill="#FBFAF5" opacity={0.96} anchor="end" halo={6}>
           skr.alexkosa.dev
         </Embossed>
         </G>

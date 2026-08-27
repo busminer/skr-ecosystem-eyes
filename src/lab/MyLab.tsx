@@ -44,6 +44,10 @@ export function MyLab() {
   const [readAt, setReadAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [alertStatus, setAlertStatus] = useState<string | null>(null);
+  // Kept apart from alertStatus on purpose: that one also decides what the
+  // unlock-alert button calls itself, so writing a note about the card into it
+  // makes the button claim alerts were armed when none were.
+  const [shareNote, setShareNote] = useState<string | null>(null);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1_000));
   const [staking, setStaking] = useState(false);
 
@@ -143,11 +147,15 @@ export function MyLab() {
     if (!profile) return;
     setSharing(true);
     setError(null);
+    setShareNote(null);
     try {
       void Haptics.selectionAsync();
       const png = await cardArt.current?.toPng();
       if (!png) throw new Error('The card is not ready yet');
-      await shareCardPng(png);
+      const shared = await shareCardPng(png, cardFacts(profile, age, walletLabel, networkPositions));
+      setShareNote(shared.copied
+        ? 'Caption copied. Paste it next to the picture.'
+        : 'This phone would not take the caption — type it yourself.');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'The card could not be drawn');
     } finally {
@@ -247,6 +255,7 @@ export function MyLab() {
             <Button fill label="Refresh" onPress={() => void inspect(address)} disabled={busy} ghost />
             <Button fill label="Disconnect" onPress={() => void disconnect()} ghost />
           </View>
+          {shareNote ? <Text style={styles.status}>{shareNote}</Text> : null}
           {alertStatus ? <Text style={styles.status}>{alertStatus}</Text> : null}
 
           <Evidence
