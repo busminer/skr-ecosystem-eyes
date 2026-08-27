@@ -5,6 +5,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Haptics from 'expo-haptics';
 import { Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold, Geist_900Black } from '@expo-google-fonts/geist';
 import { GeistMono_400Regular, GeistMono_600SemiBold, GeistMono_700Bold, GeistMono_900Black } from '@expo-google-fonts/geist-mono';
+// Sora is the face of the shareable card and nothing else. It loads here with
+// the rest so the card never waits for a font at the moment somebody taps share.
+import { Sora_400Regular, Sora_600SemiBold, Sora_700Bold } from '@expo-google-fonts/sora';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { fetchEcosystemState } from './src/api';
@@ -115,6 +118,7 @@ export default function App() {
   const [fontsLoaded] = useFonts({
     Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold, Geist_900Black,
     GeistMono_400Regular, GeistMono_600SemiBold, GeistMono_700Bold, GeistMono_900Black,
+    Sora_400Regular, Sora_600SemiBold, Sora_700Bold,
   });
 
   useEffect(() => { void hydratePrefs(); void configureNotifications(); void prepareSound(); }, []);

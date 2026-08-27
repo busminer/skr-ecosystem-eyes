@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,8 +12,9 @@ import type { WalletProfile } from '../types';
 import { fetchWalletAge, type PositionAge } from './age';
 import { forgetStakeRun } from './stake/useStakeRun';
 import { Button, Evidence, Eyebrow, Meter, Panel, Tile } from './kit';
-import { StakerCard } from './StakerCard';
-import { shareStakerCard } from './shareCard';
+import { StakerCard, cardFacts } from './StakerCard';
+import { CardExporter, shareCardPng } from './shareCard';
+import type { CardHandle } from './cardArt';
 import { StakeSheet } from './stake/StakeSheet';
 
 // The card is the reason to open the app daily, so the phone remembers who
@@ -38,6 +39,7 @@ export function MyLab() {
   const [networkStake, setNetworkStake] = useState<number | null>(null);
   const [networkPositions, setNetworkPositions] = useState<number | null>(null);
   const [sharing, setSharing] = useState(false);
+  const cardArt = useRef<CardHandle>(null);
   const [busy, setBusy] = useState(false);
   const [readAt, setReadAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -143,14 +145,9 @@ export function MyLab() {
     setError(null);
     try {
       void Haptics.selectionAsync();
-      await shareStakerCard({
-        name: walletLabel || shortAddress(profile.wallet),
-        days: age?.days ?? null,
-        exactDays: age?.exact ?? false,
-        firstSeenAt: age?.firstSeenAt ?? null,
-        positionSkr: profile.totals.activeStaked,
-        networkPositions,
-      });
+      const png = await cardArt.current?.toPng();
+      if (!png) throw new Error('The card is not ready yet');
+      await shareCardPng(png);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'The card could not be drawn');
     } finally {
@@ -189,7 +186,17 @@ export function MyLab() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <StakerCard profile={profile} age={age} share={share} claimed={claimed} name={walletLabel} width={width - spacing.lg * 2} />
+      <StakerCard
+        profile={profile}
+        age={age}
+        share={share}
+        claimed={claimed}
+        name={walletLabel}
+        networkPositions={networkPositions}
+        width={width - spacing.lg * 2}
+      />
+
+      {profile ? <CardExporter ref={cardArt} facts={cardFacts(profile, age, walletLabel, networkPositions)} /> : null}
 
       {claimed ? (
         <>
