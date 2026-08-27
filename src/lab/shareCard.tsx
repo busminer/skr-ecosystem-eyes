@@ -34,6 +34,9 @@ export const CardExporter = forwardRef<CardHandle, { facts: CardFacts }>(functio
 // the card. There is no @mention of ours in it on purpose — somebody posting
 // this is posting about themselves, and turning that into our advertisement is
 // how you make people stop posting it.
+// No link in the caption on purpose. X pushes down anything carrying one, so
+// a URL here costs the person posting it their reach. The address is printed on
+// the card itself, where it is a picture rather than a link and costs nothing.
 export function captionFor(facts: CardFacts) {
   const days = facts.days == null
     ? null
@@ -43,7 +46,6 @@ export function captionFor(facts: CardFacts) {
     days ? `I'm staking $SKR for ${days}` : `I'm staking $SKR`,
     '',
     'my card from SKR Eyes',
-    'skr.alexkosa.dev',
     '#SKR #SolanaMobile',
   ].join('\n');
 }
