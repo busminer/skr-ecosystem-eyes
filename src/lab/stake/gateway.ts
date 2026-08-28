@@ -94,3 +94,27 @@ export async function fetchStatus(signature: string): Promise<SignatureState> {
   const result = await rpc<{ value: SignatureState[] }>('getSignatureStatuses', [[signature], { searchTransactionHistory: true }]);
   return result?.value?.[0] ?? null;
 }
+
+export type WalletBalance = {
+  wallet: string;
+  rawBalance: string;
+  balance: number;
+  tokenAccounts: number;
+  observedAt: number;
+};
+
+// What the wallet has to hand, asked when the stake sheet opens.
+//
+// Without it the app builds a stake it cannot pay for: sixteen parts of sixteen
+// SKR on a wallet holding twenty-eight, and the chain refuses every part but the
+// first. Fifteen red rows and not a word about why.
+export async function fetchWalletBalance(wallet: string): Promise<WalletBalance> {
+  return withTimeout(async (signal) => {
+    const response = await fetch(`${API_BASE_URL}/api/wallet/${encodeURIComponent(wallet)}/balance`, {
+      headers: { accept: 'application/json' },
+      signal,
+    });
+    if (!response.ok) throw new GatewayError('The balance could not be read.', null, response.status);
+    return response.json() as Promise<WalletBalance>;
+  });
+}

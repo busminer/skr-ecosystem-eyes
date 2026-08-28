@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -6,6 +6,8 @@ import { colors, font, radius, spacing, type } from '../../theme';
 import { Button, Evidence, Eyebrow, Panel } from '../kit';
 import { FIRST_STAKE_RENT_LAMPORTS, MIN_STAKE_RAW, fromRaw, toRaw, tooPrecise } from './stakeTx';
 import { useStakeRun } from './useStakeRun';
+
+import { fetchWalletBalance } from './gateway';
 
 const COUNTS = [1, 4, 8, 16];
 
@@ -20,6 +22,24 @@ function partTone(state: string): string {
 export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; hasPosition: boolean; onClose: () => void }) {
   const [amount, setAmount] = useState('');
   const [split, setSplit] = useState(1);
+
+  // What the wallet actually holds, read once when the sheet opens.
+  //
+  // Until this existed the app would happily build a stake larger than the
+  // wallet: sixteen parts of sixteen SKR on twenty-eight SKR, of which the
+  // chain took the first and refused fifteen. The person saw fifteen failures
+  // and no reason, and would sooner blame the app than their balance.
+  const [held, setHeld] = useState<bigint | null>(null);
+  useEffect(() => {
+    let gone = false;
+    fetchWalletBalance(wallet)
+      .then((result) => { if (!gone) setHeld(BigInt(result.rawBalance)); })
+      // A balance we could not read must not block a stake. The chain is still
+      // the judge; this is only here to save people from a refusal it can see
+      // coming.
+      .catch(() => { if (!gone) setHeld(null); });
+    return () => { gone = true; };
+  }, [wallet]);
   const { run, phase, error, uncertain, start, resume, clear, confirmed, total } = useStakeRun(wallet);
 
   // The amount is what goes into one transaction; the count is how many such
@@ -28,7 +48,14 @@ export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; h
   const totalRaw = perPart * BigInt(split);
   const overPrecise = tooPrecise(amount);
   const tooSmall = !overPrecise && perPart > 0n && perPart < MIN_STAKE_RAW;
-  const ready = perPart >= MIN_STAKE_RAW && phase === 'idle';
+  // The balance is shown to two decimals rather than to the token's full six.
+  // What somebody needs from this line is whether they can afford the stake,
+  // and 332.256236 answers that no better than 332.25 while reading as noise.
+  // The comparison itself still uses every last unit.
+  const heldShort = held == null ? null : (Number(held) / 1e6).toFixed(2);
+  const overBalance = held != null && totalRaw > held;
+  const affordableParts = held != null && perPart > 0n ? Number(held / perPart) : null;
+  const ready = perPart >= MIN_STAKE_RAW && phase === 'idle' && !overBalance;
   const working = phase === 'preparing' || phase === 'signing' || phase === 'sending';
 
   return (
@@ -72,14 +99,18 @@ export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; h
               <View style={styles.splits}>
                 {COUNTS.map((option) => {
                   const on = option === split;
+                  // An option costing more than the wallet holds is shown, not
+                  // hidden: seeing that 16 needs 256 SKR and you hold 28 is the
+                  // explanation. Hiding it would just be a shorter row.
+                  const unaffordable = held != null && perPart > 0n && perPart * BigInt(option) > held;
                   return (
                     <Pressable
                       key={option}
                       onPress={() => { void Haptics.selectionAsync(); setSplit(option); }}
-                      style={[styles.split, on && styles.splitOn]}
+                      style={[styles.split, on && styles.splitOn, unaffordable && styles.splitShort]}
                     >
-                      <Text style={[styles.splitLabel, on && styles.splitLabelOn]}>{option} tx</Text>
-                      <Text style={styles.splitNeed}>{perPart > 0n ? `${fromRaw(perPart * BigInt(option))} SKR` : '—'}</Text>
+                      <Text style={[styles.splitLabel, on && styles.splitLabelOn, unaffordable && styles.splitLabelShort]}>{option} tx</Text>
+                      <Text style={[styles.splitNeed, unaffordable && styles.splitLabelShort]}>{perPart > 0n ? `${fromRaw(perPart * BigInt(option))} SKR` : '—'}</Text>
                     </Pressable>
                   );
                 })}
@@ -89,6 +120,20 @@ export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; h
                   ? 'One transaction, one wallet approval.'
                   : `${split} identical transactions from one approval, sent one after another. Each one is a separate on-chain stake.`}
               </Text>
+
+              {/* Said in the wallet's own terms rather than as an error code.
+                  The chain would refuse this anyway; the point is to say so
+                  before the person has spent a fee finding out. */}
+              {overBalance ? (
+                <Text style={styles.shortfall}>
+                  {`This needs ${fromRaw(totalRaw)} SKR and you hold ${heldShort}. `}
+                  {affordableParts && affordableParts > 0
+                    ? `At this amount you can send ${affordableParts} ${affordableParts === 1 ? 'part' : 'parts'}.`
+                    : 'Lower the amount to stake what you have.'}
+                </Text>
+              ) : held != null ? (
+                <Text style={styles.holding}>{`You hold ${heldShort} SKR.`}</Text>
+              ) : null}
             </Panel>
 
             <Panel style={styles.panel}>
@@ -199,10 +244,14 @@ const styles = StyleSheet.create({
   amountRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
   amountInput: { flex: 1, color: colors.text, fontFamily: font.black, fontSize: 34, letterSpacing: -1, padding: 0 },
   amountUnit: { color: colors.muted, fontFamily: font.semibold, fontSize: 14 },
+  shortfall: { color: colors.pending, fontFamily: font.medium, fontSize: 13, lineHeight: 19, marginTop: spacing.sm },
+  holding: { color: colors.muted, fontFamily: font.regular, fontSize: 13, marginTop: spacing.sm },
   hint: { color: colors.muted, fontFamily: font.regular, ...type.small },
   splits: { flexDirection: 'row', gap: spacing.sm },
   split: { flex: 1, alignItems: 'center', paddingVertical: spacing.md, borderRadius: radius.inner, borderWidth: 1, borderColor: colors.line },
   splitOn: { borderColor: colors.accentDim, backgroundColor: colors.panelHi },
+  // Both of these were written for 1.0.0 and never wired to anything: the
+  // balance check they were meant for did not exist until now.
   splitShort: { opacity: 0.45 },
   splitLabelShort: { color: colors.faint },
   splitNeed: { color: colors.faint, fontFamily: font.regular, fontSize: 10.5, marginTop: 2 },

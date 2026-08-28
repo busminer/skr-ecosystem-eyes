@@ -2,14 +2,14 @@
   "expo": {
     "name": "SKR Eyes",
     "slug": "skr-eyes",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "scheme": "skr-eyes",
     "userInterfaceStyle": "dark",
     "icon": "./assets/icon.png",
     "android": {
       "package": "dev.alexkosa.skreyes",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#04070B"
