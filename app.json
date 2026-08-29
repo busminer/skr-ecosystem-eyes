@@ -17,7 +17,8 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "POST_NOTIFICATIONS",
-        "SCHEDULE_EXACT_ALARM"
+        "SCHEDULE_EXACT_ALARM",
+        "com.solanamobile.seedvault.ACCESS_SEED_VAULT"
       ],
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",

@@ -18,3 +18,4 @@ android/
 
 # Signed builds. Kept next to the code they came from, never committed.
 builds/
+scripts/.node/
