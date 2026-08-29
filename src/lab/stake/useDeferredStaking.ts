@@ -4,7 +4,7 @@ import { Buffer } from 'buffer';
 import { PublicKey, VersionedMessage, VersionedTransaction } from '@solana/web3.js';
 import { transact } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { getSeedVault, type SeedVaultAccount, type SeedVaultLimits } from '../../../modules/skr-seedvault';
-import { anchorRent, readAnchors, walletLamports, type AnchorState } from './anchors';
+import { anchorRent, readAnchors, readAnchorsAndBalance, type AnchorState } from './anchors';
 import { buildAnchorCreation, buildDeferredStake, deriveAnchors, type DeferredPart } from './deferred';
 import { fetchBlockhash, sendWire } from './gateway';
 import { DEFAULT_GUARDIAN_POOL } from './stakeTx';
@@ -107,16 +107,23 @@ export function useDeferredStaking(wallet: string) {
       setError(caught instanceof Error ? caught.message : 'The vault did not answer.');
     }
 
+    // The addresses are derived on the phone and need no network, so they go up
+    // on screen straight away. Without this a failed read leaves the previous
+    // list standing, and changing the number of parts appears to do nothing.
+    let derived;
     try {
-      const derived = await deriveAnchors(new PublicKey(wallet), anchorCount);
-      const [state, balance, rentLamports] = await Promise.all([
-        readAnchors(derived, wallet),
-        walletLamports(wallet),
-        anchorRent(),
-      ]);
-      setAnchors(state);
-      setLamports(balance);
-      setRent(rentLamports);
+      derived = await deriveAnchors(new PublicKey(wallet), anchorCount);
+      setAnchors(derived.map((anchor) => ({ ...anchor, exists: false, value: null, authority: null, usable: false })));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'The anchor addresses could not be derived.');
+      return;
+    }
+
+    setRent(anchorRent());
+    try {
+      const read = await readAnchorsAndBalance(derived, wallet);
+      setAnchors(read.anchors);
+      setLamports(read.lamports);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'The anchors could not be read.');
     }
@@ -158,7 +165,7 @@ export function useDeferredStaking(wallet: string) {
         setNote('Every anchor is already there.');
         return;
       }
-      const rentLamports = rent ?? await anchorRent();
+      const rentLamports = rent ?? anchorRent();
       const { blockhash, slot } = await fetchBlockhash();
       const transaction = buildAnchorCreation({
         user: new PublicKey(wallet),

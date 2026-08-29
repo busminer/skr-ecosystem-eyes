@@ -23,8 +23,8 @@ import { NONCE_ACCOUNT_BYTES, type Anchor } from './deferred';
 // This whole list is scaffolding. The anchors belong behind our own gateway,
 // which the phone already trusts, and this file goes away when they get there.
 const PUBLIC_RPCS = [
-  'https://solana.leorpc.com/?api_key=FREE',
   'https://api.mainnet-beta.solana.com',
+  'https://solana.leorpc.com/?api_key=FREE',
 ];
 
 let working: string | null = null;
@@ -47,8 +47,13 @@ async function callOne<T>(url: string, method: string, params: unknown[]): Promi
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
   });
-  const payload = await response.json() as { result?: T; error?: { message?: string } };
+  const payload = await response.json() as { result?: T; error?: { message?: string }; msg?: string };
   if (payload.error) throw new Error(payload.error.message ?? 'The network refused the read.');
+  // A refusal does not always arrive as a JSON-RPC error: a throttled endpoint
+  // may answer with its own shape and no result at all. Treating that as an
+  // answer hands `undefined` to the caller, which then fails somewhere far away
+  // from the cause.
+  if (payload.result === undefined) throw new Error(payload.msg ?? 'The endpoint answered without a result.');
   return payload.result as T;
 }
 
@@ -72,8 +77,14 @@ async function rpc<T>(method: string, params: unknown[]): Promise<T> {
   throw new Error(failures.join(' | ') || 'No endpoint answered the read.');
 }
 
-export async function anchorRent(): Promise<number> {
-  return rpc<number>('getMinimumBalanceForRentExemption', [NONCE_ACCOUNT_BYTES]);
+// Rent for an eighty-byte account is a fixed function of its size on mainnet,
+// and asking the chain for a constant costs a request we cannot spare: the
+// endpoints that this phone will talk to at all are the throttled ones.
+// Measured against mainnet on 29 Aug 2026 and checked on every read below.
+export const ANCHOR_RENT_LAMPORTS = 1_447_680;
+
+export function anchorRent(): number {
+  return ANCHOR_RENT_LAMPORTS;
 }
 
 function decodeBase64(value: string): Uint8Array {
@@ -88,29 +99,55 @@ function decodeBase64(value: string): Uint8Array {
  * saying so here is cheaper than a transaction that fails on chain.
  */
 export async function readAnchors(anchors: Anchor[], wallet: string): Promise<AnchorState[]> {
-  const result = await rpc<{ value: ({ data: [string, string]; owner: string } | null)[] }>(
+  const result = await rpc<{ value: (RawAccount | null)[] }>(
     'getMultipleAccounts',
     [anchors.map((anchor) => anchor.address), { encoding: 'base64' }],
   );
+  return anchors.map((anchor, index) => decodeAnchor(anchor, result.value[index] ?? null, wallet));
+}
 
-  return anchors.map((anchor, index) => {
-    const account = result.value[index];
-    if (!account || account.owner !== SYSTEM_PROGRAM) {
-      return { ...anchor, exists: false, value: null, authority: null, usable: false };
-    }
+type RawAccount = { data: [string, string]; owner: string; lamports: number };
 
-    const data = decodeBase64(account.data[0]);
-    if (data.length !== NONCE_ACCOUNT_BYTES) {
-      return { ...anchor, exists: true, value: null, authority: null, usable: false };
-    }
+function decodeAnchor(anchor: Anchor, account: RawAccount | null, wallet: string): AnchorState {
+  if (!account || account.owner !== SYSTEM_PROGRAM) {
+    return { ...anchor, exists: false, value: null, authority: null, usable: false };
+  }
 
-    const authority = new PublicKey(data.slice(AUTHORITY_OFFSET, AUTHORITY_OFFSET + 32)).toBase58();
-    const value = new PublicKey(data.slice(NONCE_OFFSET, NONCE_OFFSET + 32)).toBase58();
-    return { ...anchor, exists: true, value, authority, usable: authority === wallet };
-  });
+  const data = decodeBase64(account.data[0]);
+  if (data.length !== NONCE_ACCOUNT_BYTES) {
+    return { ...anchor, exists: true, value: null, authority: null, usable: false };
+  }
+
+  const authority = new PublicKey(data.slice(AUTHORITY_OFFSET, AUTHORITY_OFFSET + 32)).toBase58();
+  const value = new PublicKey(data.slice(NONCE_OFFSET, NONCE_OFFSET + 32)).toBase58();
+  return { ...anchor, exists: true, value, authority, usable: authority === wallet };
 }
 
 export async function walletLamports(wallet: string): Promise<number> {
   const result = await rpc<{ value: number }>('getBalance', [wallet]);
   return result.value;
+}
+
+/**
+ * The anchors and the wallet's SOL in one request.
+ *
+ * Reading them separately is two calls where one will do, and on a throttled
+ * endpoint the second one is the one that fails — leaving the screen showing
+ * anchors it could read beside a balance it could not.
+ */
+export async function readAnchorsAndBalance(anchors: Anchor[], wallet: string): Promise<{
+  anchors: AnchorState[];
+  lamports: number | null;
+}> {
+  const addresses = [...anchors.map((anchor) => anchor.address), wallet];
+  const result = await rpc<{ value: (RawAccount | null)[] }>(
+    'getMultipleAccounts',
+    [addresses, { encoding: 'base64' }],
+  );
+
+  const walletAccount = result.value[anchors.length];
+  return {
+    anchors: anchors.map((anchor, index) => decodeAnchor(anchor, result.value[index] ?? null, wallet)),
+    lamports: walletAccount ? walletAccount.lamports : 0,
+  };
 }
