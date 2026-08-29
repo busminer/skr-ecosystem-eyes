@@ -11,12 +11,13 @@ import { colors, font, radius, spacing, type } from '../theme';
 import type { WalletProfile } from '../types';
 import { fetchWalletAge, type PositionAge } from './age';
 import { forgetStakeRun } from './stake/useStakeRun';
-import { Button, Evidence, Eyebrow, Meter, Panel, Tile } from './kit';
+import { Button, Evidence, Eyebrow, Meter, Panel, RangeSwitch, Tile } from './kit';
 import { StakerCard, cardFacts } from './StakerCard';
 import type { CardFacts } from './cardArt';
 import { CardExporter, shareCardPng } from './shareCard';
 import type { CardHandle } from './cardArt';
 import { StakeSheet } from './stake/StakeSheet';
+import { StakingService } from './stake/StakingService';
 
 // The card is the reason to open the app daily, so the phone remembers who
 // you are. Only the public address and the name the wallet gave us are stored.
@@ -34,8 +35,11 @@ function countdown(seconds: number): string {
   return [hours, minutes, remainder].map((value) => String(value).padStart(2, '0')).join(':');
 }
 
+const SECTIONS = ['Profile', 'Staking service'];
+
 export function MyLab() {
   const { width } = useWindowDimensions();
+  const [section, setSection] = useState<string>(SECTIONS[0] as string);
   const [address, setAddress] = useState('');
   const [walletLabel, setWalletLabel] = useState<string | null>(null);
   const [profile, setProfile] = useState<WalletProfile | null>(null);
@@ -240,6 +244,21 @@ export function MyLab() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      {/* Two things live under Me now: who you are, and the schedule you set.
+          They share a wallet and nothing else, so they share a screen and not a
+          scroll — mixing a staking plan into the profile would bury it. */}
+      <View style={styles.sectionTabs}>
+        <RangeSwitch value={section} options={SECTIONS} onChange={setSection} />
+      </View>
+
+      {section === 'Staking service' ? (
+        claimed || profile ? (
+          <StakingService wallet={profile!.wallet} />
+        ) : (
+          <Text style={styles.lead}>Connect a wallet first: a schedule is signed by the wallet that owns it.</Text>
+        )
+      ) : (
+      <>
       <StakerCard
         profile={profile}
         age={age}
@@ -342,6 +361,9 @@ export function MyLab() {
         </>
       )}
 
+      </>
+      )}
+
       {staking && profile ? <StakeSheet wallet={profile.wallet} hasPosition={profile.positions.length > 0} onClose={() => { setStaking(false); void inspect(profile.wallet); }} /> : null}
       {busy ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
       {error ? <Pressable onPress={() => setError(null)}><Text style={styles.error}>{error}</Text></Pressable> : null}
@@ -352,6 +374,7 @@ export function MyLab() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 130, gap: spacing.lg },
+  sectionTabs: { alignItems: 'flex-start' },
   card: { backgroundColor: colors.panelHi, borderRadius: 18, borderWidth: 1, borderColor: colors.line, padding: spacing.lg, overflow: 'hidden' },
   cardClaimed: { borderColor: colors.metalDim },
   cardEdge: { position: 'absolute', left: 0, right: 0, top: 0, height: 2, backgroundColor: colors.metal, opacity: 0.55 },
