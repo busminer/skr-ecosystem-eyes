@@ -131,6 +131,51 @@ export function useDeferredStaking(wallet: string) {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  /**
+   * Everything the person has to do once, behind a single button.
+   *
+   * Access, the vault, and the anchors used to be three steps on screen with
+   * three explanations. They are one decision — "let this phone stake for me on
+   * a schedule" — and splitting it made the person do the app's bookkeeping.
+   */
+  const turnOn = useCallback(async () => {
+    const sdk = getSeedVault();
+    if (!sdk) return;
+    setBusy('setup');
+    setError(null);
+    try {
+      if (!sdk.hasPermission()) {
+        const granted = await sdk.requestPermission();
+        if (!granted) throw new Error('Without access to the Seed Vault a schedule cannot be signed.');
+      }
+      if (sdk.authorizedSeeds().length === 0) await sdk.authorize();
+      await refresh();
+
+      const derived = await deriveAnchors(new PublicKey(wallet), anchorCount);
+      const state = await readAnchors(derived, wallet);
+      const missing = state.filter((anchor) => !anchor.exists);
+      if (missing.length > 0) {
+        const { blockhash, slot } = await fetchBlockhash();
+        const transaction = buildAnchorCreation({
+          user: new PublicKey(wallet),
+          anchors: missing,
+          rentLamports: anchorRent(),
+          blockhash,
+        });
+        await transact(async (adapter) => {
+          await adapter.authorize({ chain: 'solana:mainnet', identity: APP_IDENTITY });
+          return adapter.signAndSendTransactions({ transactions: [transaction], minContextSlot: slot });
+        });
+      }
+      setNote('Ready. Set the amount and approve the day.');
+      setTimeout(() => { void refresh(); }, 4_000);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Setup did not finish.');
+    } finally {
+      setBusy(null);
+    }
+  }, [anchorCount, refresh, wallet]);
+
   const enterVault = useCallback(async () => {
     const sdk = getSeedVault();
     if (!sdk) return;
@@ -305,6 +350,24 @@ export function useDeferredStaking(wallet: string) {
     }
   }, [parts, persist, refresh, wallet]);
 
+  // A part goes out when its window opens, on its own.
+  //
+  // This is the whole promise of the feature: approve in the morning, and the
+  // day happens without you. While the app is on screen this timer does it; the
+  // same call belongs on an alarm so it also happens with the app closed, and
+  // until that lands a part can only go out while the app is open.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (busy != null) return;
+      const now = Date.now();
+      const due = parts.find((part) => (
+        part.state === 'ready' && part.signatureBase64 != null && now >= part.sendAfter && now <= part.sendBefore
+      ));
+      if (due) void sendPart(due.index);
+    }, 15_000);
+    return () => clearInterval(timer);
+  }, [busy, parts, sendPart]);
+
   const clearPlan = useCallback(async () => {
     await AsyncStorage.removeItem(PLAN_KEY).catch(() => undefined);
     setParts([]);
@@ -314,6 +377,6 @@ export function useDeferredStaking(wallet: string) {
   return {
     vault, anchors, parts, lamports, rent, busy, error, note,
     anchorCount, setAnchorCount,
-    refresh, enterVault, createAnchors, approveDay, sendPart, clearPlan,
+    refresh, turnOn, enterVault, createAnchors, approveDay, sendPart, clearPlan,
   };
 }
