@@ -88,6 +88,20 @@ export async function sendWire(wireBase64: string, minContextSlot: number): Prom
   ]);
 }
 
+// The anchors a schedule stands on, read through the same door as everything
+// else. The route hands back only system-owned accounts of two shapes — empty,
+// which is a wallet, and eighty bytes, which is a durable nonce — so this is a
+// narrow read, not a way to browse the chain.
+export type RawAccount = { owner: string; lamports: number; data: [string, string] };
+
+export async function fetchAccounts(addresses: string[]): Promise<(RawAccount | null)[]> {
+  const result = await rpc<{ value: (RawAccount | null)[] }>(
+    'getMultipleAccounts',
+    [addresses, { encoding: 'base64' }],
+  );
+  return result?.value ?? addresses.map(() => null);
+}
+
 export type SignatureState = { confirmationStatus: 'processed' | 'confirmed' | 'finalized' | null; err: unknown | null } | null;
 
 export async function fetchStatus(signature: string): Promise<SignatureState> {
