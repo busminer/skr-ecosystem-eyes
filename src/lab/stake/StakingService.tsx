@@ -50,6 +50,12 @@ export function StakingService({ wallet }: { wallet: string }) {
   const setupCost = rent == null ? null : (rent * Math.max(0, anchorCount - ready)) / 1e9;
 
   const done = parts.filter((part) => part.state === 'sent' || part.state === 'confirmed').length;
+  // An anchor is free again the moment its part has gone out, so a finished day
+  // is not the end of the day: one more fingerprint buys another round. What the
+  // anchors limit is how many parts can be waiting at once, never how many a day
+  // can hold.
+  const settled = parts.length > 0 && parts.every((part) => part.state !== 'ready' && part.state !== 'unsigned');
+  const planning = parts.length === 0 || settled;
   const canApprove = armed && ready >= anchorCount && perPart >= MIN_STAKE_RAW && busy == null;
 
   if (!vault.present) {
@@ -88,7 +94,7 @@ export function StakingService({ wallet }: { wallet: string }) {
         </Panel>
       ) : null}
 
-      {armed && parts.length === 0 ? (
+      {armed && planning ? (
         <Panel>
           <Eyebrow>Today</Eyebrow>
 
@@ -108,7 +114,7 @@ export function StakingService({ wallet }: { wallet: string }) {
             <Text style={styles.rowLabel}>How many times</Text>
             <RangeSwitch
               value={String(anchorCount)}
-              options={['1', '3', '5', '8']}
+              options={['3', '5', '8', '12']}
               onChange={(next) => setAnchorCount(Number(next))}
             />
           </View>
@@ -135,7 +141,9 @@ export function StakingService({ wallet }: { wallet: string }) {
           <Button
             label={busy === 'signing'
               ? 'Waiting for your fingerprint…'
-              : touches > 1 ? `Approve the day · ${touches} fingerprints` : 'Approve the day'}
+              : settled
+                ? `Stake ${anchorCount} more`
+                : touches > 1 ? `Approve the day · ${touches} fingerprints` : 'Approve the day'}
             onPress={() => void approveDay({
               perPartRaw: perPart,
               count: anchorCount,
@@ -166,8 +174,9 @@ export function StakingService({ wallet }: { wallet: string }) {
           })}
 
           <Text style={styles.fine}>
-            Each one goes out on its own when its time comes. Android may be a few minutes late, and
-            for now it only goes out while the app is running — a scheduled wake-up is the next piece.
+            {settled
+              ? 'Every one of these has gone out. The anchors are free again, so another round is one fingerprint away.'
+              : 'Each one goes out on its own when its time comes. Android may be a few minutes late, and for now it only goes out while the app is running — a scheduled wake-up is the next piece.'}
           </Text>
 
           <Button label="Stop the day" onPress={() => void clearPlan()} ghost fill />
