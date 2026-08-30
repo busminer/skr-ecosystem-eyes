@@ -10,7 +10,8 @@
     "postinstall": "patch-package",
     "brand:assets": "node scripts/generate-brand-assets.mjs",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck"
+    "check": "npm run typecheck",
+    "i18n:check": "node scripts/i18n-check.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/geist": "^0.4.2",

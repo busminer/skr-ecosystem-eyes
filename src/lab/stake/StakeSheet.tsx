@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { colors, font, radius, spacing, type } from '../../theme';
+import { t } from '../../i18n';
 import { Button, Evidence, Eyebrow, Panel } from '../kit';
 import { FIRST_STAKE_RENT_LAMPORTS, MIN_STAKE_RAW, fromRaw, toRaw, tooPrecise } from './stakeTx';
 import { useStakeRun } from './useStakeRun';
@@ -63,8 +64,8 @@ export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; h
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.head}>
           <View>
-            <Eyebrow>Stake SKR</Eyebrow>
-            <Text style={styles.title}>Add to your position</Text>
+            <Eyebrow>{t('Stake SKR')}</Eyebrow>
+            <Text style={styles.title}>{t('Add to your position')}</Text>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Close" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={onClose} style={styles.close}><Text style={styles.closeText}>×</Text></Pressable>
         </View>
@@ -72,7 +73,7 @@ export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; h
         {run == null ? (
           <>
             <Panel style={styles.panel}>
-              <Eyebrow>Amount per transaction</Eyebrow>
+              <Eyebrow>{t('Amount per transaction')}</Eyebrow>
               <View style={styles.amountRow}>
                 <TextInput
                   autoFocus
@@ -87,15 +88,15 @@ export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; h
               </View>
               <Text style={[styles.hint, (tooSmall || overPrecise) && styles.warn]}>
                 {overPrecise
-                  ? 'SKR has six decimal places. Shorten the amount — the extra digits cannot be staked.'
+                  ? t('SKR has six decimal places. Shorten the amount — the extra digits cannot be staked.')
                   : tooSmall
-                    ? 'A single transaction cannot stake less than 1 SKR.'
-                    : 'This is what one transaction stakes. The total is this amount times the count below.'}
+                    ? t('A single transaction cannot stake less than 1 SKR.')
+                    : t('This is what one transaction stakes. The total is this amount times the count below.')}
               </Text>
             </Panel>
 
             <Panel style={styles.panel}>
-              <Eyebrow>How many transactions</Eyebrow>
+              <Eyebrow>{t('How many transactions')}</Eyebrow>
               <View style={styles.splits}>
                 {COUNTS.map((option) => {
                   const on = option === split;
@@ -117,8 +118,8 @@ export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; h
               </View>
               <Text style={styles.hint}>
                 {split === 1
-                  ? 'One transaction, one wallet approval.'
-                  : `${split} identical transactions from one approval, sent one after another. Each one is a separate on-chain stake.`}
+                  ? t('One transaction, one wallet approval.')
+                  : t('{count} identical transactions from one approval, sent one after another. Each one is a separate on-chain stake.', { count: split })}
               </Text>
 
               {/* Said in the wallet's own terms rather than as an error code.
@@ -126,47 +127,47 @@ export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; h
                   before the person has spent a fee finding out. */}
               {overBalance ? (
                 <Text style={styles.shortfall}>
-                  {`This needs ${fromRaw(totalRaw)} SKR and you hold ${heldShort}. `}
+                  {t('This needs {needed} SKR and you hold {held}. ', { needed: fromRaw(totalRaw), held: heldShort ?? '' })}
                   {affordableParts && affordableParts > 0
-                    ? `At this amount you can send ${affordableParts} ${affordableParts === 1 ? 'part' : 'parts'}.`
-                    : 'Lower the amount to stake what you have.'}
+                    ? (affordableParts === 1 ? t('At this amount you can send 1 part.') : t('At this amount you can send {count} parts.', { count: affordableParts }))
+                    : t('Lower the amount to stake what you have.')}
                 </Text>
               ) : held != null ? (
-                <Text style={styles.holding}>{`You hold ${heldShort} SKR.`}</Text>
+                <Text style={styles.holding}>{t('You hold {held} SKR.', { held: heldShort ?? '' })}</Text>
               ) : null}
             </Panel>
 
             <Panel style={styles.panel}>
-              <Eyebrow>Before you sign</Eyebrow>
+              <Eyebrow>{t('Before you sign')}</Eyebrow>
               <View style={styles.summary}>
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>sent as</Text>
+                  <Text style={styles.summaryLabel}>{t('sent as')}</Text>
                   <Text style={styles.summaryValue}>{perPart > 0n ? `${split} × ${fromRaw(perPart)} SKR` : '—'}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>you stake in total</Text>
+                  <Text style={styles.summaryLabel}>{t('you stake in total')}</Text>
                   <Text style={[styles.summaryValue, styles.summaryTotal]}>{totalRaw > 0n ? `${fromRaw(totalRaw)} SKR` : '—'}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>position account rent</Text>
+                  <Text style={styles.summaryLabel}>{t('position account rent')}</Text>
                   <Text style={styles.summaryValue}>
-                    {hasPosition ? 'already paid' : `${(FIRST_STAKE_RENT_LAMPORTS / 1_000_000_000).toFixed(6)} SOL, once`}
+                    {hasPosition ? t('already paid') : t('{sol} SOL, once', { sol: (FIRST_STAKE_RENT_LAMPORTS / 1_000_000_000).toFixed(6) })}
                   </Text>
                 </View>
               </View>
               <Text style={styles.hint}>
                 {hasPosition
-                  ? 'Your position account already exists, so only the network fee applies — a few thousand lamports per transaction.'
-                  : 'The first stake creates your position account and its rent stays with the account. Network fees are a few thousand lamports per transaction.'}
+                  ? t('Your position account already exists, so only the network fee applies — a few thousand lamports per transaction.')
+                  : t('The first stake creates your position account and its rent stays with the account. Network fees are a few thousand lamports per transaction.')}
               </Text>
             </Panel>
 
             <Button
               label={working
-                ? 'Working…'
+                ? t('Working…')
                 : tooSmall
-                  ? 'At least 1 SKR per transaction'
-                  : totalRaw > 0n ? `Sign and stake ${fromRaw(totalRaw)} SKR` : 'Sign and stake'}
+                  ? t('At least 1 SKR per transaction')
+                  : totalRaw > 0n ? t('Sign and stake {amount} SKR', { amount: fromRaw(totalRaw) }) : t('Sign and stake')}
               onPress={() => void start(perPart, split)}
               disabled={!ready}
             />
@@ -177,16 +178,16 @@ export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; h
               <View style={styles.progressHead}>
                 <Eyebrow tone={phase === 'done' ? colors.positive : phase === 'error' ? colors.negative : colors.accent}>
                   {phase === 'done'
-                    ? 'All parts landed'
+                    ? t('All parts landed')
                     : phase === 'error'
-                      ? 'Stopped'
+                      ? t('Stopped')
                       : phase === 'signing'
-                        ? 'Approve in your wallet'
+                        ? t('Approve in your wallet')
                         : phase === 'preparing'
-                          ? 'Preparing transactions'
+                          ? t('Preparing transactions')
                           : phase === 'idle'
-                            ? 'A run from before'
-                            : 'Landing on chain'}
+                            ? t('A run from before')
+                            : t('Landing on chain')}
                 </Eyebrow>
                 <Text style={styles.counter}>{confirmed} / {total}</Text>
               </View>
@@ -198,7 +199,7 @@ export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; h
                   <Animated.View key={part.index} entering={FadeInDown.duration(200)} style={styles.partRow}>
                     <View style={[styles.partDot, { backgroundColor: partTone(part.state) }]} />
                     <Text style={styles.partAmount}>{fromRaw(BigInt(part.amountRaw))} SKR</Text>
-                    <Text style={[styles.partState, { color: partTone(part.state) }]}>{part.state}</Text>
+                    <Text style={[styles.partState, { color: partTone(part.state) }]}>{t(part.state)}</Text>
                   </Animated.View>
                 ))}
               </View>
@@ -206,7 +207,7 @@ export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; h
 
             {error ? (
               <Panel style={styles.errorPanel} tone={uncertain ? colors.pending : colors.negative}>
-                <Eyebrow tone={uncertain ? colors.pending : colors.negative}>{uncertain ? 'We do not know yet' : 'What happened'}</Eyebrow>
+                <Eyebrow tone={uncertain ? colors.pending : colors.negative}>{uncertain ? t('We do not know yet') : t('What happened')}</Eyebrow>
                 <Text style={styles.errorText}>{error}</Text>
               </Panel>
             ) : null}
@@ -214,9 +215,9 @@ export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; h
             {/* Whenever nothing is in flight there is always a way back to the
                 form. A finished run must never become a dead end. */}
             <View style={styles.actions}>
-              {phase === 'error' && run.parts.some((part) => part.signature) ? <Button fill label="Ask the chain again" onPress={resume} ghost /> : null}
-              {working ? null : <Button fill label={phase === 'done' ? 'Stake again' : uncertain ? 'Discard and start over' : 'Start over'} onPress={clear} ghost />}
-              {phase === 'done' ? <Button fill label="Close" onPress={() => { clear(); onClose(); }} ghost /> : null}
+              {phase === 'error' && run.parts.some((part) => part.signature) ? <Button fill label={t('Ask the chain again')} onPress={resume} ghost /> : null}
+              {working ? null : <Button fill label={phase === 'done' ? t('Stake again') : uncertain ? t('Discard and start over') : t('Start over')} onPress={clear} ghost />}
+              {phase === 'done' ? <Button fill label={t('Close')} onPress={() => { clear(); onClose(); }} ghost /> : null}
             </View>
 
             <Evidence

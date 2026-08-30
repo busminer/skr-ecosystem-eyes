@@ -11,6 +11,7 @@ import { Sora_400Regular, Sora_600SemiBold, Sora_700Bold } from '@expo-google-fo
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { fetchEcosystemState } from './src/api';
+import { langReady, t, useLang } from './src/i18n';
 import { configureNotifications } from './src/notifications';
 import { hydratePrefs } from './src/prefs';
 import { prepareSound } from './src/sound';
@@ -99,7 +100,7 @@ function TabBar({ tab, onSelect }: { tab: Tab; onSelect: (next: Tab) => void }) 
             style={({ pressed }) => [styles.navItem, pressed && styles.navPressed]}
           >
             <View style={[styles.navBar, active && styles.navBarActive]} />
-            <Text style={[styles.navLabel, active && styles.navLabelActive]}>{item.label}</Text>
+            <Text style={[styles.navLabel, active && styles.navLabelActive]}>{t(item.label)}</Text>
           </Pressable>
         );
       })}
@@ -112,6 +113,10 @@ export default function App() {
   const [detail, setDetail] = useState<FreshnessDetail | null>(null);
   const [stamps, setStamps] = useState<{ metrics: number | null; events: number | null; queue: number | null }>({ metrics: null, events: null, queue: null });
   const [opening, setOpening] = useState(true);
+  const [langLoaded, setLangLoaded] = useState(false);
+  // Nothing on screen may be drawn in the wrong language and then swapped, so
+  // the saved choice is read before the first frame, beside the fonts.
+  useLang();
   const appState = useRef(AppState.currentState);
   const reading = useRef(false);
   const finishOpening = useCallback(() => setOpening(false), []);
@@ -122,6 +127,7 @@ export default function App() {
   });
 
   useEffect(() => { void hydratePrefs(); void configureNotifications(); void prepareSound(); }, []);
+  useEffect(() => { void langReady.then(() => setLangLoaded(true)); }, []);
   // Nothing else hides the native splash, so the first painted frame does it.
   useEffect(() => { if (fontsLoaded) void SplashScreen.hideAsync().catch(() => undefined); }, [fontsLoaded]);
   useEffect(() => {
@@ -170,7 +176,7 @@ export default function App() {
     });
   }, []);
 
-  if (!fontsLoaded) return <View style={styles.boot} />;
+  if (!fontsLoaded || !langLoaded) return <View style={styles.boot} />;
 
   const source = TAB_SOURCE[tab];
   const freshness: Freshness | null = detail ? detail[source] : null;
@@ -185,7 +191,7 @@ export default function App() {
           <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.wordmark}>SKR EYES</Text>
           <View style={styles.status}>
             <View style={[styles.statusDot, { backgroundColor: tone }]} />
-            <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.statusText, { color: tone }]}>{(freshness ?? 'syncing').toUpperCase()}</Text>
+            <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.statusText, { color: tone }]}>{t(freshness ?? 'syncing').toUpperCase()}</Text>
             {source === 'overall' ? null : <Age stamp={stamps[source]} />}
           </View>
         </View>

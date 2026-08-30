@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Clipboard from 'expo-clipboard';
+import { t } from '../i18n';
 import { getSkrShare } from '../../modules/skr-share';
 import { CardArt, EXPORT_HEIGHT, EXPORT_WIDTH, type CardFacts, type CardHandle } from './cardArt';
 
@@ -61,7 +62,7 @@ export async function shareCardPng(base64: string, facts: CardFacts) {
   // together, so the caption lands in the post instead of in the clipboard.
   const native = getSkrShare();
   if (native) {
-    await native.shareImageWithText(file.uri, caption, 'Your SKR staker card');
+    await native.shareImageWithText(file.uri, caption, t('Your SKR staker card'));
     return { uri: file.uri, caption, carried: true, copied: false };
   }
 
@@ -71,9 +72,9 @@ export async function shareCardPng(base64: string, facts: CardFacts) {
   // nothing into a post they have already started. Copied before the sheet
   // opens, because once it is up this app is in the background and the write
   // can be refused.
-  if (!(await Sharing.isAvailableAsync())) throw new Error('This phone has nothing to share with.');
+  if (!(await Sharing.isAvailableAsync())) throw new Error(t('This phone has nothing to share with.'));
   const copied = await Clipboard.setStringAsync(caption).then(() => true).catch(() => false);
-  await Sharing.shareAsync(file.uri, { mimeType: 'image/png', dialogTitle: 'Your SKR staker card' });
+  await Sharing.shareAsync(file.uri, { mimeType: 'image/png', dialogTitle: t('Your SKR staker card') });
   return { uri: file.uri, caption, carried: false, copied };
 }
 

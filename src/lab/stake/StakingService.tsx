@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import { t } from '../../i18n';
 import { colors, font, radius, spacing, type } from '../../theme';
 import { Button, Eyebrow, Panel, Pill, RangeSwitch } from '../kit';
 import { useDeferredStaking } from './useDeferredStaking';
@@ -24,9 +25,9 @@ function clock(stamp: number): string {
 }
 
 function partWord(state: string): { label: string; tone: string } {
-  if (state === 'sent' || state === 'confirmed') return { label: 'staked', tone: colors.positive };
-  if (state === 'unknown') return { label: 'did not go out', tone: colors.negative };
-  return { label: 'waiting', tone: colors.muted };
+  if (state === 'sent' || state === 'confirmed') return { label: t('staked'), tone: colors.positive };
+  if (state === 'unknown') return { label: t('did not go out'), tone: colors.negative };
+  return { label: t('waiting'), tone: colors.muted };
 }
 
 export function StakingService({ wallet }: { wallet: string }) {
@@ -61,10 +62,9 @@ export function StakingService({ wallet }: { wallet: string }) {
   if (!vault.present) {
     return (
       <Panel>
-        <Eyebrow>Staking on a schedule</Eyebrow>
+        <Eyebrow>{t('Staking on a schedule')}</Eyebrow>
         <Text style={styles.lead}>
-          This phone has no Seed Vault, and a schedule can only be signed there. Ordinary staking
-          still works from your profile.
+          {t('This phone has no Seed Vault, and a schedule can only be signed there. Ordinary staking still works from your profile.')}
         </Text>
       </Panel>
     );
@@ -74,19 +74,18 @@ export function StakingService({ wallet }: { wallet: string }) {
     <View style={styles.screen}>
       {!armed ? (
         <Panel>
-          <Eyebrow>Staking on a schedule</Eyebrow>
-          <Text style={styles.headline}>Approve once in the morning. The day stakes itself.</Text>
+          <Eyebrow>{t('Staking on a schedule')}</Eyebrow>
+          <Text style={styles.headline}>{t('Approve once in the morning. The day stakes itself.')}</Text>
           <Text style={styles.lead}>
-            Your key never leaves the Seed Vault and your signatures never leave this phone. You can
-            stop it at any moment, and stopping works even against us.
+            {t('Your key never leaves the Seed Vault and your signatures never leave this phone. You can stop it at any moment, and stopping works even against us.')}
           </Text>
           {setupCost != null && setupCost > 0 ? (
             <Text style={styles.fine}>
-              {`Turning it on costs ${setupCost.toFixed(4)} SOL, held as a deposit and returned in full when you stop. One wallet confirmation.`}
+              {t('Turning it on costs {sol} SOL, held as a deposit and returned in full when you stop. One wallet confirmation.', { sol: setupCost.toFixed(4) })}
             </Text>
           ) : null}
           <Button
-            label={busy === 'setup' ? 'Setting up…' : 'Turn it on'}
+            label={busy === 'setup' ? t('Setting up…') : t('Turn it on')}
             onPress={() => void turnOn()}
             disabled={busy != null}
             fill
@@ -96,7 +95,7 @@ export function StakingService({ wallet }: { wallet: string }) {
 
       {armed && planning ? (
         <Panel>
-          <Eyebrow>Today</Eyebrow>
+          <Eyebrow>{t('Today')}</Eyebrow>
 
           <View style={styles.amountRow}>
             <TextInput
@@ -107,11 +106,11 @@ export function StakingService({ wallet }: { wallet: string }) {
               placeholder="1"
               placeholderTextColor={colors.faint}
             />
-            <Text style={styles.unit}>SKR each time</Text>
+            <Text style={styles.unit}>{t('SKR each time')}</Text>
           </View>
 
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>How many times</Text>
+            <Text style={styles.rowLabel}>{t('How many times')}</Text>
             <RangeSwitch
               value={String(anchorCount)}
               options={['3', '5', '8', '12']}
@@ -120,30 +119,30 @@ export function StakingService({ wallet }: { wallet: string }) {
           </View>
 
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>How far apart</Text>
-            <RangeSwitch value={spread} options={SPREADS} onChange={setSpread} />
+            <Text style={styles.rowLabel}>{t('How far apart')}</Text>
+            <RangeSwitch value={spread} options={SPREADS} label={t} onChange={setSpread} />
           </View>
 
-          {overPrecise ? <Text style={styles.warn}>SKR has six decimals; a seventh cannot be staked.</Text> : null}
-          {tooSmall ? <Text style={styles.warn}>Each time must stake at least 1 SKR.</Text> : null}
+          {overPrecise ? <Text style={styles.warn}>{t('SKR has six decimals; a seventh cannot be staked.')}</Text> : null}
+          {tooSmall ? <Text style={styles.warn}>{t('Each time must stake at least 1 SKR.')}</Text> : null}
           {ready < anchorCount ? (
             <Text style={styles.warn}>
-              {`This phone is set up for ${ready} a day. Tap Turn it on again to raise it to ${anchorCount}.`}
+              {t('This phone is set up for {ready} a day. Tap Turn it on again to raise it to {wanted}.', { ready, wanted: anchorCount })}
             </Text>
           ) : null}
 
           <Text style={styles.summary}>
             {perPart >= MIN_STAKE_RAW
-              ? `${fromRaw(perPart * BigInt(anchorCount))} SKR over the day · ${anchorCount} times · ${SPREAD_MINUTES[spread]} minutes apart`
-              : 'Enter how much to stake each time.'}
+              ? t('{total} SKR over the day · {count} times · {minutes} minutes apart', { total: fromRaw(perPart * BigInt(anchorCount)), count: anchorCount, minutes: SPREAD_MINUTES[spread] ?? 5 })
+              : t('Enter how much to stake each time.')}
           </Text>
 
           <Button
             label={busy === 'signing'
-              ? 'Waiting for your fingerprint…'
+              ? t('Waiting for your fingerprint…')
               : settled
-                ? `Stake ${anchorCount} more`
-                : touches > 1 ? `Approve the day · ${touches} fingerprints` : 'Approve the day'}
+                ? t('Stake {count} more', { count: anchorCount })
+                : touches > 1 ? t('Approve the day · {count} fingerprints', { count: touches }) : t('Approve the day')}
             onPress={() => void approveDay({
               perPartRaw: perPart,
               count: anchorCount,
@@ -158,8 +157,8 @@ export function StakingService({ wallet }: { wallet: string }) {
       {parts.length > 0 ? (
         <Panel>
           <View style={styles.headRow}>
-            <Eyebrow>Today</Eyebrow>
-            <Text style={styles.progress}>{`${done} of ${parts.length} staked`}</Text>
+            <Eyebrow>{t('Today')}</Eyebrow>
+            <Text style={styles.progress}>{t('{done} of {total} staked', { done, total: parts.length })}</Text>
           </View>
 
           {parts.map((part) => {
@@ -175,11 +174,11 @@ export function StakingService({ wallet }: { wallet: string }) {
 
           <Text style={styles.fine}>
             {settled
-              ? 'Every one of these has gone out. The anchors are free again, so another round is one fingerprint away.'
-              : 'Each one goes out on its own when its time comes. Android may be a few minutes late, and for now it only goes out while the app is running — a scheduled wake-up is the next piece.'}
+              ? t('Every one of these has gone out. The anchors are free again, so another round is one fingerprint away.')
+              : t('Each one goes out on its own when its time comes. Android may be a few minutes late, and for now it only goes out while the app is running — a scheduled wake-up is the next piece.')}
           </Text>
 
-          <Button label="Stop the day" onPress={() => void clearPlan()} ghost fill />
+          <Button label={t('Stop the day')} onPress={() => void clearPlan()} ghost fill />
         </Panel>
       ) : null}
 
@@ -187,9 +186,9 @@ export function StakingService({ wallet }: { wallet: string }) {
       {note ? <Text style={styles.note}>{note}</Text> : null}
       {error ? <Text style={styles.warn}>{error}</Text> : null}
       {lamports != null && lamports < 5_000_000 ? (
-        <Text style={styles.warn}>Low on SOL: every stake costs a fraction of a cent in fees.</Text>
+        <Text style={styles.warn}>{t('Low on SOL: every stake costs a fraction of a cent in fees.')}</Text>
       ) : null}
-      <Button label="Refresh" onPress={() => void refresh()} ghost fill />
+      <Button label={t('Refresh')} onPress={() => void refresh()} ghost fill />
     </View>
   );
 }

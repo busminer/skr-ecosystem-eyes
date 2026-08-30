@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { t } from '../i18n';
 import { integer, shortAddress } from '../format';
 import { colors, font, spacing, type } from '../theme';
 import type { WalletProfile } from '../types';
@@ -81,20 +82,20 @@ export function StakerCard({ profile, age, share, claimed, name, networkPosition
         {!claimed && fallback ? null : claimed ? (
           <View style={styles.stats}>
             <View style={styles.stat}>
-              <Text style={styles.statLabel}>WEIGHT</Text>
+              <Text style={styles.statLabel}>{t('WEIGHT')}</Text>
               <Text style={styles.statValue}>{share != null ? `${share < 0.001 ? share.toFixed(5) : share.toFixed(3)}%` : '—'}</Text>
             </View>
             <View style={styles.stat}>
-              <Text style={styles.statLabel}>POSITIONS</Text>
+              <Text style={styles.statLabel}>{t('POSITIONS')}</Text>
               <Text style={styles.statValue}>{profile ? integer(profile.totals.positions) : '—'}</Text>
             </View>
             <View style={styles.stat}>
-              <Text style={styles.statLabel}>READ FROM</Text>
+              <Text style={styles.statLabel}>{t('READ FROM')}</Text>
               <Text style={styles.statMono}>{profile?.positions?.[0]?.stakeAccount ? shortAddress(profile.positions[0].stakeAccount) : '—'}</Text>
             </View>
           </View>
         ) : (
-          <Text style={styles.empty}>Connect the wallet that holds your stake to fill this card in.</Text>
+          <Text style={styles.empty}>{t('Connect the wallet that holds your stake to fill this card in.')}</Text>
         )}
       </View>
     </View>

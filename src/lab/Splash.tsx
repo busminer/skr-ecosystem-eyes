@@ -11,6 +11,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { prefValue, prefsReady } from '../prefs';
+import { t } from '../i18n';
 import { colors, font, spacing } from '../theme';
 
 // The opening: a device stands facing you, turns the way a person turns, and
@@ -163,7 +164,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
 
       <Animated.View style={wordStyle}>
         <Text style={styles.wordmark}>SKR EYES</Text>
-        <Text style={styles.tagline}>every number has a receipt</Text>
+        <Text style={styles.tagline}>{t('every number has a receipt')}</Text>
       </Animated.View>
     </Animated.View>
   );

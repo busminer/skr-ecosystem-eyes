@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { API_BASE_URL } from '../api';
 
 // How long a position has been staked.
@@ -30,7 +31,7 @@ export async function fetchPositionAge(stakeAccount: string): Promise<PositionAg
       headers: { accept: 'application/json' },
       signal: controller.signal,
     });
-    if (!response.ok) throw new Error(`The age service answered ${response.status}`);
+    if (!response.ok) throw new Error(t('The age service answered {status}', { status: response.status }));
     return await response.json() as PositionAge;
   } finally {
     clearTimeout(timer);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { fetchEcosystemState } from '../api';
+import { t } from '../i18n';
 import { compact, integer, relativeTime } from '../format';
 import { colors, font, spacing, type } from '../theme';
 import type { EcosystemState } from '../types';
@@ -35,7 +36,7 @@ export function PulseLab({ onOpenQueue }: { onOpenQueue: () => void }) {
       setState(await fetchEcosystemState());
       setError(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Network unavailable');
+      setError(caught instanceof Error ? caught.message : t('Network unavailable'));
     } finally {
       if (visible) setRefreshing(false);
     }
@@ -67,15 +68,15 @@ export function PulseLab({ onOpenQueue }: { onOpenQueue: () => void }) {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={colors.accent} />}
     >
       <View style={styles.hero}>
-        <Eyebrow>Staked of total supply</Eyebrow>
+        <Eyebrow>{t('Staked of total supply')}</Eyebrow>
         <View style={styles.heroRow}>
           <FlipNumber value={metrics ? splitCompact(metrics.activeStaked).figure : '—'} size={78} />
           <Text style={styles.heroUnit}>{metrics ? splitCompact(metrics.activeStaked).unit : 'SKR'}</Text>
         </View>
         <Text style={styles.heroNote}>
           {metrics
-            ? `${metrics.stakedPercent.toFixed(2)}% of the ${compact(metrics.supply)} SKR total supply · ${integer(metrics.totalPositions)} positions`
-            : error ? 'Waiting for a finalized answer' : 'Reading the vault'}
+            ? t('{percent}% of the {supply} SKR total supply · {positions} positions', { percent: metrics.stakedPercent.toFixed(2), supply: compact(metrics.supply), positions: integer(metrics.totalPositions) })
+            : error ? t('Waiting for a finalized answer') : t('Reading the vault')}
         </Text>
       </View>
       <View style={styles.meterWrap}>
@@ -84,7 +85,7 @@ export function PulseLab({ onOpenQueue }: { onOpenQueue: () => void }) {
 
       <Panel style={styles.flowPanel}>
         <View style={styles.flowHead}>
-          <Eyebrow>{RANGE_TITLE[range]}</Eyebrow>
+          <Eyebrow>{t(RANGE_TITLE[range])}</Eyebrow>
           <RangeSwitch value={range} options={[...RANGES]} onChange={(next) => setRange(next as Range)} />
         </View>
 
@@ -96,51 +97,51 @@ export function PulseLab({ onOpenQueue }: { onOpenQueue: () => void }) {
         <View style={styles.legend}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.positive }]} />
-            <Text style={styles.legendText}>{period ? `${compact(period.staked)} staked` : 'staked'}</Text>
+            <Text style={styles.legendText}>{period ? t('{amount} staked', { amount: compact(period.staked) }) : t('staked')}</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.negative }]} />
-            <Text style={styles.legendText}>{period ? `${compact(period.unstaked)} asked out` : 'asked out'}</Text>
+            <Text style={styles.legendText}>{period ? t('{amount} asked out', { amount: compact(period.unstaked) }) : t('asked out')}</Text>
           </View>
-          <Text style={styles.legendMuted}>{period ? `${integer(period.wallets)} wallets` : ''}</Text>
+          <Text style={styles.legendMuted}>{period ? t('{count} wallets', { count: integer(period.wallets) }) : ''}</Text>
         </View>
         <Text style={styles.shape}>
-          {range === '24h' ? 'one bar per hour' : `${RANGE_TITLE[range].toLowerCase()} as one total · daily bars need a server pass`}
+          {range === '24h' ? t('one bar per hour') : t('{range} as one total · daily bars need a server pass', { range: t(RANGE_TITLE[range]).toLowerCase() })}
         </Text>
 
         <View style={styles.flowFoot}>
           <Text style={[styles.netFlow, { color: (period?.netFlow ?? 0) >= 0 ? colors.positive : colors.negative }]}>
-            {period ? `${period.netFlow >= 0 ? '+' : '−'}${compact(Math.abs(period.netFlow))} net` : '—'}
+            {period ? t('{sign}{amount} net', { sign: period.netFlow >= 0 ? '+' : '−', amount: compact(Math.abs(period.netFlow)) }) : '—'}
           </Text>
-          {partial ? <Text style={styles.partial}>history covers {Math.floor(coverageDays)}d</Text> : null}
+          {partial ? <Text style={styles.partial}>{t('history covers {days}d', { days: Math.floor(coverageDays) })}</Text> : null}
         </View>
       </Panel>
 
       <View style={styles.tiles}>
         <Tile
-          label="In cooldown"
+          label={t('In cooldown')}
           value={metrics ? compact(metrics.pendingUnstake) : '—'}
           unit="SKR"
-          note={metrics ? `${integer(metrics.pendingPositions)} positions waiting out the 48 hours` : undefined}
+          note={metrics ? t('{count} positions waiting out the 48 hours', { count: integer(metrics.pendingPositions) }) : undefined}
           tone={colors.pending}
           onPress={onOpenQueue}
         />
         <Tile
-          label="Ready to exit"
+          label={t('Ready to exit')}
           value={metrics ? compact(metrics.withdrawable) : '—'}
           unit="SKR"
-          note="Cooldown finished, not yet withdrawn"
+          note={t('Cooldown finished, not yet withdrawn')}
           tone={colors.positive}
           onPress={onOpenQueue}
         />
       </View>
 
       <Panel style={styles.railPanel}>
-        <Eyebrow>When the queue matures</Eyebrow>
+        <Eyebrow>{t('When the queue matures')}</Eyebrow>
         <View style={styles.railBody}>
           <HorizonRail
             bands={[
-              { label: 'ready', value: horizon?.ready ?? 0, tone: colors.positive, display: horizon ? compact(horizon.ready) : '—' },
+              { label: t('ready'), value: horizon?.ready ?? 0, tone: colors.positive, display: horizon ? compact(horizon.ready) : '—' },
               { label: '0–6h', value: horizon?.next6h ?? 0, tone: colors.pending, display: horizon ? compact(horizon.next6h) : '—' },
               { label: '6–12h', value: horizon?.next12h ?? 0, tone: colors.pending, display: horizon ? compact(horizon.next12h) : '—' },
               { label: '12–24h', value: horizon?.next24h ?? 0, tone: colors.accent, display: horizon ? compact(horizon.next24h) : '—' },

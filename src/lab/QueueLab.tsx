@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { fetchEcosystemState } from '../api';
+import { t } from '../i18n';
 import { compact, integer, shortAddress } from '../format';
 import { colors, font, spacing, type } from '../theme';
 import type { EcosystemState } from '../types';
@@ -60,20 +61,20 @@ export function QueueLab() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={colors.accent} />}
     >
       <Hero
-        label="Ready to withdraw"
+        label={t('Ready to withdraw')}
         value={metrics ? compact(metrics.withdrawable) : '—'}
         unit="SKR"
         tone={colors.positive}
         small
-        note={metrics ? `${compact(metrics.pendingUnstake)} SKR is still cooling down across ${integer(metrics.pendingPositions)} positions` : 'Reading the queue'}
+        note={metrics ? t('{amount} SKR is still cooling down across {count} positions', { amount: compact(metrics.pendingUnstake), count: integer(metrics.pendingPositions) }) : t('Reading the queue')}
       />
 
       <Panel style={styles.panel}>
-        <Eyebrow>Time to maturity</Eyebrow>
+        <Eyebrow>{t('Time to maturity')}</Eyebrow>
         <View style={styles.rail}>
           <HorizonRail
             bands={[
-              { label: 'ready', value: horizon?.ready ?? 0, tone: colors.positive, display: horizon ? compact(horizon.ready) : '—' },
+              { label: t('ready'), value: horizon?.ready ?? 0, tone: colors.positive, display: horizon ? compact(horizon.ready) : '—' },
               { label: '0–6h', value: horizon?.next6h ?? 0, tone: colors.pending, display: horizon ? compact(horizon.next6h) : '—' },
               { label: '6–12h', value: horizon?.next12h ?? 0, tone: colors.pending, display: horizon ? compact(horizon.next12h) : '—' },
               { label: '12–24h', value: horizon?.next24h ?? 0, tone: colors.accent, display: horizon ? compact(horizon.next24h) : '—' },
@@ -84,8 +85,8 @@ export function QueueLab() {
       </Panel>
 
       <View style={styles.listHead}>
-        <Eyebrow>Exits in flight, soonest first</Eyebrow>
-        <Text style={styles.listCount}>{queue.length} shown</Text>
+        <Eyebrow>{t('Exits in flight, soonest first')}</Eyebrow>
+        <Text style={styles.listCount}>{t('{count} shown', { count: queue.length })}</Text>
       </View>
 
       <Panel style={styles.list}>
@@ -99,12 +100,12 @@ export function QueueLab() {
                 <Text style={styles.rowWallet}>{shortAddress(position.wallet)}</Text>
               </View>
               <Text style={[styles.rowTime, { color: ready ? colors.positive : colors.text }]}>
-                {ready ? 'ready' : remaining(position.unlockAt - now)}
+                {ready ? t('ready') : remaining(position.unlockAt - now)}
               </Text>
             </View>
           );
         })}
-        {queue.length === 0 ? <Text style={styles.empty}>Nothing is queued to leave right now.</Text> : null}
+        {queue.length === 0 ? <Text style={styles.empty}>{t('Nothing is queued to leave right now.')}</Text> : null}
       </Panel>
 
       <Evidence

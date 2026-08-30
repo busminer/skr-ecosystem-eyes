@@ -3,6 +3,7 @@ import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, Text, T
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError, fetchEcosystemState, fetchWalletProfile } from '../api';
+import { t } from '../i18n';
 import { compact, integer, shortAddress } from '../format';
 import { connectReadOnlyWallet } from '../mwa';
 import { clearStoredSchedule, scheduleUnlockAlerts } from '../notifications';
@@ -129,14 +130,14 @@ export function MyLab() {
       const accounts = next.positions.map((position) => position.stakeAccount).filter(Boolean);
       setAgeError(null);
       void fetchWalletAge(accounts, (partial) => setAge((current) => current?.exact ? current : partial))
-        .then((final) => { if (final) setAge(final); else setAgeError('the chain returned no signatures'); })
-        .catch((caught) => setAgeError(caught instanceof Error ? caught.message : 'age lookup failed'));
+        .then((final) => { if (final) setAge(final); else setAgeError(t('the chain returned no signatures')); })
+        .catch((caught) => setAgeError(caught instanceof Error ? caught.message : t('age lookup failed')));
     } catch (caught) {
       if (quiet) return;
       setProfile(null);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      if (caught instanceof ApiError && caught.status === 503) setError('The finalized snapshot is still warming up. Try again in a moment.');
-      else setError(caught instanceof Error ? caught.message : 'This position could not be read');
+      if (caught instanceof ApiError && caught.status === 503) setError(t('The finalized snapshot is still warming up. Try again in a moment.'));
+      else setError(caught instanceof Error ? caught.message : t('This position could not be read'));
     } finally {
       if (!quiet) setBusy(false);
     }
@@ -153,7 +154,7 @@ export function MyLab() {
       await inspect(account.address);
     } catch (caught) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setError(caught instanceof Error ? caught.message : 'The wallet request was cancelled');
+      setError(caught instanceof Error ? caught.message : t('The wallet request was cancelled'));
       setBusy(false);
     }
   }, [inspect]);
@@ -165,9 +166,9 @@ export function MyLab() {
     try {
       const count = await scheduleUnlockAlerts(profile);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setAlertStatus(count ? `${count} unlock alert${count === 1 ? '' : 's'} armed on this phone.` : 'Nothing left to wait for — the cooldown is already over.');
+      setAlertStatus(count ? (count === 1 ? t('1 unlock alert armed on this phone.') : t('{count} unlock alerts armed on this phone.', { count })) : t('Nothing left to wait for — the cooldown is already over.'));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Alerts could not be scheduled');
+      setError(caught instanceof Error ? caught.message : t('Alerts could not be scheduled'));
     } finally {
       setBusy(false);
     }
@@ -183,15 +184,15 @@ export function MyLab() {
     try {
       void Haptics.selectionAsync();
       const png = await cardArt.current?.toPng();
-      if (!png) throw new Error('The card is not ready yet');
+      if (!png) throw new Error(t('The card is not ready yet'));
       const shared = await shareCardPng(png, cardFacts(profile, age, walletLabel, networkPositions));
       setShareNote(shared.carried
         ? null
         : shared.copied
-          ? 'Caption copied. Paste it next to the picture.'
-          : 'This phone would not take the caption — type it yourself.');
+          ? t('Caption copied. Paste it next to the picture.')
+          : t('This phone would not take the caption — type it yourself.'));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'The card could not be drawn');
+      setError(caught instanceof Error ? caught.message : t('The card could not be drawn'));
     } finally {
       setSharing(false);
     }
@@ -248,14 +249,14 @@ export function MyLab() {
           They share a wallet and nothing else, so they share a screen and not a
           scroll — mixing a staking plan into the profile would bury it. */}
       <View style={styles.sectionTabs}>
-        <RangeSwitch value={section} options={SECTIONS} onChange={setSection} />
+        <RangeSwitch value={section} options={SECTIONS} label={t} onChange={setSection} />
       </View>
 
       {section === 'Staking service' ? (
         claimed || profile ? (
           <StakingService wallet={profile!.wallet} />
         ) : (
-          <Text style={styles.lead}>Connect a wallet first: a schedule is signed by the wallet that owns it.</Text>
+          <Text style={styles.lead}>{t('Connect a wallet first: a schedule is signed by the wallet that owns it.')}</Text>
         )
       ) : (
       <>
@@ -276,24 +277,24 @@ export function MyLab() {
         <>
           <View style={styles.tiles}>
             <Tile
-              label="Leaving"
+              label={t('Leaving')}
               value={compact(profile!.totals.pendingUnstake)}
               unit="SKR"
-              note={`${integer(profile!.totals.pendingPositions)} position(s) in cooldown`}
+              note={t('{count} position(s) in cooldown', { count: integer(profile!.totals.pendingPositions) })}
               tone={colors.pending}
             />
             <Tile
-              label={profile!.totals.withdrawable > 0 ? 'Ready now' : 'Next unlock'}
+              label={profile!.totals.withdrawable > 0 ? t('Ready now') : t('Next unlock')}
               value={profile!.totals.withdrawable > 0 ? compact(profile!.totals.withdrawable) : nextUnlock ? countdown(nextUnlock - now) : '—'}
               unit={profile!.totals.withdrawable > 0 ? 'SKR' : undefined}
-              note={profile!.totals.withdrawable > 0 ? 'Cooldown finished' : nextUnlock ? 'Until this position is free' : 'Nothing queued'}
+              note={profile!.totals.withdrawable > 0 ? t('Cooldown finished') : nextUnlock ? t('Until this position is free') : t('Nothing queued')}
               tone={profile!.totals.withdrawable > 0 ? colors.positive : colors.accent}
             />
           </View>
 
           <Panel style={styles.sharePanel}>
             <View style={styles.shareHead}>
-              <View style={styles.shareLabel}><Eyebrow>Your weight in the vault</Eyebrow></View>
+              <View style={styles.shareLabel}><Eyebrow>{t('Your weight in the vault')}</Eyebrow></View>
               <Text style={styles.shareValue}>{share != null ? `${share.toFixed(5)}%` : '—'}</Text>
             </View>
             <View style={styles.shareMeter}>
@@ -302,24 +303,24 @@ export function MyLab() {
             <Text style={styles.shareNote}>
               {age?.days != null
                 ? age.exact
-                  ? `First stake ${age.days} days ago, read from the oldest signature on your position account.`
-                  : `Held at least ${age.days} days. Your position has a long signature history, so the walk back is still going.`
-                : 'Reading the age of your position from the chain…'}
+                  ? t('First stake {days} days ago, read from the oldest signature on your position account.', { days: age.days })
+                  : t('Held at least {days} days. Your position has a long signature history, so the walk back is still going.', { days: age.days })
+                : t('Reading the age of your position from the chain…')}
             </Text>
           </Panel>
 
-          <Button label="Stake SKR" onPress={() => { void Haptics.selectionAsync(); setStaking(true); }} />
+          <Button label={t('Stake SKR')} onPress={() => { void Haptics.selectionAsync(); setStaking(true); }} />
           <Button
-            label={sharing ? 'Drawing your card…' : 'Share your card'}
+            label={sharing ? t('Drawing your card…') : t('Share your card')}
             onPress={() => void shareCard()}
             disabled={sharing || busy}
             tone={colors.metal}
           />
 
           <View style={styles.actions}>
-            <Button fill label={alertStatus ? 'Alerts armed' : 'Wake me at unlock'} onPress={() => void enableAlerts()} disabled={busy || !nextUnlock} ghost />
-            <Button fill label="Refresh" onPress={() => void inspect(address)} disabled={busy} ghost />
-            <Button fill label="Disconnect" onPress={() => void disconnect()} ghost />
+            <Button fill label={alertStatus ? t('Alerts armed') : t('Wake me at unlock')} onPress={() => void enableAlerts()} disabled={busy || !nextUnlock} ghost />
+            <Button fill label={t('Refresh')} onPress={() => void inspect(address)} disabled={busy} ghost />
+            <Button fill label={t('Disconnect')} onPress={() => void disconnect()} ghost />
           </View>
           {shareNote ? <Text style={styles.status}>{shareNote}</Text> : null}
           {alertStatus ? <Text style={styles.status}>{alertStatus}</Text> : null}
@@ -339,25 +340,25 @@ export function MyLab() {
         <>
           <Text style={styles.lead}>
             {profile && !profile.found
-              ? 'This address holds no SKR position right now.'
-              : 'Connect the wallet that holds your stake, or paste any public address. Nothing is signed.'}
+              ? t('This address holds no SKR position right now.')
+              : t('Connect the wallet that holds your stake, or paste any public address. Nothing is signed.')}
           </Text>
-          <Button label="Connect Solana Mobile" onPress={() => void connect()} disabled={busy} />
+          <Button label={t('Connect Solana Mobile')} onPress={() => void connect()} disabled={busy} />
           <View style={styles.orRow}>
             <View style={styles.orLine} />
-            <Text style={styles.or}>OR</Text>
+            <Text style={styles.or}>{t('OR')}</Text>
             <View style={styles.orLine} />
           </View>
           <TextInput
             autoCapitalize="none"
             autoCorrect={false}
-            placeholder="Paste a Solana address"
+            placeholder={t('Paste a Solana address')}
             placeholderTextColor={colors.faint}
             value={address}
             onChangeText={setAddress}
             style={styles.input}
           />
-          <Button label="Look up" onPress={() => void inspect(address)} disabled={busy || !address.trim()} ghost />
+          <Button label={t('Look up')} onPress={() => void inspect(address)} disabled={busy || !address.trim()} ghost />
         </>
       )}
 

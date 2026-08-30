@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { EcosystemState, WalletProfile } from './types';
 
 // Store builds are intentionally pinned to the reviewed HTTPS backend.
@@ -33,7 +34,7 @@ async function getJson<T>(path: string): Promise<T> {
     } catch {
       // Status remains authoritative when an upstream proxy returns non-JSON.
     }
-    throw new ApiError(response.status, detail || `SKR Eyes API returned ${response.status}`);
+    throw new ApiError(response.status, detail || t('SKR Eyes API returned {status}', { status: response.status }));
   }
   return response.json() as Promise<T>;
 }

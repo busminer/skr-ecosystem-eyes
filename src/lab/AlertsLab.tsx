@@ -4,15 +4,20 @@ import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
 import { resolveAlertThresholds } from '../alertThresholds';
 import { fetchEcosystemState, fetchWalletProfile } from '../api';
+import { LANGS, LANG_LABEL, lang, setLang, t, useLang, type Lang } from '../i18n';
 import { compact } from '../format';
 import { clearStoredSchedule, hasUnlockAlerts, scheduleNotificationProof, scheduleUnlockAlerts } from '../notifications';
 import { usePref } from '../prefs';
 import { readSessionAddress } from '../session';
 import { colors, font, spacing, type } from '../theme';
 import type { EcosystemState, WalletProfile } from '../types';
-import { Button, Evidence, Eyebrow, Hairline, Panel } from './kit';
+import { Button, Evidence, Eyebrow, Hairline, Panel, RangeSwitch } from './kit';
 
 export function AlertsLab() {
+  // The language switch lives here because this is the only settings screen the
+  // app has. Reading it through the hook is what redraws every other screen the
+  // moment it changes.
+  const language = useLang();
   const [granted, setGranted] = useState<boolean | null>(null);
   // False once Android has refused for good and stopped showing its dialog.
   const [canAsk, setCanAsk] = useState(true);
@@ -47,17 +52,17 @@ export function AlertsLab() {
       setGranted(result.granted);
       setCanAsk(result.canAskAgain !== false);
       setStatus(result.granted
-        ? 'This phone can now wake you.'
+        ? t('This phone can now wake you.')
         : result.canAskAgain === false
-          ? 'Android will not ask again. Turn notifications on for SKR Eyes in the system settings.'
-          : 'Android is holding notifications back for this app.');
+          ? t('Android will not ask again. Turn notifications on for SKR Eyes in the system settings.')
+          : t('Android is holding notifications back for this app.'));
     } catch {
-      setStatus('Android did not answer the permission request. Try again, or turn notifications on in the system settings.');
+      setStatus(t('Android did not answer the permission request. Try again, or turn notifications on in the system settings.'));
     }
   }, []);
 
   const openSettings = useCallback(() => {
-    void Linking.openSettings().catch(() => setStatus('This phone would not open its settings screen.'));
+    void Linking.openSettings().catch(() => setStatus(t('This phone would not open its settings screen.')));
   }, []);
 
   const toggleUnlock = useCallback(async (next: boolean) => {
@@ -69,15 +74,15 @@ export function AlertsLab() {
       if (next) {
         const count = await scheduleUnlockAlerts(profile);
         setArmed(true);
-        setStatus(`${count} reminder${count === 1 ? '' : 's'} set on this phone for your unlock.`);
+        setStatus(count === 1 ? t('1 reminder set on this phone for your unlock.') : t('{count} reminders set on this phone for your unlock.', { count }));
       } else {
         await clearStoredSchedule(profile.wallet);
         setArmed(false);
-        setStatus('The reminders for your unlock were cancelled.');
+        setStatus(t('The reminders for your unlock were cancelled.'));
       }
     } catch (caught) {
       setArmed(await hasUnlockAlerts(profile.wallet).catch(() => false));
-      setStatus(caught instanceof Error ? caught.message : 'The alert could not be changed.');
+      setStatus(caught instanceof Error ? caught.message : t('The alert could not be changed.'));
     } finally {
       setArming(false);
     }
@@ -87,9 +92,9 @@ export function AlertsLab() {
     try {
       await scheduleNotificationProof();
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setStatus('A test notification will arrive in a few seconds.');
+      setStatus(t('A test notification will arrive in a few seconds.'));
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : 'The test notification could not be scheduled');
+      setStatus(caught instanceof Error ? caught.message : t('The test notification could not be scheduled'));
     }
   }, []);
 
@@ -100,17 +105,17 @@ export function AlertsLab() {
       <Panel style={styles.panel}>
         <View style={styles.permissionHead}>
           <View style={styles.permissionCopy}>
-            <Eyebrow tone={granted ? colors.positive : colors.pending}>{granted ? 'Notifications allowed' : 'Notifications off'}</Eyebrow>
+            <Eyebrow tone={granted ? colors.positive : colors.pending}>{granted ? t('Notifications allowed') : t('Notifications off')}</Eyebrow>
             <Text style={styles.permissionText}>
-              {granted ? 'Alerts are scheduled on the phone itself. Nothing about you leaves the device.' : 'Allow notifications and this app can wake you exactly when your cooldown ends.'}
+              {granted ? t('Alerts are scheduled on the phone itself. Nothing about you leaves the device.') : t('Allow notifications and this app can wake you exactly when your cooldown ends.')}
             </Text>
           </View>
         </View>
         {!granted ? (
           <View style={styles.permissionAction}>
             {canAsk
-              ? <Button label="Allow notifications" onPress={() => void ask()} />
-              : <Button label="Open settings" onPress={openSettings} />}
+              ? <Button label={t('Allow notifications')} onPress={() => void ask()} />
+              : <Button label={t('Open settings')} onPress={openSettings} />}
           </View>
         ) : null}
       </Panel>
@@ -118,13 +123,13 @@ export function AlertsLab() {
       <Panel style={styles.panel}>
         <View style={styles.toggleRow}>
           <View style={styles.toggleCopy}>
-            <Text style={styles.toggleLabel}>Wake me at my unlock</Text>
+            <Text style={styles.toggleLabel}>{t('Wake me at my unlock')}</Text>
             <Text style={styles.toggleNote}>
               {!profile
-                ? 'Connect your wallet on the Me screen and this switch becomes live.'
+                ? t('Connect your wallet on the Me screen and this switch becomes live.')
                 : profile.nextUnlockAt
-                  ? 'One hour before, and again the moment the cooldown ends. Scheduled by this phone from the exact on-chain time.'
-                  : 'Nothing of yours is unlocking, so there is nothing to wake you for yet.'}
+                  ? t('One hour before, and again the moment the cooldown ends. Scheduled by this phone from the exact on-chain time.')
+                  : t('Nothing of yours is unlocking, so there is nothing to wake you for yet.')}
             </Text>
           </View>
           {arming
@@ -142,10 +147,9 @@ export function AlertsLab() {
         <Hairline />
         <View style={styles.toggleRow}>
           <View style={styles.toggleCopy}>
-            <Text style={styles.toggleLabel}>Large moves while you were away</Text>
+            <Text style={styles.toggleLabel}>{t('Large moves while you were away')}</Text>
             <Text style={styles.toggleNote}>
-              Anything above the threshold below is summed up at the top of Flow when you come
-              back to it, and lands with a chime and a buzz while you are watching.
+              {t('Anything above the threshold below is summed up at the top of Flow when you come back to it, and lands with a chime and a buzz while you are watching.')}
             </Text>
           </View>
           <Switch
@@ -157,29 +161,44 @@ export function AlertsLab() {
         </View>
         <Hairline />
         <Text style={[styles.toggleNote, styles.spaced]}>
-          Waking the phone for someone else's large move while the app is closed needs a
-          background check that Android schedules on its own terms. That is the next version —
-          promising it here before it exists would be the same lie this screen just removed.
+          {t("Waking the phone for someone else's large move while the app is closed needs a background check that Android schedules on its own terms. That is the next version — promising it here before it exists would be the same lie this screen just removed.")}
         </Text>
       </Panel>
 
       <Panel style={styles.panel}>
-        <Eyebrow>What counts as large in Flow</Eyebrow>
+        <Eyebrow>{t('What counts as large in Flow')}</Eyebrow>
         <View style={styles.thresholds}>
           {(['stake', 'unstake', 'withdraw'] as const).map((event) => (
             <View key={event} style={styles.thresholdRow}>
-              <Text style={styles.thresholdLabel}>{event}</Text>
+              <Text style={styles.thresholdLabel}>{t(event)}</Text>
               <Text style={styles.thresholdValue}>{compact(config.events[event].standard)}</Text>
               <Text style={styles.thresholdCritical}>{compact(config.events[event].critical)}</Text>
             </View>
           ))}
         </View>
         <Text style={styles.thresholdNote}>
-          {fallback ? 'Built-in thresholds, used by the chime and the buzz on the Flow screen, until the server publishes its own.' : 'These come from the server, move with real traffic, and drive the chime and the buzz on the Flow screen.'}
+          {fallback ? t('Built-in thresholds, used by the chime and the buzz on the Flow screen, until the server publishes its own.') : t('These come from the server, move with real traffic, and drive the chime and the buzz on the Flow screen.')}
         </Text>
       </Panel>
 
-      <Button label="Send a test notification" onPress={() => void proof()} ghost />
+      <Panel style={styles.panel}>
+        <View style={styles.toggleRow}>
+          <View style={styles.toggleCopy}>
+            <Text style={styles.toggleLabel}>{t('Language')}</Text>
+            <Text style={styles.toggleNote}>
+              {t('The app follows your phone until you choose here. The card you share stays in English, so it reads the same to everyone who sees it.')}
+            </Text>
+          </View>
+          <RangeSwitch
+            value={language}
+            options={[...LANGS]}
+            label={(option) => LANG_LABEL[option as Lang] ?? option}
+            onChange={(next) => { void Haptics.selectionAsync(); setLang(next as Lang); }}
+          />
+        </View>
+      </Panel>
+
+      <Button label={t('Send a test notification')} onPress={() => void proof()} ghost />
       {status ? <Text style={styles.status}>{status}</Text> : null}
 
       <Evidence

@@ -3,6 +3,7 @@ import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 import { API_BASE_URL } from '../api';
+import { t } from '../i18n';
 import { compact, shortAddress } from '../format';
 import { usePref } from '../prefs';
 import { readSeenAt, writeSeenAt } from './away';
@@ -102,19 +103,19 @@ function Headline({ event, now }: { event: FlowEvent; now: number }) {
   return (
     <Panel style={[styles.headline, { borderColor: tone }]} tone={tone}>
       <View style={styles.headlineTop}>
-        <Eyebrow tone={tone}>{today ? 'Biggest seen today' : 'Last big move'}</Eyebrow>
-        <Text style={styles.headlineTime}>{ago(event.blockTime, now)} ago</Text>
+        <Eyebrow tone={tone}>{today ? t('Biggest seen today') : t('Last big move')}</Eyebrow>
+        <Text style={styles.headlineTime}>{t('{age} ago', { age: ago(event.blockTime, now) })}</Text>
       </View>
       <View style={styles.headlineRow}>
         <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.headlineAmount}>
           {event.amount != null ? compact(event.amount) : '—'}
         </Text>
         <Text style={styles.headlineUnit}>SKR</Text>
-        <Text style={[styles.headlineKind, { color: tone }]}>{(VERB[event.type] ?? event.type).toUpperCase()}</Text>
+        <Text style={[styles.headlineKind, { color: tone }]}>{t(VERB[event.type] ?? event.type).toUpperCase()}</Text>
       </View>
       <View style={styles.headlineFoot}>
         <Text style={styles.wallet}>{shortAddress(event.wallet)}</Text>
-        <Text style={styles.slot}>slot {event.slot.toLocaleString('en-US')}</Text>
+        <Text style={styles.slot}>{t('slot {slot}', { slot: event.slot.toLocaleString('en-US') })}</Text>
       </View>
     </Panel>
   );
@@ -126,18 +127,18 @@ function BigEvent({ event, now }: { event: FlowEvent; now: number }) {
     <Animated.View entering={FadeInDown.duration(280)} layout={Layout.duration(220)}>
       <Panel style={styles.card} tone={tone}>
         <View style={styles.cardTop}>
-          <Text style={[styles.kind, { color: tone }]}>{(VERB[event.type] ?? event.type).toUpperCase()}</Text>
-          <Text style={styles.time}>{ago(event.blockTime, now)} ago</Text>
+          <Text style={[styles.kind, { color: tone }]}>{t(VERB[event.type] ?? event.type).toUpperCase()}</Text>
+          <Text style={styles.time}>{t('{age} ago', { age: ago(event.blockTime, now) })}</Text>
         </View>
         <View style={styles.amountRow}>
           <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.amount}>
-            {event.amount != null ? compact(event.amount) : 'amount unavailable'}
+            {event.amount != null ? compact(event.amount) : t('amount unavailable')}
           </Text>
           {event.amount != null ? <Text style={styles.unit}>SKR</Text> : null}
         </View>
         <View style={styles.cardFoot}>
           <Text style={styles.wallet}>{shortAddress(event.wallet)}</Text>
-          <Text style={styles.slot}>slot {event.slot.toLocaleString('en-US')}</Text>
+          <Text style={styles.slot}>{t('slot {slot}', { slot: event.slot.toLocaleString('en-US') })}</Text>
         </View>
       </Panel>
     </Animated.View>
@@ -149,7 +150,7 @@ function FoldedBig({ count, total, expanded, onPress }: { count: number; total: 
     <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.folded, pressed && styles.foldedPressed]}>
       <View style={styles.foldedMark} />
       <Text style={styles.foldedText}>
-        {expanded ? 'Fold the older large moves' : `${count} more large move${count === 1 ? '' : 's'}`}
+        {expanded ? t('Fold the older large moves') : count === 1 ? t('1 more large move') : t('{count} more large moves', { count })}
       </Text>
       <Text style={styles.foldedTotal}>{expanded ? '' : `${compact(total)} SKR`}</Text>
       <Text style={styles.foldedChevron}>{expanded ? '×' : '+'}</Text>
@@ -162,7 +163,7 @@ function SmallEvent({ event, now }: { event: FlowEvent; now: number }) {
   return (
     <Animated.View entering={FadeInDown.duration(220)} layout={Layout.duration(200)} style={styles.row}>
       <View style={[styles.rowMark, { backgroundColor: tone }]} />
-      <Text style={[styles.rowKind, { color: tone }]}>{(VERB[event.type] ?? event.type).toUpperCase()}</Text>
+      <Text style={[styles.rowKind, { color: tone }]}>{t(VERB[event.type] ?? event.type).toUpperCase()}</Text>
       <Text numberOfLines={1} style={styles.rowAmount}>{event.amount != null ? compact(event.amount) : '—'}</Text>
       <Text numberOfLines={1} style={styles.rowWallet}>{shortAddress(event.wallet)}</Text>
       <Text style={styles.rowTime}>{ago(event.blockTime, now)}</Text>
@@ -298,12 +299,12 @@ export function FlowLab({ active }: { active: boolean }) {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.head}>
         <View style={styles.headCopy}>
-          <Eyebrow tone={live ? colors.positive : colors.pending}>{live ? 'Live from the vault' : 'Reconnecting'}</Eyebrow>
-          <Text style={styles.title}>{arrivals > 0 ? `${arrivals} landed while you watched` : 'Watching the chain'}</Text>
+          <Eyebrow tone={live ? colors.positive : colors.pending}>{live ? t('Live from the vault') : t('Reconnecting')}</Eyebrow>
+          <Text style={styles.title}>{arrivals > 0 ? t('{count} landed while you watched', { count: arrivals }) : t('Watching the chain')}</Text>
         </View>
         <View style={styles.headSwitches}>
           <Pressable accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={() => { void Haptics.selectionAsync(); setHaptics(!haptics); }} style={styles.hapticToggle}>
-            <Text style={[styles.hapticLabel, haptics && styles.hapticOn]}>{haptics ? 'BUZZ ON' : 'BUZZ OFF'}</Text>
+            <Text style={[styles.hapticLabel, haptics && styles.hapticOn]}>{haptics ? t('BUZZ ON') : t('BUZZ OFF')}</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -311,7 +312,7 @@ export function FlowLab({ active }: { active: boolean }) {
             onPress={() => { void Haptics.selectionAsync(); const next = !sound; setSound(next); if (next) playCue('surge', 0.6); }}
             style={styles.hapticToggle}
           >
-            <Text style={[styles.hapticLabel, sound && styles.hapticOn]}>{sound ? 'SOUND ON' : 'SOUND OFF'}</Text>
+            <Text style={[styles.hapticLabel, sound && styles.hapticOn]}>{sound ? t('SOUND ON') : t('SOUND OFF')}</Text>
           </Pressable>
         </View>
       </View>
@@ -320,12 +321,12 @@ export function FlowLab({ active }: { active: boolean }) {
         <Pressable accessibilityRole="button" onPress={() => { void Haptics.selectionAsync(); setAway(null); }}>
           <Panel style={styles.away} tone={colors.metal}>
             <View style={styles.awayTop}>
-              <Eyebrow tone={colors.metal}>While you were away</Eyebrow>
+              <Eyebrow tone={colors.metal}>{t('While you were away')}</Eyebrow>
               <Text style={styles.awayClose}>×</Text>
             </View>
             <Text style={styles.awayText}>
-              {away.count === 1 ? 'One large move landed' : `${away.count} large moves landed`}
-              {away.biggest.amount != null ? `, the biggest ${compact(away.biggest.amount)} SKR ${VERB[away.biggest.type] ?? away.biggest.type}` : ''}.
+              {away.count === 1 ? t('One large move landed') : t('{count} large moves landed', { count: away.count })}
+              {away.biggest.amount != null ? t(', the biggest {amount} SKR {verb}', { amount: compact(away.biggest.amount), verb: t(VERB[away.biggest.type] ?? away.biggest.type) }) : ''}.
             </Text>
           </Panel>
         </Pressable>
@@ -345,16 +346,16 @@ export function FlowLab({ active }: { active: boolean }) {
               onPress={() => { void Haptics.selectionAsync(); setFilter(option.key); }}
               style={[styles.filter, on && styles.filterOn]}
             >
-              <Text style={[styles.filterLabel, on && styles.filterLabelOn]}>{option.label}</Text>
+              <Text style={[styles.filterLabel, on && styles.filterLabelOn]}>{t(option.label)}</Text>
             </Pressable>
           );
         })}
-        <Text style={styles.filterNote}>{minimum > 0 ? `only ${compact(minimum)} SKR and up` : 'everything, dust included'}</Text>
+        <Text style={styles.filterNote}>{minimum > 0 ? t('only {amount} SKR and up', { amount: compact(minimum) }) : t('everything, dust included')}</Text>
       </View>
 
       {events.length === 0 ? (
         <Panel style={styles.empty}>
-          <Text style={styles.emptyText}>Waiting for the next finalized event of this size.</Text>
+          <Text style={styles.emptyText}>{t('Waiting for the next finalized event of this size.')}</Text>
         </Panel>
       ) : null}
 

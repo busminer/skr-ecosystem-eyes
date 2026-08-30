@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { t } from './i18n';
 import type { WalletProfile } from './types';
 
 const STORAGE_PREFIX = 'skr-eyes:unlock-alerts:';
@@ -52,7 +53,7 @@ export async function hasUnlockAlerts(wallet: string): Promise<boolean> {
 
 export async function scheduleUnlockAlerts(profile: WalletProfile): Promise<number> {
   const unlockAt = profile.nextUnlockAt;
-  if (!unlockAt) throw new Error('This wallet has no pending SKR unlock.');
+  if (!unlockAt) throw new Error(t('This wallet has no pending SKR unlock.'));
 
   const permission = await Notifications.requestPermissionsAsync();
   if (!permission.granted) throw new Error('Notification permission was not granted.');
@@ -61,8 +62,8 @@ export async function scheduleUnlockAlerts(profile: WalletProfile): Promise<numb
   const now = Date.now();
   const unlockMs = unlockAt * 1000;
   const plans = [
-    { at: unlockMs - 3_600_000, title: 'SKR unlocks in 1 hour', body: 'Your pending SKR is approaching its withdrawable time.' },
-    { at: unlockMs, title: 'Your SKR is now withdrawable', body: 'Open SKR Eyes to verify the finalized position and evidence.' },
+    { at: unlockMs - 3_600_000, title: t('SKR unlocks in 1 hour'), body: t('Your pending SKR is approaching its withdrawable time.') },
+    { at: unlockMs, title: t('Your SKR is now withdrawable'), body: t('Open SKR Eyes to verify the finalized position and evidence.') },
   ].filter((plan) => plan.at > now + 5_000);
 
   const notificationIds: string[] = [];
@@ -91,8 +92,8 @@ export async function scheduleNotificationProof(): Promise<void> {
 
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: 'SKR Eyes alerts are ready',
-      body: 'Test complete. Real unlock alerts will use finalized on-chain time.',
+      title: t('SKR Eyes alerts are ready'),
+      body: t('Test complete. Real unlock alerts will use finalized on-chain time.'),
       sound: 'default',
       data: { proof: true },
     },

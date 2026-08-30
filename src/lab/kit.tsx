@@ -112,7 +112,7 @@ export function FlowChart({ hours, width, height = 96, maxBar }: { hours: Array<
 
 
 // A period switch small enough to live inside a panel header.
-export function RangeSwitch({ value, options, onChange }: { value: string; options: string[]; onChange: (next: string) => void }) {
+export function RangeSwitch({ value, options, onChange, label }: { value: string; options: string[]; onChange: (next: string) => void; label?: (option: string) => string }) {
   return (
     <View style={styles.switchRow}>
       {options.map((option) => {
@@ -125,7 +125,7 @@ export function RangeSwitch({ value, options, onChange }: { value: string; optio
             onPress={() => onChange(option)}
             style={({ pressed }) => [styles.switchItem, active && styles.switchItemActive, pressed && styles.switchPressed]}
           >
-            <Text style={[styles.switchLabel, active && styles.switchLabelActive]}>{option.toUpperCase()}</Text>
+            <Text style={[styles.switchLabel, active && styles.switchLabelActive]}>{(label ? label(option) : option).toUpperCase()}</Text>
           </Pressable>
         );
       })}
