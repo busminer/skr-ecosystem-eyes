@@ -52,6 +52,9 @@ type FlowEvent = {
   blockTime: number;
   type: string;
   wallet: string;
+  // The Seeker ID behind the address, when the server has one for it. Almost
+  // every wallet in this feed has one, because the app only reaches Seekers.
+  name?: string | null;
   amount: number | null;
 };
 
@@ -95,8 +98,16 @@ async function fetchEvents(minimum: number, limit: number): Promise<FlowEvent[]>
   }
 }
 
+// A person, not an address. The short address stays as the fallback for the
+// rare wallet with no Seeker ID — and for anybody watching this feed from
+// outside the Seeker world.
+function who(event: FlowEvent): string {
+  return event.name ? `${event.name}.skr` : shortAddress(event.wallet);
+}
+
 // The pinned block. Within a day it is today's biggest move; if the day was
 // quiet it says so and shows the last big one instead of pretending.
+
 function Headline({ event, now }: { event: FlowEvent; now: number }) {
   const tone = TONE[event.type] ?? colors.muted;
   const today = now - event.blockTime <= DAY_SECONDS;
@@ -114,7 +125,7 @@ function Headline({ event, now }: { event: FlowEvent; now: number }) {
         <Text style={[styles.headlineKind, { color: tone }]}>{t(VERB[event.type] ?? event.type).toUpperCase()}</Text>
       </View>
       <View style={styles.headlineFoot}>
-        <Text style={styles.wallet}>{shortAddress(event.wallet)}</Text>
+        <Text numberOfLines={1} style={styles.wallet}>{who(event)}</Text>
         <Text style={styles.slot}>{t('slot {slot}', { slot: event.slot.toLocaleString('en-US') })}</Text>
       </View>
     </Panel>
@@ -137,7 +148,7 @@ function BigEvent({ event, now }: { event: FlowEvent; now: number }) {
           {event.amount != null ? <Text style={styles.unit}>SKR</Text> : null}
         </View>
         <View style={styles.cardFoot}>
-          <Text style={styles.wallet}>{shortAddress(event.wallet)}</Text>
+          <Text numberOfLines={1} style={styles.wallet}>{who(event)}</Text>
           <Text style={styles.slot}>{t('slot {slot}', { slot: event.slot.toLocaleString('en-US') })}</Text>
         </View>
       </Panel>
@@ -168,7 +179,7 @@ function SmallEvent({ event, now }: { event: FlowEvent; now: number }) {
       <View style={styles.rowBody}>
         <Text numberOfLines={1} style={styles.rowAmount}>{event.amount != null ? compact(event.amount) : '—'}</Text>
         <Text style={styles.rowUnit}>SKR</Text>
-        <Text numberOfLines={1} style={styles.rowWallet}>{shortAddress(event.wallet)}</Text>
+        <Text numberOfLines={1} style={styles.rowWallet}>{who(event)}</Text>
         <Text style={[styles.rowKind, { color: tone }]}>{t(VERB[event.type] ?? event.type).toUpperCase()}</Text>
         <Text style={styles.rowTime}>{ago(event.blockTime, now)}</Text>
       </View>
