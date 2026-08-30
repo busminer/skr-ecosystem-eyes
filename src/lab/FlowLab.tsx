@@ -8,7 +8,7 @@ import { compact, shortAddress } from '../format';
 import { usePref } from '../prefs';
 import { readSeenAt, writeSeenAt } from './away';
 import { playCue } from '../sound';
-import { colors, font, radius, spacing, type } from '../theme';
+import { colors, font, gold, radius, spacing, type } from '../theme';
 import { Eyebrow, Panel } from './kit';
 
 // The live floor of the vault. Every line here is a finalized transaction that
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
   amount: { color: colors.text, fontFamily: font.bold, fontVariant: ['tabular-nums'], fontSize: 26, letterSpacing: -0.8 },
   unit: { color: colors.muted, fontFamily: font.medium, fontSize: 12 },
   cardFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  wallet: { color: colors.muted, fontFamily: font.mono, ...type.micro },
+  wallet: { fontFamily: font.semibold, fontSize: 13.5, ...gold },
   slot: { color: colors.faint, fontFamily: font.mono, ...type.micro },
   row: { flexDirection: 'row', backgroundColor: colors.panel, borderRadius: radius.inner, borderWidth: 1, borderColor: colors.line, overflow: 'hidden', marginBottom: 5 },
   rowStripe: { width: 3 },
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
   rowAmount: { color: colors.text, fontFamily: font.bold, fontSize: 15, fontVariant: ['tabular-nums'], letterSpacing: -0.3 },
   rowUnit: { color: colors.muted, fontFamily: font.medium, fontSize: 10.5 },
   rowKind: { fontFamily: font.bold, fontSize: 9.5, letterSpacing: 0.8 },
-  rowWallet: { flex: 1, color: colors.muted, fontFamily: font.mono, ...type.micro, marginLeft: 4 },
+  rowWallet: { flex: 1, fontFamily: font.semibold, fontSize: 12.5, marginLeft: 4, ...gold },
   rowTime: { width: 38, textAlign: 'right', color: colors.faint, fontFamily: font.regular, ...type.micro },
   folded: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.card, backgroundColor: colors.panel, marginVertical: spacing.xs },
   foldedPressed: { opacity: 0.85 },

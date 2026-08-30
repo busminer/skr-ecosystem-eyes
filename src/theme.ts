@@ -33,6 +33,18 @@ export const font = {
   monoBlack: 'GeistMono_900Black',
 } as const;
 
+// A Seeker ID is the one thing on these screens that belongs to a person, so
+// it gets the one treatment nothing else may use: struck into the metal.
+// A dark shadow a hair below the letters and a gold that is warm rather than
+// bright — on this near-black background that reads as depth, not as glow.
+export const gold = {
+  color: colors.metal,
+  textShadowColor: 'rgba(0, 0, 0, 0.9)',
+  textShadowOffset: { width: 0, height: 1 },
+  textShadowRadius: 2.5,
+  letterSpacing: 0.2,
+} as const;
+
 export const type = {
   hero: { fontSize: 46, lineHeight: 50, letterSpacing: -2 },
   heroSmall: { fontSize: 34, lineHeight: 38, letterSpacing: -1.2 },

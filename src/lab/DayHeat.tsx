@@ -4,10 +4,17 @@ import { FlipNumber } from './FlipNumber';
 
 // The day as twenty-four cells, two rows of twelve.
 //
-// Brightness is how much moved in that hour, colour is which way it went. The
-// eye reads brightness faster than it reads height, so a strip this small says
-// more about the rhythm of a day than the bars it replaced — and it costs a
-// tenth of the screen they cost.
+// Brightness is how much moved in that hour. Not which way — only how much.
+//
+// It carried colour for a day: green for hours that took more in than out, red
+// for the rest. The trouble is that the network is in outflow, so twenty of the
+// twenty-four hours came out red and the whole screen read as an alarm. The
+// direction is already said, in words and in full colour, by the cards right
+// underneath. Here it only shouted.
+//
+// The eye reads brightness faster than it reads height, so a strip this small
+// still says more about the rhythm of a day than the bars it replaced — and it
+// costs a tenth of the screen they cost.
 //
 // Two rows rather than one: at twenty-four across, each cell is thinner than a
 // finger and the whole thing reads as a barcode.
@@ -41,7 +48,7 @@ export function DayHeat({ width, hours, percent, figure, unit, note }: {
   return (
     <View style={styles.wrap}>
       <View style={styles.figureRow}>
-        <FlipNumber value={figure} size={52} />
+        <FlipNumber value={figure} size={60} />
         <Text style={styles.unit}>{unit}</Text>
       </View>
 
@@ -50,9 +57,7 @@ export function DayHeat({ width, hours, percent, figure, unit, note }: {
           <View key={rowIndex} style={styles.row}>
             {row.map((hour, index) => {
               const total = hour.staked + hour.unstaked;
-              const tone = total === 0
-                ? colors.line
-                : hour.staked >= hour.unstaked ? colors.positive : colors.negative;
+              const tone = total === 0 ? colors.line : colors.accent;
               // A floor under the dimmest hour: below about a third, a colour on this
               // background stops reading as itself and turns muddy.
               const heat = total === 0 ? 1 : 0.34 + Math.sqrt(total / peak) * 0.66;
@@ -84,7 +89,7 @@ export function DayHeat({ width, hours, percent, figure, unit, note }: {
 const styles = StyleSheet.create({
   wrap: { gap: spacing.md },
   figureRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
-  unit: { color: colors.muted, fontFamily: font.semibold, fontSize: 13, letterSpacing: 0.6, marginBottom: 5 },
+  unit: { color: colors.muted, fontFamily: font.semibold, fontSize: 14, letterSpacing: 0.8, marginBottom: 6 },
   strip: { gap: CELL_GAP },
   row: { flexDirection: 'row', gap: CELL_GAP },
   track: { height: 3, borderRadius: 2, backgroundColor: colors.line, overflow: 'hidden' },
