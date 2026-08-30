@@ -5,6 +5,12 @@
 // 서식이 갖춰진 채로 들어오므로 중괄호는 위치만 옮기고 이름은 바꾸지 않습니다.
 
 export const ko: Record<string, string> = {
+  'over the last 7 days': '최근 7일',
+  'over the last 30 days': '최근 30일',
+  '{percent}% of all SKR is staked': '전체 SKR의 {percent}%가 스테이킹 중',
+  'over the last 24 hours': '최근 24시간',
+  'net': '순증감',
+  'wallets': '지갑',
   // 탭과 최신성 배지
   'Pulse': '맥박',
   'Flow': '흐름',
@@ -19,22 +25,14 @@ export const ko: Record<string, string> = {
   'every number has a receipt': '모든 숫자에는 근거가 있습니다',
 
   // 맥박
-  'Staked of total supply': '총발행량 중 스테이킹된 양',
-  '{percent}% of the {supply} SKR total supply · {positions} positions': '총발행량 {supply} SKR의 {percent}% · {positions}개 포지션',
   'Waiting for a finalized answer': '확정된 응답을 기다리는 중',
   'Reading the vault': '금고를 읽는 중',
   'Network unavailable': '네트워크에 연결할 수 없음',
   'Last 24 hours': '최근 24시간',
   'Last 7 days': '최근 7일',
   'Last 30 days': '최근 30일',
-  '{amount} staked': '{amount} 스테이킹',
-  '{amount} asked out': '{amount} 출금 신청',
   'staked': '스테이킹',
   'asked out': '출금 신청',
-  '{count} wallets': '지갑 {count}개',
-  'one bar per hour': '한 시간에 막대 하나',
-  '{range} as one total · daily bars need a server pass': '{range}을 한 덩어리로 · 일별 막대는 서버 계산이 필요합니다',
-  '{sign}{amount} net': '순증감 {sign}{amount}',
   'history covers {days}d': '기록 {days}일치',
   'In cooldown': '대기 중',
   '{count} positions waiting out the 48 hours': '{count}개 포지션이 48시간을 채우는 중',

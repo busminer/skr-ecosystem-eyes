@@ -162,11 +162,16 @@ function SmallEvent({ event, now }: { event: FlowEvent; now: number }) {
   const tone = TONE[event.type] ?? colors.muted;
   return (
     <Animated.View entering={FadeInDown.duration(220)} layout={Layout.duration(200)} style={styles.row}>
-      <View style={[styles.rowMark, { backgroundColor: tone }]} />
-      <Text style={[styles.rowKind, { color: tone }]}>{t(VERB[event.type] ?? event.type).toUpperCase()}</Text>
-      <Text numberOfLines={1} style={styles.rowAmount}>{event.amount != null ? compact(event.amount) : '—'}</Text>
-      <Text numberOfLines={1} style={styles.rowWallet}>{shortAddress(event.wallet)}</Text>
-      <Text style={styles.rowTime}>{ago(event.blockTime, now)}</Text>
+      {/* The stripe down the left edge is the whole colour of the card. Filling
+          the card itself would turn a quiet feed into a traffic light. */}
+      <View style={[styles.rowStripe, { backgroundColor: tone }]} />
+      <View style={styles.rowBody}>
+        <Text numberOfLines={1} style={styles.rowAmount}>{event.amount != null ? compact(event.amount) : '—'}</Text>
+        <Text style={styles.rowUnit}>SKR</Text>
+        <Text numberOfLines={1} style={styles.rowWallet}>{shortAddress(event.wallet)}</Text>
+        <Text style={[styles.rowKind, { color: tone }]}>{t(VERB[event.type] ?? event.type).toUpperCase()}</Text>
+        <Text style={styles.rowTime}>{ago(event.blockTime, now)}</Text>
+      </View>
     </Animated.View>
   );
 }
@@ -448,12 +453,14 @@ const styles = StyleSheet.create({
   cardFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   wallet: { color: colors.muted, fontFamily: font.mono, ...type.micro },
   slot: { color: colors.faint, fontFamily: font.mono, ...type.micro },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 9, paddingHorizontal: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.line },
-  rowMark: { width: 3, height: 18, borderRadius: 2 },
-  rowKind: { width: 96, color: colors.muted, fontFamily: font.semibold, fontSize: 11, letterSpacing: 0.6 },
-  rowAmount: { width: 74, color: colors.text, fontFamily: font.semibold, fontSize: 13.5, fontVariant: ['tabular-nums'] },
-  rowWallet: { flex: 1, color: colors.faint, fontFamily: font.mono, ...type.micro },
-  rowTime: { color: colors.faint, fontFamily: font.regular, ...type.micro },
+  row: { flexDirection: 'row', backgroundColor: colors.panel, borderRadius: radius.inner, borderWidth: 1, borderColor: colors.line, overflow: 'hidden', marginBottom: 5 },
+  rowStripe: { width: 3 },
+  rowBody: { flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 5, paddingVertical: 8, paddingHorizontal: spacing.md },
+  rowAmount: { color: colors.text, fontFamily: font.bold, fontSize: 15, fontVariant: ['tabular-nums'], letterSpacing: -0.3 },
+  rowUnit: { color: colors.muted, fontFamily: font.medium, fontSize: 10.5 },
+  rowKind: { fontFamily: font.bold, fontSize: 9.5, letterSpacing: 0.8 },
+  rowWallet: { flex: 1, color: colors.muted, fontFamily: font.mono, ...type.micro, marginLeft: 4 },
+  rowTime: { width: 38, textAlign: 'right', color: colors.faint, fontFamily: font.regular, ...type.micro },
   folded: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.card, backgroundColor: colors.panel, marginVertical: spacing.xs },
   foldedPressed: { opacity: 0.85 },
   foldedMark: { width: 3, height: 18, borderRadius: 2, backgroundColor: colors.metal },

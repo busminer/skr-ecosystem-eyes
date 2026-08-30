@@ -6,6 +6,12 @@
 // içeriği değişmez.
 
 export const tr: Record<string, string> = {
+  'over the last 7 days': 'son 7 günde',
+  'over the last 30 days': 'son 30 günde',
+  '{percent}% of all SKR is staked': 'tüm SKR’nin %{percent} kadarı stake edildi',
+  'over the last 24 hours': 'son 24 saatte',
+  'net': 'net',
+  'wallets': 'cüzdan',
   // Sekmeler ve tazelik rozeti
   'Pulse': 'Nabız',
   'Flow': 'Akış',
@@ -20,22 +26,14 @@ export const tr: Record<string, string> = {
   'every number has a receipt': 'her sayının bir belgesi var',
 
   // Nabız
-  'Staked of total supply': 'Toplam arzın stake edilen kısmı',
-  '{percent}% of the {supply} SKR total supply · {positions} positions': '{supply} SKR toplam arzın %{percent} kadarı · {positions} pozisyon',
   'Waiting for a finalized answer': 'Kesinleşmiş bir yanıt bekleniyor',
   'Reading the vault': 'Kasa okunuyor',
   'Network unavailable': 'Ağa ulaşılamıyor',
   'Last 24 hours': 'Son 24 saat',
   'Last 7 days': 'Son 7 gün',
   'Last 30 days': 'Son 30 gün',
-  '{amount} staked': '{amount} stake edildi',
-  '{amount} asked out': '{amount} çıkış istedi',
   'staked': 'stake edildi',
   'asked out': 'çıkış istedi',
-  '{count} wallets': '{count} cüzdan',
-  'one bar per hour': 'saat başına bir çubuk',
-  '{range} as one total · daily bars need a server pass': '{range} tek toplam olarak · günlük çubukları sunucu hesaplar',
-  '{sign}{amount} net': 'net {sign}{amount}',
   'history covers {days}d': 'geçmiş {days} gün',
   'In cooldown': 'Bekleme süresinde',
   '{count} positions waiting out the 48 hours': '{count} pozisyon 48 saatini dolduruyor',

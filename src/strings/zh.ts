@@ -7,6 +7,12 @@
 // Numbers arrive already formatted, so the braces only move, never change.
 
 export const zh: Record<string, string> = {
+  'over the last 7 days': '最近 7 天',
+  'over the last 30 days': '最近 30 天',
+  '{percent}% of all SKR is staked': '全部 SKR 的 {percent}% 已质押',
+  'over the last 24 hours': '最近 24 小时',
+  'net': '净额',
+  'wallets': '钱包',
   // Tabs and the freshness badge
   'Pulse': '脉搏',
   'Flow': '流水',
@@ -21,22 +27,14 @@ export const zh: Record<string, string> = {
   'every number has a receipt': '每个数字都有凭证',
 
   // Pulse
-  'Staked of total supply': '已质押占总量',
-  '{percent}% of the {supply} SKR total supply · {positions} positions': '占 {supply} SKR 总量的 {percent}% · {positions} 个仓位',
   'Waiting for a finalized answer': '等待最终确认的结果',
   'Reading the vault': '正在读取金库',
   'Network unavailable': '网络不可用',
   'Last 24 hours': '最近 24 小时',
   'Last 7 days': '最近 7 天',
   'Last 30 days': '最近 30 天',
-  '{amount} staked': '质押 {amount}',
-  '{amount} asked out': '申请退出 {amount}',
   'staked': '已质押',
   'asked out': '申请退出',
-  '{count} wallets': '{count} 个钱包',
-  'one bar per hour': '每小时一根',
-  '{range} as one total · daily bars need a server pass': '{range}合计为一根 · 按天分柱需要服务端另行计算',
-  '{sign}{amount} net': '净额 {sign}{amount}',
   'history covers {days}d': '历史覆盖 {days} 天',
   'In cooldown': '冷却中',
   '{count} positions waiting out the 48 hours': '{count} 个仓位正在等待 48 小时',

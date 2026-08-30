@@ -10,6 +10,12 @@
 // literal.
 
 export const es: Record<string, string> = {
+  'over the last 7 days': 'en los últimos 7 días',
+  'over the last 30 days': 'en los últimos 30 días',
+  '{percent}% of all SKR is staked': 'el {percent}% de todo el SKR está en stake',
+  'over the last 24 hours': 'en las últimas 24 horas',
+  'net': 'neto',
+  'wallets': 'carteras',
   // Pestañas e indicador de frescura
   'Pulse': 'Pulso',
   'Flow': 'Flujo',
@@ -24,22 +30,14 @@ export const es: Record<string, string> = {
   'every number has a receipt': 'cada número tiene su comprobante',
 
   // Pulso
-  'Staked of total supply': 'En stake del total emitido',
-  '{percent}% of the {supply} SKR total supply · {positions} positions': '{percent}% de los {supply} SKR emitidos · {positions} posiciones',
   'Waiting for a finalized answer': 'Esperando una respuesta confirmada',
   'Reading the vault': 'Leyendo la bóveda',
   'Network unavailable': 'Sin red',
   'Last 24 hours': 'Últimas 24 horas',
   'Last 7 days': 'Últimos 7 días',
   'Last 30 days': 'Últimos 30 días',
-  '{amount} staked': '{amount} en stake',
-  '{amount} asked out': '{amount} pidió salir',
   'staked': 'en stake',
   'asked out': 'pidió salir',
-  '{count} wallets': '{count} carteras',
-  'one bar per hour': 'una barra por hora',
-  '{range} as one total · daily bars need a server pass': '{range} en un solo total · las barras diarias las calcula el servidor',
-  '{sign}{amount} net': 'neto {sign}{amount}',
   'history covers {days}d': 'historial de {days} d',
   'In cooldown': 'Enfriando',
   '{count} positions waiting out the 48 hours': '{count} posiciones esperando sus 48 horas',

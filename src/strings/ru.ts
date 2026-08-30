@@ -10,6 +10,12 @@
 // и кнопках намеренно короче дословного перевода.
 
 export const ru: Record<string, string> = {
+  'over the last 7 days': 'за последние 7 дней',
+  'over the last 30 days': 'за последние 30 дней',
+  '{percent}% of all SKR is staked': '{percent}% всех SKR в стейке',
+  'over the last 24 hours': 'за последние сутки',
+  'net': 'итог',
+  'wallets': 'кошельков',
   // Вкладки и значок свежести
   'Pulse': 'Пульс',
   'Flow': 'Поток',
@@ -24,22 +30,14 @@ export const ru: Record<string, string> = {
   'every number has a receipt': 'у каждого числа есть чек',
 
   // Пульс
-  'Staked of total supply': 'В стейке от всего выпуска',
-  '{percent}% of the {supply} SKR total supply · {positions} positions': '{percent}% от выпуска в {supply} SKR · {positions} позиций',
   'Waiting for a finalized answer': 'Ждём подтверждённый ответ',
   'Reading the vault': 'Читаем хранилище',
   'Network unavailable': 'Сеть недоступна',
   'Last 24 hours': 'Сутки',
   'Last 7 days': '7 дней',
   'Last 30 days': '30 дней',
-  '{amount} staked': '{amount} в стейк',
-  '{amount} asked out': '{amount} на выход',
   'staked': 'в стейк',
   'asked out': 'на выход',
-  '{count} wallets': '{count} кошельков',
-  'one bar per hour': 'один столбик — час',
-  '{range} as one total · daily bars need a server pass': '{range} одним итогом · столбики по дням считает сервер',
-  '{sign}{amount} net': 'итог {sign}{amount}',
   'history covers {days}d': 'история за {days} дн.',
   'In cooldown': 'Остывает',
   '{count} positions waiting out the 48 hours': '{count} позиций ждут свои 48 часов',

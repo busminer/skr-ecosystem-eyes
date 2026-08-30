@@ -6,6 +6,12 @@
 // chỗ nhưng không đổi tên.
 
 export const vi: Record<string, string> = {
+  'over the last 7 days': 'trong 7 ngày qua',
+  'over the last 30 days': 'trong 30 ngày qua',
+  '{percent}% of all SKR is staked': '{percent}% toàn bộ SKR đang được stake',
+  'over the last 24 hours': 'trong 24 giờ qua',
+  'net': 'ròng',
+  'wallets': 'ví',
   // Thẻ và huy hiệu độ mới
   'Pulse': 'Nhịp',
   'Flow': 'Dòng',
@@ -20,22 +26,14 @@ export const vi: Record<string, string> = {
   'every number has a receipt': 'mỗi con số đều có bằng chứng',
 
   // Nhịp
-  'Staked of total supply': 'Đã stake trên tổng cung',
-  '{percent}% of the {supply} SKR total supply · {positions} positions': '{percent}% của {supply} SKR tổng cung · {positions} vị thế',
   'Waiting for a finalized answer': 'Đang chờ câu trả lời đã chốt',
   'Reading the vault': 'Đang đọc kho',
   'Network unavailable': 'Không có mạng',
   'Last 24 hours': '24 giờ qua',
   'Last 7 days': '7 ngày qua',
   'Last 30 days': '30 ngày qua',
-  '{amount} staked': 'stake {amount}',
-  '{amount} asked out': 'xin rút {amount}',
   'staked': 'đã stake',
   'asked out': 'xin rút',
-  '{count} wallets': '{count} ví',
-  'one bar per hour': 'mỗi giờ một cột',
-  '{range} as one total · daily bars need a server pass': '{range} gộp thành một cột · cột theo ngày cần máy chủ tính',
-  '{sign}{amount} net': 'ròng {sign}{amount}',
   'history covers {days}d': 'lịch sử {days} ngày',
   'In cooldown': 'Đang chờ nguội',
   '{count} positions waiting out the 48 hours': '{count} vị thế đang chờ hết 48 giờ',

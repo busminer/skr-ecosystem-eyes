@@ -6,6 +6,12 @@
 // boleh dipindah, tidak boleh diganti.
 
 export const id: Record<string, string> = {
+  'over the last 7 days': 'dalam 7 hari terakhir',
+  'over the last 30 days': 'dalam 30 hari terakhir',
+  '{percent}% of all SKR is staked': '{percent}% dari seluruh SKR sedang di-stake',
+  'over the last 24 hours': 'dalam 24 jam terakhir',
+  'net': 'bersih',
+  'wallets': 'dompet',
   // Tab dan tanda kesegaran data
   'Pulse': 'Denyut',
   'Flow': 'Aliran',
@@ -20,22 +26,14 @@ export const id: Record<string, string> = {
   'every number has a receipt': 'setiap angka punya buktinya',
 
   // Denyut
-  'Staked of total supply': 'Di-stake dari total pasokan',
-  '{percent}% of the {supply} SKR total supply · {positions} positions': '{percent}% dari total pasokan {supply} SKR · {positions} posisi',
   'Waiting for a finalized answer': 'Menunggu jawaban yang sudah final',
   'Reading the vault': 'Membaca brankas',
   'Network unavailable': 'Jaringan tidak tersedia',
   'Last 24 hours': '24 jam terakhir',
   'Last 7 days': '7 hari terakhir',
   'Last 30 days': '30 hari terakhir',
-  '{amount} staked': '{amount} di-stake',
-  '{amount} asked out': '{amount} minta keluar',
   'staked': 'di-stake',
   'asked out': 'minta keluar',
-  '{count} wallets': '{count} dompet',
-  'one bar per hour': 'satu batang per jam',
-  '{range} as one total · daily bars need a server pass': '{range} sebagai satu total · batang harian dihitung server',
-  '{sign}{amount} net': 'bersih {sign}{amount}',
   'history covers {days}d': 'riwayat {days} hari',
   'In cooldown': 'Masa tunggu',
   '{count} positions waiting out the 48 hours': '{count} posisi sedang menunggu 48 jamnya',

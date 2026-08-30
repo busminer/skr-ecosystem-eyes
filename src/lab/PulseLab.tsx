@@ -5,14 +5,19 @@ import { t } from '../i18n';
 import { compact, integer, relativeTime } from '../format';
 import { colors, font, spacing, type } from '../theme';
 import type { EcosystemState } from '../types';
-import { FlipNumber } from './FlipNumber';
-import { Evidence, Eyebrow, FlowChart, HorizonRail, Meter, Panel, RangeSwitch, Tile } from './kit';
+import { DayHeat } from './DayHeat';
+import { Evidence, Eyebrow, HorizonRail, Panel, RangeSwitch, Tile } from './kit';
 
 const REFRESH_MS = 30_000;
 const RANGES = ['24h', '7d', '30d'] as const;
 type Range = typeof RANGES[number];
 const RANGE_DAYS: Record<Range, number> = { '24h': 1, '7d': 7, '30d': 30 };
 const RANGE_TITLE: Record<Range, string> = { '24h': 'Last 24 hours', '7d': 'Last 7 days', '30d': 'Last 30 days' };
+const RANGE_NOTE: Record<Range, string> = {
+  '24h': 'over the last 24 hours',
+  '7d': 'over the last 7 days',
+  '30d': 'over the last 30 days',
+};
 
 // The hero splits the magnitude off the number so the unit can sit quietly
 // beside it instead of competing with it.
@@ -21,6 +26,18 @@ function splitCompact(value: number): { figure: string; unit: string } {
   const suffix = text.slice(-1);
   if (suffix === 'B' || suffix === 'M' || suffix === 'K') return { figure: text.slice(0, -1), unit: `${suffix} SKR` };
   return { figure: text, unit: 'SKR' };
+}
+
+// One fact per card, big enough to read across a room and short enough to
+// repeat to somebody else. A row of numbers is a table; this is a headline.
+function FactCard({ label, value, note, tone, width }: { label: string; value: string; note: string; tone?: string; width: number }) {
+  return (
+    <Panel style={[styles.fact, { width }]} tone={tone}>
+      <Text numberOfLines={1} style={styles.factLabel}>{label.toUpperCase()}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={[styles.factValue, tone ? { color: tone } : null]}>{value}</Text>
+      <Text numberOfLines={2} style={styles.factNote}>{note}</Text>
+    </Panel>
+  );
 }
 
 export function PulseLab({ onOpenQueue }: { onOpenQueue: () => void }) {
@@ -59,7 +76,11 @@ export function PulseLab({ onOpenQueue }: { onOpenQueue: () => void }) {
   const coverageDays = state?.analytics?.coverageFrom ? (state.analytics.generatedAt - state.analytics.coverageFrom) / 86_400 : 0;
   const partial = coverageDays > 0 && coverageDays < RANGE_DAYS[range] * 0.98;
   const horizon = metrics?.unlockHorizon;
-  const chartWidth = width - spacing.lg * 2 - spacing.md * 2;
+
+  const note = t(RANGE_NOTE[range]);
+  const inner = width - spacing.lg * 2;
+  const factWidth = Math.min(inner * 0.62, 230);
+  const hero = metrics ? splitCompact(metrics.activeStaked) : null;
 
   return (
     <ScrollView
@@ -67,55 +88,46 @@ export function PulseLab({ onOpenQueue }: { onOpenQueue: () => void }) {
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={colors.accent} />}
     >
-      <View style={styles.hero}>
-        <Eyebrow>{t('Staked of total supply')}</Eyebrow>
-        <View style={styles.heroRow}>
-          <FlipNumber value={metrics ? splitCompact(metrics.activeStaked).figure : '—'} size={78} />
-          <Text style={styles.heroUnit}>{metrics ? splitCompact(metrics.activeStaked).unit : 'SKR'}</Text>
-        </View>
-        <Text style={styles.heroNote}>
-          {metrics
-            ? t('{percent}% of the {supply} SKR total supply · {positions} positions', { percent: metrics.stakedPercent.toFixed(2), supply: compact(metrics.supply), positions: integer(metrics.totalPositions) })
-            : error ? t('Waiting for a finalized answer') : t('Reading the vault')}
-        </Text>
-      </View>
-      <View style={styles.meterWrap}>
-        <Meter percent={metrics?.stakedPercent ?? 0} />
+      <DayHeat
+        width={inner}
+        hours={hours}
+        percent={metrics?.stakedPercent ?? null}
+        figure={hero ? hero.figure : '—'}
+        unit={hero ? hero.unit : 'SKR'}
+        note={metrics
+          ? t('{percent}% of all SKR is staked', { percent: metrics.stakedPercent.toFixed(2) })
+          : error ? t('Waiting for a finalized answer') : t('Reading the vault')}
+      />
+
+      {/* One set of numbers, not two. The switch above the cards changes what
+          they count, and the cards read left to right in the order somebody
+          would ask it out loud: how much went in, how much asked out, what that
+          leaves, and how many people it took. */}
+      <View style={styles.periodHead}>
+        <Eyebrow>{t(RANGE_TITLE[range])}</Eyebrow>
+        <RangeSwitch value={range} options={[...RANGES]} onChange={(next) => setRange(next as Range)} />
       </View>
 
-      <Panel style={styles.flowPanel}>
-        <View style={styles.flowHead}>
-          <Eyebrow>{t(RANGE_TITLE[range])}</Eyebrow>
-          <RangeSwitch value={range} options={[...RANGES]} onChange={(next) => setRange(next as Range)} />
-        </View>
-
-        <FlowChart
-          hours={range === '24h' ? hours : period ? [{ staked: period.staked, unstaked: period.unstaked }] : []}
-          width={chartWidth}
-          maxBar={range === '24h' ? undefined : 72}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={factWidth + spacing.md}
+        decelerationRate="fast"
+        contentContainerStyle={styles.facts}
+      >
+        <FactCard width={factWidth} note={note} label={t('staked')} value={period ? compact(period.staked) : '—'} tone={colors.positive} />
+        <FactCard width={factWidth} note={note} label={t('asked out')} value={period ? compact(period.unstaked) : '—'} tone={colors.negative} />
+        <FactCard
+          width={factWidth}
+          note={note}
+          label={t('net')}
+          value={period ? `${period.netFlow >= 0 ? '+' : '−'}${compact(Math.abs(period.netFlow))}` : '—'}
+          tone={(period?.netFlow ?? 0) >= 0 ? colors.positive : colors.negative}
         />
-        <View style={styles.legend}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: colors.positive }]} />
-            <Text style={styles.legendText}>{period ? t('{amount} staked', { amount: compact(period.staked) }) : t('staked')}</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: colors.negative }]} />
-            <Text style={styles.legendText}>{period ? t('{amount} asked out', { amount: compact(period.unstaked) }) : t('asked out')}</Text>
-          </View>
-          <Text style={styles.legendMuted}>{period ? t('{count} wallets', { count: integer(period.wallets) }) : ''}</Text>
-        </View>
-        <Text style={styles.shape}>
-          {range === '24h' ? t('one bar per hour') : t('{range} as one total · daily bars need a server pass', { range: t(RANGE_TITLE[range]).toLowerCase() })}
-        </Text>
+        <FactCard width={factWidth} note={note} label={t('wallets')} value={period ? integer(period.wallets) : '—'} tone={colors.metal} />
+      </ScrollView>
 
-        <View style={styles.flowFoot}>
-          <Text style={[styles.netFlow, { color: (period?.netFlow ?? 0) >= 0 ? colors.positive : colors.negative }]}>
-            {period ? t('{sign}{amount} net', { sign: period.netFlow >= 0 ? '+' : '−', amount: compact(Math.abs(period.netFlow)) }) : '—'}
-          </Text>
-          {partial ? <Text style={styles.partial}>{t('history covers {days}d', { days: Math.floor(coverageDays) })}</Text> : null}
-        </View>
-      </Panel>
+      {partial ? <Text style={styles.partial}>{t('history covers {days}d', { days: Math.floor(coverageDays) })}</Text> : null}
 
       <View style={styles.tiles}>
         <Tile
@@ -165,23 +177,14 @@ export function PulseLab({ onOpenQueue }: { onOpenQueue: () => void }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 120, gap: spacing.lg },
-  hero: { gap: spacing.sm },
-  heroRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md, marginTop: spacing.xs },
-  heroUnit: { color: colors.muted, fontFamily: font.semibold, fontSize: 15, letterSpacing: 0.6, marginBottom: 5 },
-  heroNote: { color: colors.muted, fontFamily: font.regular, ...type.small, marginTop: spacing.xs },
-  meterWrap: { marginTop: -spacing.sm },
-  flowPanel: { padding: spacing.md },
-  flowHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
-  flowFoot: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: spacing.md, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.line },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: 120, gap: spacing.lg },
+  facts: { gap: spacing.md, paddingRight: spacing.lg },
+  fact: { padding: spacing.md, minHeight: 108, justifyContent: 'space-between' },
+  factLabel: { color: colors.muted, fontFamily: font.semibold, ...type.eyebrow },
+  factValue: { color: colors.text, fontFamily: font.black, fontVariant: ['tabular-nums'], fontSize: 30, letterSpacing: -1 },
+  factNote: { color: colors.faint, fontFamily: font.regular, ...type.micro },
+  periodHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: -spacing.sm },
   partial: { color: colors.pending, fontFamily: font.medium, ...type.micro },
-  shape: { color: colors.faint, fontFamily: font.regular, ...type.micro, marginTop: spacing.sm },
-  netFlow: { fontFamily: font.bold, fontSize: 14, fontVariant: ['tabular-nums'] },
-  legend: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: { width: 6, height: 6, borderRadius: 3 },
-  legendText: { color: colors.text, fontFamily: font.medium, ...type.small },
-  legendMuted: { marginLeft: 'auto', color: colors.muted, fontFamily: font.regular, ...type.small },
   tiles: { flexDirection: 'row', gap: spacing.md },
   railPanel: { padding: spacing.md },
   railBody: { marginTop: spacing.md },

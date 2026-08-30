@@ -5,6 +5,12 @@
 // 整形済みで届くので、波かっこは位置を動かすだけで中身は変えません。
 
 export const ja: Record<string, string> = {
+  'over the last 7 days': '直近 7 日',
+  'over the last 30 days': '直近 30 日',
+  '{percent}% of all SKR is staked': '全 SKR の {percent}% がステーク中',
+  'over the last 24 hours': '直近 24 時間',
+  'net': '差引',
+  'wallets': 'ウォレット',
   // タブと鮮度バッジ
   'Pulse': '脈',
   'Flow': '流れ',
@@ -19,22 +25,14 @@ export const ja: Record<string, string> = {
   'every number has a receipt': 'すべての数字に裏づけがあります',
 
   // 脈
-  'Staked of total supply': '総発行量のうちステーク済み',
-  '{percent}% of the {supply} SKR total supply · {positions} positions': '総発行量 {supply} SKR の {percent}% · {positions} ポジション',
   'Waiting for a finalized answer': '確定した答えを待っています',
   'Reading the vault': '金庫を読んでいます',
   'Network unavailable': 'ネットワークに接続できません',
   'Last 24 hours': '直近 24 時間',
   'Last 7 days': '直近 7 日',
   'Last 30 days': '直近 30 日',
-  '{amount} staked': '{amount} をステーク',
-  '{amount} asked out': '{amount} が退出申請',
   'staked': 'ステーク',
   'asked out': '退出申請',
-  '{count} wallets': 'ウォレット {count} 件',
-  'one bar per hour': '1 時間に 1 本',
-  '{range} as one total · daily bars need a server pass': '{range}をまとめて 1 本に · 日ごとの棒はサーバー側の計算が必要です',
-  '{sign}{amount} net': '差引 {sign}{amount}',
   'history covers {days}d': '履歴は {days} 日分',
   'In cooldown': '冷却中',
   '{count} positions waiting out the 48 hours': '{count} 件のポジションが 48 時間を待っています',

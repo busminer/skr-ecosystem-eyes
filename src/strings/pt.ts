@@ -9,6 +9,12 @@
 // os rótulos de cartão e de botão são mais curtos que a tradução literal.
 
 export const pt: Record<string, string> = {
+  'over the last 7 days': 'nos últimos 7 dias',
+  'over the last 30 days': 'nos últimos 30 dias',
+  '{percent}% of all SKR is staked': '{percent}% de todo o SKR está em stake',
+  'over the last 24 hours': 'nas últimas 24 horas',
+  'net': 'líquido',
+  'wallets': 'carteiras',
   // Abas e selo de atualidade
   'Pulse': 'Pulso',
   'Flow': 'Fluxo',
@@ -23,22 +29,14 @@ export const pt: Record<string, string> = {
   'every number has a receipt': 'todo número tem comprovante',
 
   // Pulso
-  'Staked of total supply': 'Em stake do total emitido',
-  '{percent}% of the {supply} SKR total supply · {positions} positions': '{percent}% dos {supply} SKR emitidos · {positions} posições',
   'Waiting for a finalized answer': 'Esperando uma resposta confirmada',
   'Reading the vault': 'Lendo o cofre',
   'Network unavailable': 'Sem rede',
   'Last 24 hours': 'Últimas 24 horas',
   'Last 7 days': 'Últimos 7 dias',
   'Last 30 days': 'Últimos 30 dias',
-  '{amount} staked': '{amount} em stake',
-  '{amount} asked out': '{amount} pediu saída',
   'staked': 'em stake',
   'asked out': 'pediu saída',
-  '{count} wallets': '{count} carteiras',
-  'one bar per hour': 'uma barra por hora',
-  '{range} as one total · daily bars need a server pass': '{range} em um total só · barras por dia quem calcula é o servidor',
-  '{sign}{amount} net': 'líquido {sign}{amount}',
   'history covers {days}d': 'histórico de {days} d',
   'In cooldown': 'Esfriando',
   '{count} positions waiting out the 48 hours': '{count} posições cumprindo as 48 horas',

@@ -81,36 +81,6 @@ export function Meter({ percent, tone = colors.accent, height = 3 }: { percent: 
   );
 }
 
-// Mirrored 24h flow: what entered the vault above the line, what asked to leave below it.
-export function FlowChart({ hours, width, height = 96, maxBar }: { hours: Array<{ staked: number; unstaked: number }>; width: number; height?: number; maxBar?: number }) {
-  const peak = Math.max(1, ...hours.map((hour) => Math.max(hour.staked, hour.unstaked)));
-  const mid = height / 2;
-  const slot = width / Math.max(1, hours.length);
-  const barWidth = Math.max(2, Math.min(slot - 3, maxBar ?? slot - 3));
-  // A single whale hour would flatten the other twenty-three, so the height
-  // follows the square root: big stays big, small stays visible.
-  const scale = (value: number) => (value <= 0 ? 0 : Math.max(2, Math.sqrt(value / peak) * (mid - 6)));
-  return (
-    <Svg width={width} height={height}>
-      <Rect x={0} y={mid - 0.5} width={width} height={1} fill={colors.line} />
-      <G>
-        {hours.map((hour, index) => {
-          const up = scale(hour.staked);
-          const down = scale(hour.unstaked);
-          const x = index * slot + (slot - barWidth) / 2;
-          return (
-            <G key={index}>
-              <Rect x={x} y={mid - up} width={barWidth} height={up} rx={1} fill={colors.positive} opacity={0.92} />
-              <Rect x={x} y={mid + 1} width={barWidth} height={down} rx={1} fill={colors.negative} opacity={0.82} />
-            </G>
-          );
-        })}
-      </G>
-    </Svg>
-  );
-}
-
-
 // A period switch small enough to live inside a panel header.
 export function RangeSwitch({ value, options, onChange, label }: { value: string; options: string[]; onChange: (next: string) => void; label?: (option: string) => string }) {
   return (
