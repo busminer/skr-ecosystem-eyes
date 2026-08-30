@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
 import { resolveAlertThresholds } from '../alertThresholds';
@@ -9,9 +9,9 @@ import { compact } from '../format';
 import { clearStoredSchedule, hasUnlockAlerts, scheduleNotificationProof, scheduleUnlockAlerts } from '../notifications';
 import { usePref } from '../prefs';
 import { readSessionAddress } from '../session';
-import { colors, font, spacing, type } from '../theme';
+import { colors, font, radius, spacing, type } from '../theme';
 import type { EcosystemState, WalletProfile } from '../types';
-import { Button, Evidence, Eyebrow, Hairline, Panel, RangeSwitch } from './kit';
+import { Button, Evidence, Eyebrow, Hairline, Panel } from './kit';
 
 export function AlertsLab() {
   // The language switch lives here because this is the only settings screen the
@@ -182,19 +182,28 @@ export function AlertsLab() {
       </Panel>
 
       <Panel style={styles.panel}>
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleCopy}>
-            <Text style={styles.toggleLabel}>{t('Language')}</Text>
-            <Text style={styles.toggleNote}>
-              {t('The app follows your phone until you choose here. The card you share stays in English, so it reads the same to everyone who sees it.')}
-            </Text>
-          </View>
-          <RangeSwitch
-            value={language}
-            options={[...LANGS]}
-            label={(option) => LANG_LABEL[option as Lang] ?? option}
-            onChange={(next) => { void Haptics.selectionAsync(); setLang(next as Lang); }}
-          />
+        <Text style={styles.toggleLabel}>{t('Language')}</Text>
+        <Text style={[styles.toggleNote, styles.langNote]}>
+          {t('The app follows your phone until you choose here. The card you share stays in English, so it reads the same to everyone who sees it.')}
+        </Text>
+        {/* Each language is written in its own script. Somebody looking for
+            their language looks for the shape of their own writing, not for the
+            English word for it. */}
+        <View style={styles.langs}>
+          {LANGS.map((option) => {
+            const on = option === language;
+            return (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                key={option}
+                onPress={() => { void Haptics.selectionAsync(); setLang(option); }}
+                style={({ pressed }) => [styles.lang, on && styles.langOn, pressed && styles.langPressed]}
+              >
+                <Text style={[styles.langText, on && styles.langTextOn]}>{LANG_LABEL[option]}</Text>
+              </Pressable>
+            );
+          })}
         </View>
       </Panel>
 
@@ -232,4 +241,11 @@ const styles = StyleSheet.create({
   spaced: { marginTop: spacing.md },
   thresholdNote: { color: colors.faint, fontFamily: font.regular, ...type.small, marginTop: spacing.md },
   status: { color: colors.positive, fontFamily: font.medium, ...type.small },
+  langNote: { marginTop: spacing.xs },
+  langs: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
+  lang: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line },
+  langOn: { borderColor: colors.accent, backgroundColor: colors.panelHi },
+  langPressed: { opacity: 0.7 },
+  langText: { color: colors.muted, fontFamily: font.semibold, fontSize: 13 },
+  langTextOn: { color: colors.accent },
 });

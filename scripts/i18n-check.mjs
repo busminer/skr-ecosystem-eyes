@@ -35,14 +35,27 @@ for (const file of files) {
 // Words that reach t() through a variable rather than a literal.
 for (const text of JSON.parse(readFileSync(join(root, 'src/strings/indirect.json'), 'utf8'))) used.add(text);
 
-const table = readFileSync(join(root, 'src/strings/zh.ts'), 'utf8');
+// Every table is checked, not just the first one. A language that quietly falls
+// behind still renders — in English — which is exactly the failure that hides.
+const tables = readdirSync(join(root, 'src/strings'))
+  .filter((name) => name.endsWith('.ts'))
+  .sort();
+
 const keyPattern = new RegExp("^\\s*(?:'((?:[^'\\\\]|\\\\.)*)'|\"((?:[^\"\\\\]|\\\\.)*)\")\\s*:", 'gm');
-const translated = new Set([...table.matchAll(keyPattern)].map((match) => (match[1] ?? match[2]).replace(/\\'/g, "'")));
+let broken = 0;
 
-const missing = [...used].filter((text) => !translated.has(text)).sort();
-const orphan = [...translated].filter((text) => !used.has(text)).sort();
+for (const name of tables) {
+  const table = readFileSync(join(root, 'src/strings', name), 'utf8');
+  const translated = new Set([...table.matchAll(keyPattern)].map((match) => (match[1] ?? match[2]).replace(/\\'/g, "'")));
 
-for (const text of missing) console.log(`untranslated  ${JSON.stringify(text)}`);
-for (const text of orphan) console.log(`orphaned      ${JSON.stringify(text)}`);
-console.log(`\n${used.size} strings, ${missing.length} untranslated, ${orphan.length} orphaned`);
-process.exit(missing.length + orphan.length > 0 ? 1 : 0);
+  const missing = [...used].filter((text) => !translated.has(text)).sort();
+  const orphan = [...translated].filter((text) => !used.has(text)).sort();
+
+  for (const text of missing) console.log(`${name}  untranslated  ${JSON.stringify(text)}`);
+  for (const text of orphan) console.log(`${name}  orphaned      ${JSON.stringify(text)}`);
+  console.log(`${name.padEnd(8)} ${translated.size} translated, ${missing.length} untranslated, ${orphan.length} orphaned`);
+  broken += missing.length + orphan.length;
+}
+
+console.log(`\n${used.size} strings in the code, ${tables.length} tables`);
+process.exit(broken > 0 ? 1 : 0);

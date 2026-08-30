@@ -100,7 +100,7 @@ function TabBar({ tab, onSelect }: { tab: Tab; onSelect: (next: Tab) => void }) 
             style={({ pressed }) => [styles.navItem, pressed && styles.navPressed]}
           >
             <View style={[styles.navBar, active && styles.navBarActive]} />
-            <Text style={[styles.navLabel, active && styles.navLabelActive]}>{t(item.label)}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.navLabel, active && styles.navLabelActive]}>{t(item.label)}</Text>
           </Pressable>
         );
       })}
