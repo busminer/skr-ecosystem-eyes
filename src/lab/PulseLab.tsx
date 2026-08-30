@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { fetchEcosystemState } from '../api';
+import { useReducedMotion } from '../useReducedMotion';
 import { t } from '../i18n';
 import { compact, integer, relativeTime } from '../format';
 import { colors, font, spacing, type } from '../theme';
@@ -9,6 +10,11 @@ import { DayHeat } from './DayHeat';
 import { Evidence, Eyebrow, HorizonRail, Panel, RangeSwitch, Tile } from './kit';
 
 const REFRESH_MS = 30_000;
+// How long one card holds the screen. A second is enough time to see a number
+// and not enough to read it, and a card that leaves while you are still reading
+// is worse than a card that never moved. Change this one number to retune.
+const CARD_MS = 3_200;
+const FACTS = 4;
 const RANGES = ['24h', '7d', '30d'] as const;
 type Range = typeof RANGES[number];
 const RANGE_DAYS: Record<Range, number> = { '24h': 1, '7d': 7, '30d': 30 };
@@ -46,6 +52,14 @@ export function PulseLab({ onOpenQueue }: { onOpenQueue: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [range, setRange] = useState<Range>('24h');
+  const facts = useRef<ScrollView>(null);
+  const card = useRef(0);
+  const step = useRef(0);
+  // A touch means the person is driving. The carousel then stops for good until
+  // they leave the tab: nothing is ruder than a screen that yanks itself out
+  // from under a thumb.
+  const held = useRef(false);
+  const reducedMotion = useReducedMotion();
 
   const load = useCallback(async (visible = false) => {
     if (visible) setRefreshing(true);
@@ -68,6 +82,18 @@ export function PulseLab({ onOpenQueue }: { onOpenQueue: () => void }) {
     return () => { clearInterval(timer); subscription.remove(); };
   }, [load]);
 
+  // The cards turn themselves over. Android's own "reduce motion" switch turns
+  // this off, as it does every other animation in the app.
+  useEffect(() => {
+    if (reducedMotion) return undefined;
+    const timer = setInterval(() => {
+      if (held.current || AppState.currentState !== 'active') return;
+      card.current = (card.current + 1) % FACTS;
+      facts.current?.scrollTo({ x: card.current * step.current, animated: true });
+    }, CARD_MS);
+    return () => clearInterval(timer);
+  }, [reducedMotion]);
+
   const metrics = state?.metrics;
   const period = state?.analytics?.windows?.[range];
   const hours = state?.analytics?.hourly ?? [];
@@ -80,6 +106,7 @@ export function PulseLab({ onOpenQueue }: { onOpenQueue: () => void }) {
   const note = t(RANGE_NOTE[range]);
   const inner = width - spacing.lg * 2;
   const factWidth = Math.min(inner * 0.62, 230);
+  step.current = factWidth + spacing.md;
   const hero = metrics ? splitCompact(metrics.activeStaked) : null;
 
   return (
@@ -109,10 +136,12 @@ export function PulseLab({ onOpenQueue }: { onOpenQueue: () => void }) {
       </View>
 
       <ScrollView
+        ref={facts}
         horizontal
         showsHorizontalScrollIndicator={false}
         snapToInterval={factWidth + spacing.md}
         decelerationRate="fast"
+        onScrollBeginDrag={() => { held.current = true; }}
         contentContainerStyle={styles.facts}
       >
         <FactCard width={factWidth} note={note} label={t('staked')} value={period ? compact(period.staked) : '—'} tone={colors.positive} />
