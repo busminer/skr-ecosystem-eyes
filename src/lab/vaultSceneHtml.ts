@@ -49,7 +49,7 @@ function spawnStake(amount,who,sig,x){ var big=amount>=1e5; x=x!=null?x:rnd(30,W
   tag(x,H*0.52,fmt(amount)+' SKR staked',who,'#9ff6d2',2.6,true); S.last={v:amount,who:who,kind:'staked',at:S.t}; }
 function liftExit(amount,who,sig,big){ var col=Math.floor(rnd(4,S.cols-4)); var x=col*8+4; var top=pileTop(x); for(var i=0;i<S.cols;i++){ var d=Math.abs(i-col); if(d<5) S.bump[i]+=6*(1-d/5); }
   var n=big?Math.min(24,Math.round(8+6*Math.log10(amount/1e5))):Math.max(1,Math.round(Math.log10(amount/1e3))+1); var raft=[]; for(var j=0;j<n;j++) raft.push({dx:rnd(-16,16)*(big?1.6:1),dy:rnd(-6,6),L:big?Math.floor(rnd(1,3)):2,rot:rnd(-0.2,0.2)});
-  S.hang.push({x:x,y:top-6,vy:-rnd(16,22),hangY:rnd(H*0.18,H*0.36),t:0,hold:big?9:6,amt:amount,who:who,sig:sig,raft:raft,big:big,state:'rise',life:1,sw:Math.random()*6,temp:true,frac:0});
+  S.hang.push({x:x,y:top-6,vy:-rnd(16,22),hangY:rnd(H*0.46,H*0.52),t:0,hold:big?9:6,amt:amount,who:who,sig:sig,raft:raft,big:big,state:'rise',life:1,sw:Math.random()*6,temp:true,frac:0});
   if(big){ tag(x,H*0.44,fmt(amount)+' SKR asked out',who,'#ffb08a',2.6,true); S.last={v:amount,who:who,kind:'asked out',at:S.t}; } }
 function tag(x,y,txt,sub,tone,hold,rise,big){ S.tags=[]; S.tags.push({x:Math.max(70,Math.min(W-70,x)),y:y,txt:txt,sub:sub,tone:tone,t:0,hold:hold,rise:rise,big:big}); }
 // Persistent hangs come from the real queue: one per pending position, placed
