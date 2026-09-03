@@ -98,7 +98,7 @@ function draw(){ var c=ctx; var Z=S.zoom.k, K=S.storyK, LBL=Z<1.3;
   if(!LBL){ c.fillStyle='rgba(242,231,201,.8)'; c.font='600 9px sans-serif'; c.textAlign='center'; c.fillText('INSIDE THE VAULT · double-tap to leave',W/2,H*0.12); }
   if(S.story){ c.fillStyle='rgba(242,247,251,.85)'; c.font='600 10px sans-serif'; c.textAlign='center'; c.fillText('HOW THE VAULT WAS BUILT · SINCE JANUARY 2026',W/2,H*0.12); }
   if(S.night&&LBL){ c.fillStyle='rgba(255,228,170,.6)'; c.font='600 8px sans-serif'; c.textAlign='left'; c.fillText('NIGHT · lit windows are wallets that staked today',12,H*0.56); }
-  if(S.replayUntil&&S.t<S.replayUntil){ c.fillStyle='rgba(159,246,210,.7)'; c.font='600 10px sans-serif'; c.textAlign='right'; c.fillText('replaying the last '+(S.replayCount||0)+' moves',W-12,H*0.66); }
+  if(S.replayUntil&&S.t<S.replayUntil){ c.fillStyle='rgba(159,246,210,.7)'; c.font='600 10px sans-serif'; c.textAlign='right'; c.fillText('replaying the last '+(S.replayCount||0)+' moves',W-12,H*0.55); }
   if(S.frozen){ c.fillStyle='rgba(200,225,240,.10)'; c.fillRect(0,0,W,H); c.fillStyle='#FFC46B'; c.font='600 10px sans-serif'; c.textAlign='left'; c.fillText('FROZEN · WAITING FOR A FINALIZED ANSWER',12,H*0.1); }
 }
 var last=performance.now(), a2=0;
