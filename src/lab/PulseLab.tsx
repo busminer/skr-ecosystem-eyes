@@ -56,11 +56,11 @@ function remaining(seconds: number): string {
   return `${minutes}m ${String(safe % 60).padStart(2, '0')}s`;
 }
 
-async function fetchEvents(): Promise<FeedEvent[]> {
+async function fetchEvents(limit = 25, minimum = 0, type?: string): Promise<FeedEvent[]> {
   const controller = new AbortController();
   const deadline = setTimeout(() => controller.abort(), EVENTS_TIMEOUT_MS);
   try {
-    const response = await fetch(`${API_BASE_URL}/api/events?limit=25&min=0`, { headers: { accept: 'application/json' }, signal: controller.signal });
+    const response = await fetch(`${API_BASE_URL}/api/events?limit=${limit}&min=${minimum}${type ? `&type=${type}` : ''}`, { headers: { accept: 'application/json' }, signal: controller.signal });
     if (!response.ok) throw new Error(String(response.status));
     const payload = await response.json() as { items?: FeedEvent[] };
     return payload.items ?? [];
@@ -136,14 +136,14 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
     const pull = async () => {
       if (AppState.currentState !== 'active') return;
       try {
-        const items = await fetchEvents();
+        const items = await fetchEvents(seeded.current ? 25 : 60);
         if (!alive) return;
         if (!seeded.current) {
           seeded.current = true;
           items.forEach((item) => seen.current.add(item.id));
-          // The last page is replayed once, oldest first and spread over a
-          // few seconds, so the vault is alive from the first look and every
-          // phone in it is still a real finalized move.
+          // The last sixty moves are replayed once, oldest first and spread
+          // over most of a minute, so the vault is alive from the first look
+          // and every phone in it is still a real finalized move.
           scene.current?.push({ type: 'events', replay: true, items: [...items].reverse().map((item) => ({ kind: item.type, amount: item.amount ?? 0, who: who(item.name, item.wallet), sig: item.signature })) });
           return;
         }
@@ -172,6 +172,28 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
     };
     void pull();
     const timer = setInterval(() => void pull(), EVENTS_MS);
+    return () => { alive = false; clearInterval(timer); };
+  }, []);
+
+  // The day's largest stakes rest on the pile, lit, as the counterweight to
+  // the exits hanging above: the vault takes in more than it lets go most
+  // days, and the picture should say so with real events, not with a mood.
+  useEffect(() => {
+    let alive = true;
+    const read = async () => {
+      if (AppState.currentState !== 'active') return;
+      try {
+        const items = await fetchEvents(40, 10_000, 'stake');
+        if (!alive) return;
+        const dayAgo = Math.floor(Date.now() / 1_000) - 86_400;
+        const top = items.filter((item) => item.blockTime >= dayAgo && (item.amount ?? 0) > 0).sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0)).slice(0, 3);
+        scene.current?.push({ type: 'landmarks', items: top.map((item) => ({ amount: item.amount ?? 0, who: who(item.name, item.wallet), sig: item.signature })) });
+      } catch {
+        // The nests keep their last shape.
+      }
+    };
+    void read();
+    const timer = setInterval(() => void read(), 120_000);
     return () => { alive = false; clearInterval(timer); };
   }, []);
 
@@ -252,11 +274,16 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
     >
       <View style={[styles.sceneWrap, { height: sceneHeight, marginHorizontal: -spacing.lg }]}>
         <VaultScene ref={scene} height={sceneHeight} onTap={setReceipt} />
-        <View pointerEvents="none" style={styles.hud}>
+        {/* The figure floats above the pile, in the air the stakes fall
+            through; the two lines sit on the pile's foot, right above the
+            cards. Nothing left empty between them and the rest of the page. */}
+        <View pointerEvents="none" style={styles.hudFigure}>
           <View style={styles.figureRow}>
             <FlipNumber value={hero ? hero.figure : '—'} size={54} />
             <Text style={styles.unit}>{hero ? hero.unit : 'SKR'}</Text>
           </View>
+        </View>
+        <View pointerEvents="none" style={styles.hud}>
           <Text numberOfLines={1} style={styles.hudNote}>
             {metrics ? t('{percent}% of all SKR is staked', { percent: metrics.stakedPercent.toFixed(2) }) : error ? t('Waiting for a finalized answer') : t('Reading the vault')}
           </Text>
@@ -384,10 +411,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.lg, paddingTop: 0, paddingBottom: 120, gap: spacing.lg },
   sceneWrap: { backgroundColor: colors.bg, overflow: 'hidden' },
-  hud: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: 24 },
+  hud: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: 10 },
+  hudFigure: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: 96 },
   figureRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
   unit: { color: colors.muted, fontFamily: font.semibold, fontSize: 14, letterSpacing: 0.8, marginBottom: 6 },
-  hudNote: { color: colors.text, fontFamily: font.medium, fontSize: 15, lineHeight: 21, marginTop: 8, textShadowColor: '#000', textShadowRadius: 6 },
+  hudNote: { color: colors.text, fontFamily: font.medium, fontSize: 15, lineHeight: 21, textShadowColor: '#000', textShadowRadius: 6 },
   hudDay: { color: colors.muted, fontFamily: font.semibold, fontSize: 14.5, lineHeight: 20, marginTop: 2, textShadowColor: '#000', textShadowRadius: 6 },
   receipt: { padding: spacing.md, gap: spacing.xs },
   receiptHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
