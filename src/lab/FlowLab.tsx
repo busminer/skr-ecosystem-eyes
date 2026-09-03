@@ -7,7 +7,6 @@ import type { EcosystemState } from '../types';
 import { t } from '../i18n';
 import { compact, shortAddress } from '../format';
 import { usePref } from '../prefs';
-import { readSeenAt, writeSeenAt } from './away';
 import { playCue } from '../sound';
 import { colors, font, gold, radius, spacing, type } from '../theme';
 import { Eyebrow, Panel } from './kit';
@@ -47,7 +46,7 @@ const KINDS = [
   { key: 'all', label: 'All' },
   { key: 'stake', label: 'Stakes' },
   { key: 'unstake', label: 'Exits' },
-  { key: 'withdraw', label: 'Withdrawals' },
+  { key: 'withdraw', label: 'Withdrew' },
 ] as const;
 
 type KindKey = typeof KINDS[number]['key'];
@@ -212,8 +211,6 @@ export function FlowLab({ active }: { active: boolean }) {
   const headWidth = Math.min(width - spacing.lg * 2 - 24, 300);
   const [arrivals, setArrivals] = useState(0);
   const [openOlder, setOpenOlder] = useState(false);
-  const [away, setAway] = useState<{ count: number; biggest: FlowEvent } | null>(null);
-  const [largeAlerts] = usePref('alert:large', true);
   const seen = useRef<Set<string>>(new Set());
   const lastHaptic = useRef(0);
   const lastSurge = useRef(0);
@@ -230,25 +227,6 @@ export function FlowLab({ active }: { active: boolean }) {
   }, []);
 
   const minimum = bigOnly ? BIG_EVENT : 0;
-
-  // What landed above the threshold since this screen was last watched. The
-  // mark is moved forward as soon as the answer is known, so the same news is
-  // never told twice.
-  useEffect(() => {
-    if (!active || !largeAlerts) return;
-    let alive = true;
-    void (async () => {
-      const seenAt = await readSeenAt();
-      const items = await fetchEvents(BIG_EVENT, 25).catch(() => [] as FlowEvent[]);
-      if (!alive) return;
-      const missed = items.filter((item) => item.blockTime > seenAt && (item.amount ?? 0) >= BIG_EVENT);
-      if (seenAt > 0 && missed.length > 0) {
-        setAway({ count: missed.length, biggest: missed.reduce((peak, item) => ((item.amount ?? 0) > (peak.amount ?? 0) ? item : peak)) });
-      }
-      await writeSeenAt(Math.floor(Date.now() / 1_000));
-    })();
-    return () => { alive = false; };
-  }, [active, largeAlerts]);
 
   const pull = useCallback(async (fresh: boolean) => {
     // A phone in a pocket must not keep asking the server for news.
@@ -379,21 +357,6 @@ export function FlowLab({ active }: { active: boolean }) {
         </View>
       </View>
 
-      {away ? (
-        <Pressable accessibilityRole="button" onPress={() => { void Haptics.selectionAsync(); setAway(null); }}>
-          <Panel style={styles.away} tone={colors.metal}>
-            <View style={styles.awayTop}>
-              <Eyebrow tone={colors.metal}>{t('While you were away')}</Eyebrow>
-              <Text style={styles.awayClose}>×</Text>
-            </View>
-            <Text style={styles.awayText}>
-              {away.count === 1 ? t('One large move landed') : t('{count} large moves landed', { count: away.count })}
-              {away.biggest.amount != null ? t(', the biggest {amount} SKR {verb}', { amount: compact(away.biggest.amount), verb: t(VERB[away.biggest.type] ?? away.biggest.type) }) : ''}.
-            </Text>
-          </Panel>
-        </Pressable>
-      ) : null}
-
       {big ? (
         <ScrollView
           ref={headRail}
@@ -504,10 +467,6 @@ const styles = StyleSheet.create({
   hapticToggle: { borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.pill, paddingHorizontal: 11, paddingVertical: 5 },
   hapticLabel: { color: colors.faint, fontFamily: font.semibold, fontSize: 11, letterSpacing: 0.8 },
   hapticOn: { color: colors.accent },
-  away: { padding: spacing.md, gap: spacing.sm },
-  awayTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  awayClose: { color: colors.faint, fontFamily: font.regular, fontSize: 18, lineHeight: 20 },
-  awayText: { color: colors.text, fontFamily: font.medium, ...type.body },
   headline: { padding: spacing.md, gap: spacing.sm },
   headlineTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headlineTime: { color: colors.muted, fontFamily: font.regular, ...type.micro },
@@ -521,7 +480,7 @@ const styles = StyleSheet.create({
   filters: { flexDirection: 'row', alignItems: 'stretch', gap: 6 },
   chip: { flex: 1, borderWidth: 1, borderColor: colors.line, borderRadius: 10, backgroundColor: colors.panel, paddingHorizontal: 8, paddingVertical: 6, minWidth: 0 },
   chipBig: { flex: 0, minWidth: 54 },
-  chipLabel: { color: colors.muted, fontFamily: font.bold, fontSize: 11, letterSpacing: 0.2 },
+  chipLabel: { color: colors.muted, fontFamily: font.bold, fontSize: 10.5, letterSpacing: 0 },
   chipLabelOn: { color: colors.text },
   chipTotal: { color: colors.faint, fontFamily: font.mono, fontSize: 9.5, marginTop: 2 },
   filter: { borderWidth: 1, borderColor: colors.line, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5 },

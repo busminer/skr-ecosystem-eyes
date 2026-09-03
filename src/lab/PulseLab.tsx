@@ -174,7 +174,7 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
 
   useEffect(() => {
     if (!metrics) return;
-    const queue = [...metrics.queue].sort((left, right) => right.amount - left.amount).slice(0, 12).map((item) => ({
+    const queue = [...metrics.queue].sort((left, right) => right.amount - left.amount).slice(0, 6).map((item) => ({
       k: item.stakeAccount,
       amount: item.amount,
       who: item.name ? `${item.name}.skr` : null,
@@ -211,7 +211,7 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
   const factWidth = Math.min(inner * 0.62, 230);
   step.current = factWidth + spacing.md;
   const hero = metrics ? splitCompact(metrics.activeStaked) : null;
-  const sceneHeight = Math.round(Math.min(460, Math.max(300, height * 0.44)));
+  const sceneHeight = Math.round(Math.min(440, Math.max(300, height * 0.42)));
   const queue = [...(metrics?.queue ?? [])].sort((left, right) => left.unlockAt - right.unlockAt);
   const shownQueue = allQueue ? queue : queue.slice(0, QUEUE_SHORT);
 
@@ -228,10 +228,14 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
             <FlipNumber value={hero ? hero.figure : '—'} size={54} />
             <Text style={styles.unit}>{hero ? hero.unit : 'SKR'}</Text>
           </View>
-          <Text style={styles.hudNote}>
+          <Text numberOfLines={1} style={styles.hudNote}>
             {metrics ? t('{percent}% of all SKR is staked', { percent: metrics.stakedPercent.toFixed(2) }) : error ? t('Waiting for a finalized answer') : t('Reading the vault')}
-            {day ? `  ·  +${compact(day.staked)} in  ·  ${compact(day.unstaked)} asked out` : ''}
           </Text>
+          {day ? (
+            <Text numberOfLines={1} style={styles.hudDay}>
+              <Text style={{ color: colors.positive }}>+{compact(day.staked)}</Text>{` ${t('in today')}  ·  `}<Text style={{ color: colors.negative }}>{compact(day.unstaked)}</Text>{` ${t('asked out')}`}
+            </Text>
+          ) : null}
         </View>
       </View>
 
@@ -355,10 +359,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.lg, paddingTop: 0, paddingBottom: 120, gap: spacing.lg },
   sceneWrap: { backgroundColor: colors.bg, overflow: 'hidden' },
-  hud: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: 18 },
+  hud: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: 24 },
   figureRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
   unit: { color: colors.muted, fontFamily: font.semibold, fontSize: 14, letterSpacing: 0.8, marginBottom: 6 },
   hudNote: { color: colors.muted, fontFamily: font.regular, ...type.small, marginTop: 6, textShadowColor: '#000', textShadowRadius: 4 },
+  hudDay: { color: colors.muted, fontFamily: font.semibold, ...type.small, marginTop: 2, textShadowColor: '#000', textShadowRadius: 4 },
   receipt: { padding: spacing.md, gap: spacing.xs },
   receiptHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   close: { color: colors.faint, fontSize: 20, lineHeight: 22 },
