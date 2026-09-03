@@ -7,7 +7,7 @@ import type { EcosystemState } from '../types';
 import { t } from '../i18n';
 import { compact, shortAddress } from '../format';
 import { usePref } from '../prefs';
-import { cueHaptic, playCue } from '../sound';
+import { playCue } from '../sound';
 import { Carousel } from './Carousel';
 import { colors, font, gold, radius, spacing, type } from '../theme';
 import { Eyebrow, Panel } from './kit';
@@ -264,23 +264,9 @@ export function FlowLab({ active }: { active: boolean }) {
       if (appState.current !== 'active') return;
       const heavy = arrived.some((item) => (item.amount ?? 0) >= BIG_EVENT);
 
-      // A large exit and a large stake are opposite news, so they no longer
-      // share a bell: the exit lands as a tudum, the stake as the vault bell.
-      // A labelled stake below that sings once, like a bird.
-      const heavyExit = arrived.some((item) => (item.amount ?? 0) >= BIG_EVENT && (item.type === 'unstake' || item.type === 'withdraw'));
-      const labelled = arrived.some((item) => (item.amount ?? 0) >= LABEL_EVENT && item.type === 'stake');
-      // Every sound comes with its own short buzz, paired inside playCue; with
-      // sound off the buzz alone still says what landed.
-      if (heavy && stamp - lastSurge.current > SURGE_GAP_MS) {
-        lastSurge.current = stamp;
-        lastHaptic.current = stamp;
-        const cue = heavyExit ? 'tudum' : 'surge';
-        if (sound) playCue(cue, 0.6);
-        else if (haptics) cueHaptic(cue);
-      } else if (labelled && stamp - lastSurge.current > STAKE_GAP_MS) {
-        lastSurge.current = stamp;
-        if (sound) playCue('stake', 0.35);
-        else if (haptics) cueHaptic('stake');
+      // The sounds for these moves come from the app itself now (src/lab/cues.ts),
+      // so they are heard on any tab. The feed keeps only its light tap.
+      if (false) {
       } else if (haptics && stamp - lastHaptic.current > HAPTIC_GAP_MS) {
         lastHaptic.current = stamp;
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);

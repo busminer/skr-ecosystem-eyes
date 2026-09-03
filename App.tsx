@@ -15,6 +15,7 @@ import { langReady, t, useLang } from './src/i18n';
 import { configureNotifications } from './src/notifications';
 import { hydratePrefs } from './src/prefs';
 import { prepareSound } from './src/sound';
+import { useEventCues } from './src/lab/cues';
 import { colors, font, spacing, type } from './src/theme';
 import type { Freshness, FreshnessDetail } from './src/types';
 import { AlertsLab } from './src/lab/AlertsLab';
@@ -117,6 +118,8 @@ export default function App() {
   // Nothing on screen may be drawn in the wrong language and then swapped, so
   // the saved choice is read before the first frame, beside the fonts.
   useLang();
+  // Sounds and buzzes for the vault's moves belong to the app, not to a tab.
+  useEventCues();
   const appState = useRef(AppState.currentState);
   const reading = useRef(false);
   const finishOpening = useCallback(() => setOpening(false), []);

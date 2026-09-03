@@ -6,7 +6,6 @@ import { useReducedMotion } from '../useReducedMotion';
 import { t } from '../i18n';
 import { compact, integer, relativeTime, shortAddress } from '../format';
 import { prefValue, usePref } from '../prefs';
-import { cueHaptic, playCue } from '../sound';
 import { Carousel } from './Carousel';
 import { SESSION_KEY } from '../session';
 import { colors, font, gold, spacing, type } from '../theme';
@@ -30,9 +29,6 @@ const RANGE_TITLE: Record<Range, string> = { '24h': 'Last 24 hours', '7d': 'Last
 const RANGE_NOTE: Record<Range, string> = { '24h': 'over the last 24 hours', '7d': 'over the last 7 days', '30d': 'over the last 30 days' };
 const MOTIONS = ['live', 'calm', 'off'] as const;
 const QUEUE_SHORT = 8;
-const BIG_EVENT = 100_000;
-const LABEL_EVENT = 1_000;
-const CUE_GAP_MS = 4_000;
 
 type FeedEvent = { id: string; signature: string; type: string; wallet: string; name?: string | null; amount: number | null; blockTime: number };
 
@@ -79,6 +75,43 @@ function FactCard({ label, value, note, tone, width }: { label: string; value: s
   );
 }
 
+
+type QueueRow = NonNullable<EcosystemState['metrics']>['queue'][number];
+
+// The exit list keeps its own clock. Counting down every second used to
+// redraw the whole tab, cards and rail and scene wrapper alike, and that
+// one-second hitch showed in the scene as a stutter. Now only these rows tick.
+function QueueList({ queue, shown, allQueue, onToggle }: { queue: QueueRow[]; shown: QueueRow[]; allQueue: boolean; onToggle: () => void }) {
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1_000));
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Math.floor(Date.now() / 1_000)), 1_000);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <Panel style={styles.list}>
+      {shown.map((position, index) => {
+        const ready = position.status === 'withdrawable' || position.unlockAt <= now;
+        return (
+          <View key={position.stakeAccount} style={[styles.row, index > 0 && styles.rowDivided]}>
+            <View style={[styles.rowMark, { backgroundColor: ready ? colors.positive : colors.pending }]} />
+            <View style={styles.rowBody}>
+              <Text style={styles.rowAmount}>{compact(position.amount)} SKR</Text>
+              <Text numberOfLines={1} style={position.name ? styles.rowName : styles.rowWallet}>{who(position.name, position.wallet)}</Text>
+            </View>
+            <Text style={[styles.rowTime, { color: ready ? colors.positive : colors.text }]}>{ready ? t('ready') : remaining(position.unlockAt - now)}</Text>
+          </View>
+        );
+      })}
+      {queue.length === 0 ? <Text style={styles.empty}>{t('Nothing is queued to leave right now.')}</Text> : null}
+      {queue.length > QUEUE_SHORT ? (
+        <Pressable accessibilityRole="button" onPress={onToggle} style={styles.more}>
+          <Text style={styles.moreText}>{allQueue ? t('Show fewer') : t('Show all {count}', { count: queue.length })}</Text>
+        </Pressable>
+      ) : null}
+    </Panel>
+  );
+}
+
 export function PulseLab({ frozen }: { frozen: boolean }) {
   const { width, height } = useWindowDimensions();
   const [state, setState] = useState<EcosystemState | null>(null);
@@ -87,13 +120,11 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
   const [range, setRange] = useState<Range>('24h');
   const [receipt, setReceipt] = useState<SceneTap | null>(null);
   const [allQueue, setAllQueue] = useState(false);
-  const [now, setNow] = useState(() => Math.floor(Date.now() / 1_000));
   const [motionCalm, setMotionCalm] = usePref('motion:calm', false);
   const [motionOff, setMotionOff] = usePref('motion:off', false);
   const scene = useRef<SceneHandle>(null);
   const seen = useRef<Set<string>>(new Set());
   const seeded = useRef(false);
-  const lastCue = useRef(0);
   const page = useRef<ScrollView>(null);
   const queueY = useRef(0);
   const openQueue = useCallback(() => {
@@ -124,10 +155,6 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
     return () => { clearInterval(timer); subscription.remove(); };
   }, [load]);
 
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Math.floor(Date.now() / 1_000)), 1_000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Every finalized move reaches the scene within seconds. The first page only
   // seeds what has been seen, so an old day is not replayed on open.
@@ -152,20 +179,6 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
         arrived.forEach((item) => seen.current.add(item.id));
         if (seen.current.size > 600) seen.current = new Set([...seen.current].slice(-200));
         scene.current?.push({ type: 'events', items: arrived.reverse().map((item) => ({ kind: item.type, amount: item.amount ?? 0, who: who(item.name, item.wallet), sig: item.signature })) });
-        // The scene has a voice: the vault bell for a large stake, the tudum
-        // for a large exit, the bird for a stake worth a label. One cue per
-        // batch, never more than one every few seconds, and only while the
-        // person is looking at the vault.
-        const stamp = Date.now();
-        if (stamp - lastCue.current < CUE_GAP_MS) return;
-        const heavyStake = arrived.some((item) => item.type === 'stake' && (item.amount ?? 0) >= BIG_EVENT);
-        const heavyExit = arrived.some((item) => (item.type === 'unstake' || item.type === 'withdraw') && (item.amount ?? 0) >= BIG_EVENT);
-        const labelled = arrived.some((item) => item.type === 'stake' && (item.amount ?? 0) >= LABEL_EVENT);
-        const cue = heavyExit ? 'tudum' : heavyStake ? 'surge' : labelled ? 'stake' : null;
-        if (!cue) return;
-        lastCue.current = stamp;
-        if (prefValue('sound', true)) playCue(cue, cue === 'stake' ? 0.35 : 0.6);
-        else if (prefValue('buzz', true)) cueHaptic(cue);
       } catch {
         // The scene keeps raining at its last known tempo.
       }
@@ -274,18 +287,13 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
     >
       <View style={[styles.sceneWrap, { height: sceneHeight, marginHorizontal: -spacing.lg }]}>
         <VaultScene ref={scene} height={sceneHeight} onTap={setReceipt} />
-        {/* The figure floats above the pile, in the air the stakes fall
-            through; the two lines sit on the pile's foot, right above the
-            cards. Nothing left empty between them and the rest of the page. */}
-        <View pointerEvents="none" style={styles.hudFigure}>
-          <View style={styles.figureRow}>
-            <FlipNumber value={hero ? hero.figure : '—'} size={54} />
-            <Text style={styles.unit}>{hero ? hero.unit : 'SKR'}</Text>
-          </View>
-        </View>
       </View>
 
+      {/* The figure and the two lines share one row under the scene: the
+          lines on the left, the flip board on the right, in the space the
+          board left empty when it lived over the pile. */}
       <View style={styles.under}>
+        <View style={styles.underLines}>
           <Text numberOfLines={1} style={styles.hudNote}>
             {metrics ? t('{percent}% of all SKR is staked', { percent: metrics.stakedPercent.toFixed(2) }) : error ? t('Waiting for a finalized answer') : t('Reading the vault')}
           </Text>
@@ -294,6 +302,11 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
               <Text style={{ color: colors.positive }}>+{compact(day.staked)}</Text>{` ${t('in today')}  ·  `}<Text style={{ color: colors.negative }}>{compact(day.unstaked)}</Text>{` ${t('asked out')}`}
             </Text>
           ) : null}
+        </View>
+        <View style={styles.underFigure}>
+          <FlipNumber value={hero ? hero.figure : '—'} size={44} />
+          <Text style={styles.unit}>{hero ? hero.unit : 'SKR'}</Text>
+        </View>
       </View>
 
       {receipt ? (
@@ -364,27 +377,7 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
         <Eyebrow>{t('Exits in flight, soonest first')}</Eyebrow>
         <Text style={styles.listCount}>{t('{count} shown', { count: shownQueue.length })}</Text>
       </View>
-      <Panel style={styles.list}>
-        {shownQueue.map((position, index) => {
-          const ready = position.status === 'withdrawable' || position.unlockAt <= now;
-          return (
-            <View key={position.stakeAccount} style={[styles.row, index > 0 && styles.rowDivided]}>
-              <View style={[styles.rowMark, { backgroundColor: ready ? colors.positive : colors.pending }]} />
-              <View style={styles.rowBody}>
-                <Text style={styles.rowAmount}>{compact(position.amount)} SKR</Text>
-                <Text numberOfLines={1} style={position.name ? styles.rowName : styles.rowWallet}>{who(position.name, position.wallet)}</Text>
-              </View>
-              <Text style={[styles.rowTime, { color: ready ? colors.positive : colors.text }]}>{ready ? t('ready') : remaining(position.unlockAt - now)}</Text>
-            </View>
-          );
-        })}
-        {queue.length === 0 ? <Text style={styles.empty}>{t('Nothing is queued to leave right now.')}</Text> : null}
-        {queue.length > QUEUE_SHORT ? (
-          <Pressable accessibilityRole="button" onPress={() => setAllQueue((value) => !value)} style={styles.more}>
-            <Text style={styles.moreText}>{allQueue ? t('Show fewer') : t('Show all {count}', { count: queue.length })}</Text>
-          </Pressable>
-        ) : null}
-      </Panel>
+      <QueueList queue={queue} shown={shownQueue} allQueue={allQueue} onToggle={() => setAllQueue((value) => !value)} />
 
       <Panel style={styles.motionPanel}>
         <View style={styles.motionRow}>
@@ -413,10 +406,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.lg, paddingTop: 0, paddingBottom: 120, gap: spacing.lg },
   sceneWrap: { backgroundColor: colors.bg, overflow: 'hidden' },
-  under: { marginTop: -spacing.sm, gap: 2 },
-  hudFigure: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: 112 },
-  figureRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
-  unit: { color: colors.muted, fontFamily: font.semibold, fontSize: 14, letterSpacing: 0.8, marginBottom: 6 },
+  under: { marginTop: -spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  underLines: { flex: 1, gap: 2 },
+  underFigure: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
+  unit: { color: colors.muted, fontFamily: font.semibold, fontSize: 12, letterSpacing: 0.6, marginBottom: 4 },
   hudNote: { color: colors.text, fontFamily: font.medium, fontSize: 15, lineHeight: 21, textShadowColor: '#000', textShadowRadius: 6 },
   hudDay: { color: colors.muted, fontFamily: font.semibold, fontSize: 14.5, lineHeight: 20, textShadowColor: '#000', textShadowRadius: 6 },
   receipt: { padding: spacing.md, gap: spacing.xs },
