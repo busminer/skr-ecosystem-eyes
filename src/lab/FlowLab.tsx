@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
-import { API_BASE_URL } from '../api';
+import { API_BASE_URL, fetchEcosystemState } from '../api';
+import type { EcosystemState } from '../types';
 import { t } from '../i18n';
 import { compact, shortAddress } from '../format';
 import { usePref } from '../prefs';
@@ -31,19 +32,25 @@ const SURGE_GAP_MS = 6_000;
 // Whole SKR on purpose: the server parses `min` as an integer and refuses a
 // fraction, so a threshold like 0.5 would silently return nothing.
 const BIG_EVENT = 100_000;
+// From here up a stake earns a label in the vault and a bird in the feed.
+const LABEL_EVENT = 1_000;
+const BIRD_GAP_MS = 4_000;
 // Big moves earn a card, but only the two most recent ones. Any older large
 // event folds into a single summary line so the feed never becomes a wall.
 const BIG_CARDS_OPEN = 2;
 const HEADLINE_MINIMUM = 50_000;
 const DAY_SECONDS = 86_400;
 
-const FILTERS = [
-  { key: 'all', label: 'ALL', min: 0 },
-  { key: '1k', label: '1K+', min: 1_000 },
-  { key: '100k', label: '100K+', min: 100_000 },
+// The chips say what kind of move, and each carries the day's total, so the
+// shape of the day is readable before anything is tapped.
+const KINDS = [
+  { key: 'all', label: 'All' },
+  { key: 'stake', label: 'Stakes' },
+  { key: 'unstake', label: 'Exits' },
+  { key: 'withdraw', label: 'Withdrawals' },
 ] as const;
 
-type FilterKey = typeof FILTERS[number]['key'];
+type KindKey = typeof KINDS[number]['key'];
 
 type FlowEvent = {
   id: string;
@@ -108,13 +115,13 @@ function who(event: FlowEvent): string {
 // The pinned block. Within a day it is today's biggest move; if the day was
 // quiet it says so and shows the last big one instead of pretending.
 
-function Headline({ event, now }: { event: FlowEvent; now: number }) {
+function Headline({ event, now, title }: { event: FlowEvent; now: number; title?: string }) {
   const tone = TONE[event.type] ?? colors.muted;
   const today = now - event.blockTime <= DAY_SECONDS;
   return (
     <Panel style={[styles.headline, { borderColor: tone }]} tone={tone}>
       <View style={styles.headlineTop}>
-        <Eyebrow tone={tone}>{today ? t('Biggest seen today') : t('Last big move')}</Eyebrow>
+        <Eyebrow tone={tone}>{title ?? (today ? t('Biggest seen today') : t('Last big move'))}</Eyebrow>
         <Text style={styles.headlineTime}>{t('{age} ago', { age: ago(event.blockTime, now) })}</Text>
       </View>
       <View style={styles.headlineRow}>
@@ -194,7 +201,15 @@ export function FlowLab({ active }: { active: boolean }) {
   const [live, setLive] = useState(false);
   const [haptics, setHaptics] = usePref('buzz', true);
   const [sound, setSound] = usePref('sound', true);
-  const [filter, setFilter] = useState<FilterKey>('all');
+  const [kind, setKind] = useState<KindKey>('all');
+  const [bigOnly, setBigOnly] = useState(false);
+  const [day, setDay] = useState<EcosystemState['analytics']['windows'][string] | null>(null);
+  const [headlines, setHeadlines] = useState<FlowEvent[]>([]);
+  const headRail = useRef<ScrollView>(null);
+  const headIndex = useRef(0);
+  const headHeld = useRef(false);
+  const { width } = useWindowDimensions();
+  const headWidth = Math.min(width - spacing.lg * 2 - 24, 300);
   const [arrivals, setArrivals] = useState(0);
   const [openOlder, setOpenOlder] = useState(false);
   const [away, setAway] = useState<{ count: number; biggest: FlowEvent } | null>(null);
@@ -214,7 +229,7 @@ export function FlowLab({ active }: { active: boolean }) {
     return () => clearInterval(timer);
   }, []);
 
-  const minimum = FILTERS.find((option) => option.key === filter)?.min ?? 0;
+  const minimum = bigOnly ? BIG_EVENT : 0;
 
   // What landed above the threshold since this screen was last watched. The
   // mark is moved forward as soon as the answer is known, so the same news is
@@ -264,6 +279,11 @@ export function FlowLab({ active }: { active: boolean }) {
       if (appState.current !== 'active') return;
       const heavy = arrived.some((item) => (item.amount ?? 0) >= BIG_EVENT);
 
+      // A large exit and a large stake are opposite news, so they no longer
+      // share a bell: the exit lands as a tudum, the stake as the vault bell.
+      // A labelled stake below that sings once, like a bird.
+      const heavyExit = arrived.some((item) => (item.amount ?? 0) >= BIG_EVENT && (item.type === 'unstake' || item.type === 'withdraw'));
+      const labelled = arrived.some((item) => (item.amount ?? 0) >= LABEL_EVENT && item.type === 'stake');
       if (heavy && stamp - lastSurge.current > SURGE_GAP_MS) {
         lastSurge.current = stamp;
         lastHaptic.current = stamp;
@@ -271,7 +291,11 @@ export function FlowLab({ active }: { active: boolean }) {
           void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
           setTimeout(() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined); }, 160);
         }
-        if (sound) playCue('surge', 0.6);
+        if (sound) playCue(heavyExit ? 'tudum' : 'surge', 0.6);
+      } else if (labelled && stamp - lastSurge.current > BIRD_GAP_MS) {
+        lastSurge.current = stamp;
+        if (haptics) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+        if (sound) playCue('bird', 0.35);
       } else if (haptics && stamp - lastHaptic.current > HAPTIC_GAP_MS) {
         lastHaptic.current = stamp;
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
@@ -292,6 +316,8 @@ export function FlowLab({ active }: { active: boolean }) {
       const withinDay = items.filter((item) => stamp - item.blockTime <= DAY_SECONDS);
       const pool = withinDay.length > 0 ? withinDay : items;
       setBig(pool.reduce((peak, item) => ((item.amount ?? 0) > (peak.amount ?? 0) ? item : peak)));
+      const best = (type: string) => pool.filter((item) => item.type === type).reduce<FlowEvent | null>((peak, item) => (!peak || (item.amount ?? 0) > (peak.amount ?? 0) ? item : peak), null);
+      setHeadlines([best('stake'), best('unstake'), best('withdraw')].filter((item): item is FlowEvent => Boolean(item)));
     } catch {
       // The pinned block keeps its last honest answer.
     }
@@ -303,6 +329,26 @@ export function FlowLab({ active }: { active: boolean }) {
     const timer = setInterval(() => void pull(false), POLL_MS);
     return () => clearInterval(timer);
   }, [active, pull]);
+
+  useEffect(() => {
+    if (!active) return;
+    let alive = true;
+    const readDay = () => fetchEcosystemState().then((state) => { if (alive) setDay(state.analytics?.windows?.['24h'] ?? null); }).catch(() => undefined);
+    void readDay();
+    const dayTimer = setInterval(() => { if (AppState.currentState === 'active') void readDay(); }, 300_000);
+    return () => { alive = false; clearInterval(dayTimer); };
+  }, [active]);
+
+  // The headline cards turn themselves over, like the facts on the vault.
+  useEffect(() => {
+    if (!active || headlines.length < 1) return;
+    const timer = setInterval(() => {
+      if (headHeld.current || AppState.currentState !== 'active') return;
+      headIndex.current = (headIndex.current + 1) % (headlines.length + 1);
+      headRail.current?.scrollTo({ x: headIndex.current * (headWidth + spacing.md), animated: true });
+    }, 3_600);
+    return () => clearInterval(timer);
+  }, [active, headlines.length, headWidth]);
 
   useEffect(() => {
     if (!active) return;
@@ -348,25 +394,47 @@ export function FlowLab({ active }: { active: boolean }) {
         </Pressable>
       ) : null}
 
-      {big ? <Headline event={big} now={now} /> : null}
+      {big ? (
+        <ScrollView
+          ref={headRail}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={headWidth + spacing.md}
+          decelerationRate="fast"
+          onScrollBeginDrag={() => { headHeld.current = true; }}
+          contentContainerStyle={styles.headRail}
+          style={styles.headRailWrap}
+        >
+          <View style={{ width: headWidth }}><Headline event={big} now={now} /></View>
+          {headlines.map((item) => (
+            <View key={item.id} style={{ width: headWidth }}><Headline event={item} now={now} title={item.type === 'stake' ? t('Biggest stake today') : item.type === 'unstake' ? t('Biggest exit today') : t('Biggest withdrawal today')} /></View>
+          ))}
+        </ScrollView>
+      ) : null}
 
       <View style={styles.filters}>
-        {FILTERS.map((option) => {
-          const on = option.key === filter;
+        {KINDS.map((option) => {
+          const on = option.key === kind;
+          const total = day && option.key !== 'all' ? (option.key === 'stake' ? day.staked : option.key === 'unstake' ? day.unstaked : day.withdrawn) : null;
+          const tone = option.key === 'stake' ? colors.positive : option.key === 'unstake' ? colors.negative : option.key === 'withdraw' ? colors.pending : colors.accent;
           return (
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
-              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              hitSlop={{ top: 8, bottom: 8, left: 2, right: 2 }}
               key={option.key}
-              onPress={() => { void Haptics.selectionAsync(); setFilter(option.key); }}
-              style={[styles.filter, on && styles.filterOn]}
+              onPress={() => { void Haptics.selectionAsync(); setKind(option.key); }}
+              style={[styles.chip, on && { borderColor: tone }]}
             >
-              <Text style={[styles.filterLabel, on && styles.filterLabelOn]}>{t(option.label)}</Text>
+              <Text numberOfLines={1} style={[styles.chipLabel, on && styles.chipLabelOn]}>{t(option.label)}</Text>
+              {total != null ? <Text numberOfLines={1} style={[styles.chipTotal, { color: tone }]}>{compact(total)}</Text> : <Text style={styles.chipTotal}>{t('24h')}</Text>}
             </Pressable>
           );
         })}
-        <Text style={styles.filterNote}>{minimum > 0 ? t('only {amount} SKR and up', { amount: compact(minimum) }) : t('everything, dust included')}</Text>
+        <Pressable accessibilityRole="button" accessibilityState={{ selected: bigOnly }} hitSlop={8} onPress={() => { void Haptics.selectionAsync(); setBigOnly((value) => !value); }} style={[styles.chip, styles.chipBig, bigOnly && { borderColor: colors.accent }]}>
+          <Text style={[styles.chipLabel, bigOnly && styles.chipLabelOn]}>{t('Big')}</Text>
+          <Text style={styles.chipTotal}>100K+</Text>
+        </Pressable>
       </View>
 
       {events.length === 0 ? (
@@ -377,7 +445,7 @@ export function FlowLab({ active }: { active: boolean }) {
 
       <View style={styles.feed}>
         {(() => {
-          const bigIds = events.filter((event) => (event.amount ?? 0) >= BIG_EVENT).map((event) => event.id);
+          const bigIds = events.filter((event) => (kind === 'all' || event.type === kind) && (event.amount ?? 0) >= BIG_EVENT).map((event) => event.id);
           const foldedIds = new Set(bigIds.slice(BIG_CARDS_OPEN));
           const foldedTotal = events
             .filter((event) => foldedIds.has(event.id))
@@ -386,6 +454,7 @@ export function FlowLab({ active }: { active: boolean }) {
           const nodes: React.ReactNode[] = [];
 
           for (const event of events) {
+            if (kind !== 'all' && event.type !== kind) continue;
             const isBig = (event.amount ?? 0) >= BIG_EVENT;
             if (isBig && foldedIds.has(event.id) && !openOlder) {
               if (!foldRendered) {
@@ -447,7 +516,14 @@ const styles = StyleSheet.create({
   headlineUnit: { color: colors.muted, fontFamily: font.semibold, fontSize: 12 },
   headlineKind: { marginLeft: 'auto', fontFamily: font.bold, fontSize: 11, letterSpacing: 1 },
   headlineFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  filters: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  headRailWrap: { marginHorizontal: -spacing.lg },
+  headRail: { gap: spacing.md, paddingHorizontal: spacing.lg },
+  filters: { flexDirection: 'row', alignItems: 'stretch', gap: 6 },
+  chip: { flex: 1, borderWidth: 1, borderColor: colors.line, borderRadius: 10, backgroundColor: colors.panel, paddingHorizontal: 8, paddingVertical: 6, minWidth: 0 },
+  chipBig: { flex: 0, minWidth: 54 },
+  chipLabel: { color: colors.muted, fontFamily: font.bold, fontSize: 11, letterSpacing: 0.2 },
+  chipLabelOn: { color: colors.text },
+  chipTotal: { color: colors.faint, fontFamily: font.mono, fontSize: 9.5, marginTop: 2 },
   filter: { borderWidth: 1, borderColor: colors.line, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5 },
   filterOn: { borderColor: colors.accentDim, backgroundColor: colors.panelHi },
   filterLabel: { color: colors.faint, fontFamily: font.semibold, fontSize: 11.5, letterSpacing: 0.6 },

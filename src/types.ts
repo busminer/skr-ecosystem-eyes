@@ -58,6 +58,7 @@ export type EcosystemState = {
     queue: Array<{
       stakeAccount: string;
       wallet: string;
+      name?: string | null;
       amount: number;
       unstakeTimestamp: number;
       unlockAt: number;

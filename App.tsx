@@ -23,19 +23,20 @@ import { Mark } from './src/lab/kit';
 import { Splash } from './src/lab/Splash';
 import { MyLab } from './src/lab/MyLab';
 import { PulseLab } from './src/lab/PulseLab';
-import { QueueLab } from './src/lab/QueueLab';
 
-type Tab = 'pulse' | 'flow' | 'me' | 'queue' | 'alerts';
+type Tab = 'pulse' | 'flow' | 'me' | 'alerts';
 
 const tabs: Array<{ key: Tab; label: string }> = [
-  { key: 'pulse', label: 'Pulse' },
+  { key: 'pulse', label: 'Vault' },
   { key: 'flow', label: 'Flow' },
   { key: 'me', label: 'Me' },
-  { key: 'queue', label: 'Queue' },
   { key: 'alerts', label: 'Alerts' },
 ];
 
 const freshnessTone = { fresh: colors.positive, aging: colors.pending, stale: colors.pending, unavailable: colors.negative } as const;
+// How far the eye in the header opens for each answer. The lids are the
+// indicator now; the word beside them is only the age.
+const freshnessOpen = { fresh: 1, aging: 0.62, stale: 0.22, unavailable: 0 } as const;
 
 // The badge answers "how current is what I am looking at", so it has to follow
 // the tab. The vault metrics, the event stream and the queue scan each run on
@@ -46,7 +47,6 @@ const TAB_SOURCE: Record<Tab, keyof Pick<FreshnessDetail, 'metrics' | 'events' |
   pulse: 'metrics',
   flow: 'events',
   me: 'metrics',
-  queue: 'queue',
   alerts: 'overall',
 };
 
@@ -187,7 +187,7 @@ export default function App() {
       <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <View style={styles.topBar}>
-          <Mark size={22} />
+          <Mark size={22} open={freshness ? freshnessOpen[freshness] : 1} />
           <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.wordmark}>SKR EYES</Text>
           <View style={styles.status}>
             <View style={[styles.statusDot, { backgroundColor: tone }]} />
@@ -197,10 +197,9 @@ export default function App() {
         </View>
 
         <Animated.View key={tab} entering={FadeIn.duration(180)} style={styles.body}>
-          {tab === 'pulse' ? <PulseLab onOpenQueue={() => select('queue')} /> : null}
+          {tab === 'pulse' ? <PulseLab frozen={freshness === 'stale' || freshness === 'unavailable'} /> : null}
           {tab === 'flow' ? <FlowLab active={tab === 'flow'} /> : null}
           {tab === 'me' ? <MyLab /> : null}
-          {tab === 'queue' ? <QueueLab /> : null}
           {tab === 'alerts' ? <AlertsLab /> : null}
         </Animated.View>
 

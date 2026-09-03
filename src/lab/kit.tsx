@@ -1,27 +1,41 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, G, Path, Rect } from 'react-native-svg';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { colors, font, radius, spacing, type } from '../theme';
 
 // The mark: the eye from the app icon, drawn again in vector so the header,
 // the card and the launcher all show the same shape. The lens at its centre is
 // the camera the whole idea started from.
-export function Mark({ size = 26, tone = colors.accent }: { size?: number; tone?: string }) {
+//
+// `open` is how far the lids are apart, 1 to 0. In the header it follows the
+// freshness of what is on screen: wide open on fresh data, half-closed while it
+// ages, shut when the source has gone quiet. The eye says it without a word.
+export function Mark({ size = 26, tone = colors.accent, open = 1 }: { size?: number; tone?: string; open?: number }) {
+  const gap = Math.max(0, Math.min(1, open));
+  const height = 52 * gap;
+  const y = 50 - height / 2;
+  const lidTone = gap < 0.3 ? '#6C8593' : tone;
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100">
-      <Path
-        d="M12 50 C22 29 34 24 50 24 C66 24 78 29 88 50 C78 71 66 76 50 76 C34 76 22 71 12 50 Z"
-        fill="#070B0E"
-        stroke={tone}
-        strokeWidth={5}
-      />
-      <Path d="M13 50 C24 37 34 33 50 33 L50 67 C34 67 24 63 13 50 Z" fill="#101A21" />
-      <Path d="M87 50 C76 37 66 33 50 33 L50 67 C66 67 76 63 87 50 Z" fill="#16242D" />
-      <Circle cx={50} cy={50} r={16} fill="#050B10" stroke="#3A5B68" strokeWidth={3} />
-      <Circle cx={50} cy={50} r={8.5} fill={colors.metal} />
-      <Circle cx={50} cy={50} r={3.6} fill="#020304" />
-      <Circle cx={46.5} cy={46.5} r={1.9} fill="#F4FBFD" />
+      <Defs>
+        <ClipPath id="lids"><Rect x={0} y={y} width={100} height={Math.max(height, 0.01)} /></ClipPath>
+      </Defs>
+      <G clipPath="url(#lids)">
+        <Path
+          d="M12 50 C22 29 34 24 50 24 C66 24 78 29 88 50 C78 71 66 76 50 76 C34 76 22 71 12 50 Z"
+          fill="#070B0E"
+          stroke={lidTone}
+          strokeWidth={5}
+        />
+        <Path d="M13 50 C24 37 34 33 50 33 L50 67 C34 67 24 63 13 50 Z" fill="#101A21" />
+        <Path d="M87 50 C76 37 66 33 50 33 L50 67 C66 67 76 63 87 50 Z" fill="#16242D" />
+        <Circle cx={50} cy={50} r={16} fill="#050B10" stroke="#3A5B68" strokeWidth={3} />
+        <Circle cx={50} cy={50} r={8.5} fill={colors.metal} opacity={0.45 + 0.55 * gap} />
+        <Circle cx={50} cy={50} r={3.6} fill="#020304" />
+        {gap > 0.5 ? <Circle cx={46.5} cy={46.5} r={1.9} fill="#F4FBFD" /> : null}
+      </G>
+      {gap < 0.3 ? <Path d="M12 50 C30 50 70 50 88 50" fill="none" stroke={lidTone} strokeWidth={5} strokeLinecap="round" /> : null}
     </Svg>
   );
 }
