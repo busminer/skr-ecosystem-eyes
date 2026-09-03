@@ -299,12 +299,12 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
           </Text>
           {day ? (
             <Text numberOfLines={1} style={styles.hudDay}>
-              <Text style={{ color: colors.positive }}>+{compact(day.staked)}</Text>{` ${t('in today')}  ·  `}<Text style={{ color: colors.negative }}>{compact(day.unstaked)}</Text>{` ${t('asked out')}`}
+              <Text style={{ color: colors.positive }}>+{compact(day.staked)}</Text>{` ${t('in')} · `}<Text style={{ color: colors.negative }}>{compact(day.unstaked)}</Text>{` ${t('asked out')}`}
             </Text>
           ) : null}
         </View>
         <View style={styles.underFigure}>
-          <FlipNumber value={hero ? hero.figure : '—'} size={44} />
+          <FlipNumber value={hero ? hero.figure : '—'} size={40} />
           <Text style={styles.unit}>{hero ? hero.unit : 'SKR'}</Text>
         </View>
       </View>
@@ -408,8 +408,8 @@ const styles = StyleSheet.create({
   sceneWrap: { backgroundColor: colors.bg, overflow: 'hidden' },
   under: { marginTop: -spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   underLines: { flex: 1, gap: 2 },
-  underFigure: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
-  unit: { color: colors.muted, fontFamily: font.semibold, fontSize: 12, letterSpacing: 0.6, marginBottom: 4 },
+  underFigure: { alignItems: 'flex-end', gap: 3 },
+  unit: { color: colors.muted, fontFamily: font.semibold, fontSize: 11, letterSpacing: 0.8 },
   hudNote: { color: colors.text, fontFamily: font.medium, fontSize: 15, lineHeight: 21, textShadowColor: '#000', textShadowRadius: 6 },
   hudDay: { color: colors.muted, fontFamily: font.semibold, fontSize: 14.5, lineHeight: 20, textShadowColor: '#000', textShadowRadius: 6 },
   receipt: { padding: spacing.md, gap: spacing.xs },
