@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing.lg, paddingTop: 0, paddingBottom: 120, gap: spacing.lg },
   sceneWrap: { backgroundColor: colors.bg, overflow: 'hidden' },
   hud: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: 10 },
-  hudFigure: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: 152 },
+  hudFigure: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: 166 },
   figureRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
   unit: { color: colors.muted, fontFamily: font.semibold, fontSize: 14, letterSpacing: 0.8, marginBottom: 6 },
   hudNote: { color: colors.text, fontFamily: font.medium, fontSize: 15, lineHeight: 21, textShadowColor: '#000', textShadowRadius: 6 },

@@ -49,14 +49,14 @@ function spawnStake(amount,who,sig,x){ var big=amount>=1e5; x=x!=null?x:rnd(30,W
   tag(x,H*0.52,fmt(amount)+' SKR staked',who,'#9ff6d2',2.6,true); S.last={v:amount,who:who,kind:'staked',at:S.t}; }
 function liftExit(amount,who,sig,big){ var col=Math.floor(rnd(4,S.cols-4)); var x=col*8+4; var top=pileTop(x); for(var i=0;i<S.cols;i++){ var d=Math.abs(i-col); if(d<5) S.bump[i]+=6*(1-d/5); }
   var n=big?Math.min(24,Math.round(8+6*Math.log10(amount/1e5))):Math.max(1,Math.round(Math.log10(amount/1e3))+1); var raft=[]; for(var j=0;j<n;j++) raft.push({dx:rnd(-16,16)*(big?1.6:1),dy:rnd(-6,6),L:big?Math.floor(rnd(1,3)):2,rot:rnd(-0.2,0.2)});
-  S.hang.push({x:x,y:top-6,vy:-rnd(16,22),hangY:rnd(H*0.46,H*0.52),t:0,hold:big?9:6,amt:amount,who:who,sig:sig,raft:raft,big:big,state:'rise',life:1,sw:Math.random()*6,temp:true,frac:0});
+  S.hang.push({x:x,y:top-6,vy:-rnd(16,22),hangY:rnd(H*0.40,H*0.44),t:0,hold:big?9:6,amt:amount,who:who,sig:sig,raft:raft,big:big,state:'rise',life:1,sw:Math.random()*6,temp:true,frac:0});
   if(big){ tag(x,H*0.44,fmt(amount)+' SKR asked out',who,'#ffb08a',2.6,true); S.last={v:amount,who:who,kind:'asked out',at:S.t}; } }
 function tag(x,y,txt,sub,tone,hold,rise,big){ S.tags=[]; S.tags.push({x:Math.max(70,Math.min(W-70,x)),y:y,txt:txt,sub:sub,tone:tone,t:0,hold:hold,rise:rise,big:big}); }
 // Persistent hangs come from the real queue: one per pending position, placed
 // by the real remaining time. Only the largest twelve are drawn, so a busy day
 // does not turn the cooling layer into a wall.
 function syncQueue(items){ var keys=items.map(function(q){return q.k;}).join(','); if(keys===S.lastQueueKeys){ items.forEach(function(q){ var h=S.hang.find(function(x){return x.key===q.k;}); if(h){ h.amt=q.amount; h.unlockAt=q.unlockAt; } }); return; } S.lastQueueKeys=keys;
-  var keep={}; var slots=Math.max(1,items.length); items.forEach(function(q,i){ keep[q.k]=1; var h=S.hang.find(function(x){return x.key===q.k;}); if(!h){ var n=Math.max(1,Math.min(6,Math.round(Math.log10(Math.max(1000,q.amount)/1e4))+2)); var raft=[]; for(var j=0;j<n;j++) raft.push({dx:rnd(-11,11),dy:rnd(-4,4),L:q.amount>=1e5?Math.floor(rnd(1,3)):1,rot:rnd(-0.2,0.2)}); var x=slots===1?W/2:34+(W-68)*(i/(slots-1)); S.hang.push({key:q.k,x:x,y:H*0.45,vy:-14,hangY:(i%2===0?H*0.2:H*0.33),t:0,hold:1e9,amt:q.amount,who:q.who,unlockAt:q.unlockAt,startAt:q.startAt,raft:raft,big:q.amount>=1e5,state:'rise',life:1,sw:Math.random()*6}); } });
+  var keep={}; var slots=Math.max(1,items.length); items.forEach(function(q,i){ keep[q.k]=1; var h=S.hang.find(function(x){return x.key===q.k;}); if(!h){ var n=Math.max(1,Math.min(6,Math.round(Math.log10(Math.max(1000,q.amount)/1e4))+2)); var raft=[]; for(var j=0;j<n;j++) raft.push({dx:rnd(-11,11),dy:rnd(-4,4),L:q.amount>=1e5?Math.floor(rnd(1,3)):1,rot:rnd(-0.2,0.2)}); var x=slots===1?W/2:34+(W-68)*(i/(slots-1)); S.hang.push({key:q.k,x:x,y:H*0.45,vy:-14,hangY:(i%2===0?H*0.17:H*0.285),t:0,hold:1e9,amt:q.amount,who:q.who,unlockAt:q.unlockAt,startAt:q.startAt,raft:raft,big:q.amount>=1e5,state:'rise',life:1,sw:Math.random()*6}); } });
   S.hang.forEach(function(h){ if(h.key&&!keep[h.key]&&h.state!=='fly'&&h.state!=='fall'){ h.state='fly'; h.vy=0; } }); }
 function spawnSixteen(){ var x=S.meX; for(var i=0;i<16;i++){ (function(i){ setTimeout(function(){ S.p.push({k:'in',x:x-18+(i%8)*5.2,y:-18-(i>7?12:0),vy:64,vx:0,L:1,lit:true,tone:'gold',sw:0,life:1,amt:0,text:'1',gold:true,lead:i===15}); },i*70); })(i); } }
 var acc=0;
@@ -76,12 +76,12 @@ var BG=null, bgKey='';
 function background(c){ var mood=S.todayOut>S.todayIn?0:1; var key=W+'x'+H+'|'+mood+'|'+(S.night?1:0); if(bgKey!==key){ BG=document.createElement('canvas'); BG.width=Math.round(W*DPR); BG.height=Math.round(H*DPR); var x=BG.getContext('2d'); x.scale(DPR,DPR); var g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,S.night?'#070E15':'#0A1722'); g.addColorStop(0.5,S.night?'#081420':mood?'#0C2030':'#0A1A26'); g.addColorStop(1,S.night?'#0A1A24':'#0B1F2B'); x.fillStyle=g; x.fillRect(0,0,W,H);
   for(var i=0;i<W*H*0.06;i++){ var px=Math.random()*W, py=Math.random()*H; x.fillStyle=(i&1)?'rgba(255,255,255,0.028)':'rgba(0,0,0,0.05)'; x.fillRect(px,py,1,1); }
   for(var di=0;di<70;di++){ x.fillStyle='rgba(160,205,225,'+(0.14+0.22*Math.random())+')'; x.fillRect(Math.random()*W,Math.random()*H*0.6,1.2,1.2); }
-  x.fillStyle='rgba(255,196,107,.035)'; x.fillRect(0,H*0.12,W,H*0.3); x.strokeStyle='rgba(255,196,107,.1)'; x.setLineDash([2,6]); x.lineWidth=1; x.beginPath(); x.moveTo(0,H*0.12); x.lineTo(W,H*0.12); x.moveTo(0,H*0.42); x.lineTo(W,H*0.42); x.stroke(); x.setLineDash([]);
+  x.fillStyle='rgba(255,196,107,.035)'; x.fillRect(0,H*0.09,W,H*0.29); x.strokeStyle='rgba(255,196,107,.1)'; x.setLineDash([2,6]); x.lineWidth=1; x.beginPath(); x.moveTo(0,H*0.09); x.lineTo(W,H*0.09); x.moveTo(0,H*0.38); x.lineTo(W,H*0.38); x.stroke(); x.setLineDash([]);
   bgKey=key; } c.drawImage(BG,0,0,W,H); }
 function draw(){ var c=ctx; var Z=S.zoom.k, K=S.storyK, LBL=Z<1.3;
   background(c);
   c.save(); c.translate(S.zoom.cx,S.zoom.cy); c.scale(Z,Z); c.translate(-S.zoom.cx,-S.zoom.cy);
-  if(LBL){ c.fillStyle='rgba(255,214,150,.85)'; c.font='600 10px sans-serif'; c.textAlign='left'; c.fillText('COOLING 48H · '+fmt(S.pending||0)+' SKR',12,H*0.12-6); }
+  if(LBL){ c.fillStyle='rgba(255,214,150,.85)'; c.font='600 10px sans-serif'; c.textAlign='left'; c.fillText('COOLING 48H · '+fmt(S.pending||0)+' SKR',12,H*0.09-5); }
   c.beginPath(); c.moveTo(0,H); for(var i=0;i<S.cols;i++){ var x=i*8; var y=H-(S.pile[i]+S.bump[i])*K+(S.shock>0?Math.sin(i*0.7+S.t*14)*3*S.shock:0); c.lineTo(x,y);} c.lineTo(W,H); c.closePath(); if(!S.pg||S.pgH!==H){ S.pg=c.createLinearGradient(0,H*0.5,0,H); S.pg.addColorStop(0,'#0F2A36'); S.pg.addColorStop(1,'#050C12'); S.pe=c.createLinearGradient(0,H*0.5,0,H*0.63); S.pe.addColorStop(0,'rgba(124,240,188,.2)'); S.pe.addColorStop(1,'rgba(124,240,188,0)'); S.pgH=H; } c.fillStyle=S.pg; c.fill(); c.fillStyle=S.pe; c.fill();
   c.save(); c.clip();
   S.piled.forEach(function(q){ var y=H-(H-q.y)*K; var win=S.night&&q.win; if(q.lit>0.05){ drawGlow(c,q.tone==='gold'?GD:IN,q.x,y,13,q.lit*0.8); } else if(win){ drawGlow(c,'rgba(255,228,170,1)',q.x,y,8,0.3+0.2*Math.sin(S.t*2+q.wph)); } drawPhone(q.L,q.lit>0.05||win,win&&q.lit<=0.05?'gold':q.tone,q.text,q.x,y,q.rot,(q.lit>0.05||win)?1:q.dim); });
@@ -98,7 +98,7 @@ function draw(){ var c=ctx; var Z=S.zoom.k, K=S.storyK, LBL=Z<1.3;
   if(!LBL){ c.fillStyle='rgba(242,231,201,.8)'; c.font='600 9px sans-serif'; c.textAlign='center'; c.fillText('INSIDE THE VAULT · double-tap to leave',W/2,H*0.12); }
   if(S.story){ c.fillStyle='rgba(242,247,251,.85)'; c.font='600 10px sans-serif'; c.textAlign='center'; c.fillText('HOW THE VAULT WAS BUILT · SINCE JANUARY 2026',W/2,H*0.12); }
   if(S.night&&LBL){ c.fillStyle='rgba(255,228,170,.6)'; c.font='600 8px sans-serif'; c.textAlign='left'; c.fillText('NIGHT · lit windows are wallets that staked today',12,H*0.56); }
-  if(S.replayUntil&&S.t<S.replayUntil){ c.fillStyle='rgba(159,246,210,.7)'; c.font='600 10px sans-serif'; c.textAlign='right'; c.fillText('replaying the last '+(S.replayCount||0)+' moves',W-12,H*0.55); }
+  if(S.replayUntil&&S.t<S.replayUntil){ c.fillStyle='rgba(159,246,210,.7)'; c.font='600 10px sans-serif'; c.textAlign='right'; c.fillText('replaying the last '+(S.replayCount||0)+' moves',W-12,H*0.62); }
   if(S.frozen){ c.fillStyle='rgba(200,225,240,.10)'; c.fillRect(0,0,W,H); c.fillStyle='#FFC46B'; c.font='600 10px sans-serif'; c.textAlign='left'; c.fillText('FROZEN · WAITING FOR A FINALIZED ANSWER',12,H*0.1); }
 }
 var last=performance.now(), a2=0;
