@@ -285,13 +285,6 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
         </View>
       </View>
 
-      {receipt ? (
-        <Panel style={styles.receipt} tone={receipt.kind === 'stake' ? colors.positive : colors.pending}>
-          <View style={styles.receiptHead}>
-            <Eyebrow tone={receipt.kind === 'stake' ? colors.positive : colors.pending}>{t('Receipt')}</Eyebrow>
-            <Pressable accessibilityRole="button" hitSlop={10} onPress={() => setReceipt(null)}><Text style={styles.close}>×</Text></Pressable>
-          </View>
-
       <View style={styles.under}>
           <Text numberOfLines={1} style={styles.hudNote}>
             {metrics ? t('{percent}% of all SKR is staked', { percent: metrics.stakedPercent.toFixed(2) }) : error ? t('Waiting for a finalized answer') : t('Reading the vault')}
@@ -302,6 +295,14 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
             </Text>
           ) : null}
       </View>
+
+      {receipt ? (
+        <Panel style={styles.receipt} tone={receipt.kind === 'stake' ? colors.positive : colors.pending}>
+          <View style={styles.receiptHead}>
+            <Eyebrow tone={receipt.kind === 'stake' ? colors.positive : colors.pending}>{t('Receipt')}</Eyebrow>
+            <Pressable accessibilityRole="button" hitSlop={10} onPress={() => setReceipt(null)}><Text style={styles.close}>×</Text></Pressable>
+          </View>
+
           <Text style={styles.receiptTitle}>{compact(receipt.amount)} SKR {receipt.kind === 'stake' ? t('staked') : receipt.ready ? t('ready to withdraw') : t('cooling down')}</Text>
           {receipt.who ? <Text style={styles.receiptWho}>{receipt.who}</Text> : null}
           <Text style={styles.receiptMono}>
