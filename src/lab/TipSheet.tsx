@@ -100,6 +100,10 @@ export function TipSheet({ onClose }: { onClose: () => void }) {
         const account = authorization.accounts[0];
         if (!account) throw new Error(t('The wallet did not return an account.'));
         const user = new PublicKey(base64ToUint8Array(account.address));
+        // A tip from the app's own wallet to itself moves nothing: the wallet
+        // shows a transfer with no net change and the person wonders what
+        // broke. Say it instead of sending it.
+        if (user.equals(RECIPIENT)) throw new Error(t('This is {name} itself. A tip to your own wallet moves nothing; try from another wallet.', { name: RECIPIENT_NAME }));
         // The balance is read for the message only; the chain is the judge.
         void fetchWalletBalance(user.toBase58()).then((balance) => setHeld((balance.balance).toFixed(2))).catch(() => undefined);
         const transaction = buildTipTransaction(user, raw, blockhash);

@@ -94,6 +94,13 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
   const seen = useRef<Set<string>>(new Set());
   const seeded = useRef(false);
   const lastCue = useRef(0);
+  const page = useRef<ScrollView>(null);
+  const queueY = useRef(0);
+  const openQueue = useCallback(() => {
+    setAllQueue(true);
+    // The list grows first, then the page scrolls to where its heading is.
+    setTimeout(() => page.current?.scrollTo({ y: Math.max(0, queueY.current - spacing.md), animated: true }), 60);
+  }, []);
   const reducedMotion = useReducedMotion();
   const motion = motionOff ? 'off' : motionCalm ? 'calm' : 'live';
 
@@ -228,12 +235,13 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
   const note = t(RANGE_NOTE[range]);
   const inner = width - spacing.lg * 2;
   const hero = metrics ? splitCompact(metrics.activeStaked) : null;
-  const sceneHeight = Math.round(Math.min(440, Math.max(300, height * 0.42)));
+  const sceneHeight = Math.round(Math.min(420, Math.max(300, height * 0.4)));
   const queue = [...(metrics?.queue ?? [])].sort((left, right) => left.unlockAt - right.unlockAt);
   const shownQueue = allQueue ? queue : queue.slice(0, QUEUE_SHORT);
 
   return (
     <ScrollView
+      ref={page}
       style={styles.screen}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={colors.accent} />}
@@ -297,9 +305,11 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
 
       {partial ? <Text style={styles.partial}>{t('history covers {days}d', { days: Math.floor(coverageDays) })}</Text> : null}
 
+      {/* Both tiles open the whole queue, as they did when it was a tab of
+          its own: the list unfolds and the page scrolls down to it. */}
       <View style={styles.tiles}>
-        <Tile label={t('In cooldown')} value={metrics ? compact(metrics.pendingUnstake) : '—'} unit="SKR" note={metrics ? t('{count} positions waiting out the 48 hours', { count: integer(metrics.pendingPositions) }) : undefined} tone={colors.pending} />
-        <Tile label={t('Ready to exit')} value={metrics ? compact(metrics.withdrawable) : '—'} unit="SKR" note={t('Cooldown finished, not yet withdrawn')} tone={colors.positive} />
+        <Tile label={t('In cooldown')} value={metrics ? compact(metrics.pendingUnstake) : '—'} unit="SKR" note={metrics ? t('{count} positions waiting out the 48 hours', { count: integer(metrics.pendingPositions) }) : undefined} tone={colors.pending} onPress={openQueue} />
+        <Tile label={t('Ready to exit')} value={metrics ? compact(metrics.withdrawable) : '—'} unit="SKR" note={t('Cooldown finished, not yet withdrawn')} tone={colors.positive} onPress={openQueue} />
       </View>
 
       <Panel style={styles.railPanel}>
@@ -317,7 +327,7 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
         </View>
       </Panel>
 
-      <View style={styles.listHead}>
+      <View style={styles.listHead} onLayout={(event) => { queueY.current = event.nativeEvent.layout.y; }}>
         <Eyebrow>{t('Exits in flight, soonest first')}</Eyebrow>
         <Text style={styles.listCount}>{t('{count} shown', { count: shownQueue.length })}</Text>
       </View>
