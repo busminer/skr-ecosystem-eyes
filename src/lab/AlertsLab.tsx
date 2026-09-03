@@ -13,6 +13,7 @@ import { colors, font, radius, spacing, type } from '../theme';
 import type { EcosystemState, WalletProfile } from '../types';
 import { Button, Evidence, Eyebrow, Hairline, Panel } from './kit';
 import { TipSheet } from './TipSheet';
+import { playCue } from '../sound';
 
 export function AlertsLab() {
   // The language switch lives here because this is the only settings screen the
@@ -213,6 +214,29 @@ export function AlertsLab() {
       <Button label={t('Send a test notification')} onPress={() => void proof()} ghost />
       {status ? <Text style={styles.status}>{status}</Text> : null}
 
+      {/* Every voice the app has, one tap each, with the buzz that belongs to
+          it. So a person knows what a large exit sounds like before one lands
+          at three in the morning. */}
+      <Panel style={styles.panel}>
+        <Eyebrow>{t('What the app sounds like')}</Eyebrow>
+        <Text style={[styles.toggleNote, styles.langNote]}>{t('Each sound comes with its own buzz. Tap to hear it.')}</Text>
+        <View style={styles.sounds}>
+          {([
+            ['stake', t('Stake'), colors.positive],
+            ['surge', t('Large stake'), colors.positive],
+            ['tudum', t('Large exit'), colors.negative],
+            ['door', t('Withdrawal'), colors.pending],
+            ['coin', t('Your own stake'), colors.metal],
+            ['flip', t('Board flip'), colors.accent],
+          ] as const).map(([cue, label, tone]) => (
+            <Pressable key={cue} accessibilityRole="button" onPress={() => playCue(cue, cue === 'stake' ? 0.5 : 0.6)} style={({ pressed }) => [styles.sound, pressed && styles.langPressed]}>
+              <View style={[styles.soundDot, { backgroundColor: tone }]} />
+              <Text style={styles.soundLabel}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </Panel>
+
       {/* Quiet, at the bottom, after everything that matters: a way to say
           thank you in SKR. Not a fee, not a nag, and it says where the tip
           goes and what happens to it. */}
@@ -246,6 +270,10 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 130, gap: spacing.lg },
   panel: { padding: spacing.md },
   tipRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  sounds: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
+  sound: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line },
+  soundDot: { width: 7, height: 7, borderRadius: 4 },
+  soundLabel: { color: colors.text, fontFamily: font.semibold, fontSize: 13 },
   tipCopy: { flex: 1, gap: 4 },
   permissionHead: { flexDirection: 'row', gap: spacing.md },
   permissionCopy: { flex: 1, gap: spacing.sm },
