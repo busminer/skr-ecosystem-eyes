@@ -103,6 +103,7 @@ export function AlertsLab() {
   const { config, fallback } = resolveAlertThresholds(state);
 
   return (
+    <View style={styles.screen}>
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Panel style={styles.panel}>
         <View style={styles.permissionHead}>
@@ -225,8 +226,6 @@ export function AlertsLab() {
         </View>
       </Panel>
 
-      {tipping ? <TipSheet onClose={() => setTipping(false)} /> : null}
-
       <Evidence
         lines={[
           `threshold source  ${config.source}`,
@@ -235,6 +234,10 @@ export function AlertsLab() {
         ]}
       />
     </ScrollView>
+    {/* Outside the scroll view on purpose: a sheet inside it would sit at the
+        top of the content and scroll away with it, leaving a blank screen. */}
+    {tipping ? <TipSheet onClose={() => setTipping(false)} /> : null}
+    </View>
   );
 }
 

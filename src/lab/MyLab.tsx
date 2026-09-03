@@ -249,6 +249,7 @@ export function MyLab() {
   }, [address, profile]);
 
   return (
+    <View style={styles.screen}>
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <StakerCard
         profile={profile}
@@ -382,10 +383,14 @@ export function MyLab() {
         </>
       )}
 
-      {staking && profile ? <StakeSheet wallet={profile.wallet} hasPosition={profile.positions.length > 0} presetAmount={sixteen ? '1' : undefined} presetSplit={sixteen ? 16 : undefined} onClose={() => { setStaking(false); void inspect(profile.wallet); }} /> : null}
       {busy ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
       {error ? <Pressable onPress={() => setError(null)}><Text style={styles.error}>{error}</Text></Pressable> : null}
     </ScrollView>
+    {/* Outside the scroll view: the sheet used to be absolute inside the
+        content, so opening it from the daily-sixteen button, far down the
+        page, showed its empty lower half and nothing else. */}
+    {staking && profile ? <StakeSheet wallet={profile.wallet} hasPosition={profile.positions.length > 0} presetAmount={sixteen ? '1' : undefined} presetSplit={sixteen ? 16 : undefined} onClose={() => { setStaking(false); void inspect(profile.wallet); }} /> : null}
+    </View>
   );
 }
 
