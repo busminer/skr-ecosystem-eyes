@@ -283,7 +283,9 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
             <Text style={styles.unit}>{hero ? hero.unit : 'SKR'}</Text>
           </View>
         </View>
-        <View pointerEvents="none" style={styles.hud}>
+      </View>
+
+      <View style={styles.under}>
           <Text numberOfLines={1} style={styles.hudNote}>
             {metrics ? t('{percent}% of all SKR is staked', { percent: metrics.stakedPercent.toFixed(2) }) : error ? t('Waiting for a finalized answer') : t('Reading the vault')}
           </Text>
@@ -292,7 +294,6 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
               <Text style={{ color: colors.positive }}>+{compact(day.staked)}</Text>{` ${t('in today')}  ·  `}<Text style={{ color: colors.negative }}>{compact(day.unstaked)}</Text>{` ${t('asked out')}`}
             </Text>
           ) : null}
-        </View>
       </View>
 
       {receipt ? (
@@ -411,12 +412,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.lg, paddingTop: 0, paddingBottom: 120, gap: spacing.lg },
   sceneWrap: { backgroundColor: colors.bg, overflow: 'hidden' },
-  hud: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: 10 },
-  hudFigure: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: 166 },
+  under: { marginTop: -spacing.sm, gap: 2 },
+  hudFigure: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: 148 },
   figureRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
   unit: { color: colors.muted, fontFamily: font.semibold, fontSize: 14, letterSpacing: 0.8, marginBottom: 6 },
-  hudNote: { color: colors.text, fontFamily: font.medium, fontSize: 15, lineHeight: 21, textShadowColor: '#000', textShadowRadius: 6 },
-  hudDay: { color: colors.muted, fontFamily: font.semibold, fontSize: 14.5, lineHeight: 20, marginTop: 2, textShadowColor: '#000', textShadowRadius: 6 },
+  hudNote: { color: colors.text, fontFamily: font.medium, fontSize: 15, lineHeight: 21 },
+  hudDay: { color: colors.muted, fontFamily: font.semibold, fontSize: 14.5, lineHeight: 20 },
   receipt: { padding: spacing.md, gap: spacing.xs },
   receiptHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   close: { color: colors.faint, fontSize: 20, lineHeight: 22 },
@@ -428,7 +429,7 @@ const styles = StyleSheet.create({
   factLabel: { color: colors.muted, fontFamily: font.semibold, ...type.eyebrow },
   factValue: { color: colors.text, fontFamily: font.black, fontVariant: ['tabular-nums'], fontSize: 30, letterSpacing: -1 },
   factNote: { color: colors.faint, fontFamily: font.regular, ...type.micro },
-  periodHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: -spacing.sm },
+  periodHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: -spacing.xs, marginBottom: -spacing.sm },
   partial: { color: colors.pending, fontFamily: font.medium, ...type.micro },
   tiles: { flexDirection: 'row', gap: spacing.md },
   railPanel: { padding: spacing.md },
