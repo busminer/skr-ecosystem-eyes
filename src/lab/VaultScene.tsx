@@ -12,7 +12,7 @@ import { VAULT_SCENE_HTML } from './vaultSceneHtml';
 
 export type SceneMessage =
   | { type: 'state'; percent: number; pending: number; todayIn: number; todayOut: number; eventsLastHour: number; now: number; queue: Array<{ k: string; amount: number; who: string | null; unlockAt: number; startAt: number }> }
-  | { type: 'events'; items: Array<{ kind: string; amount: number; who: string | null; sig: string }> }
+  | { type: 'events'; replay?: boolean; items: Array<{ kind: string; amount: number; who: string | null; sig: string }> }
   | { type: 'me'; me: { name: string; amount: number; days: number | null } | null; sixteen?: boolean }
   | { type: 'freeze'; on: boolean }
   | { type: 'motion'; mode: 'live' | 'calm' | 'off' }

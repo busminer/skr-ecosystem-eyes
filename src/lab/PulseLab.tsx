@@ -141,6 +141,10 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
         if (!seeded.current) {
           seeded.current = true;
           items.forEach((item) => seen.current.add(item.id));
+          // The last page is replayed once, oldest first and spread over a
+          // few seconds, so the vault is alive from the first look and every
+          // phone in it is still a real finalized move.
+          scene.current?.push({ type: 'events', replay: true, items: [...items].reverse().map((item) => ({ kind: item.type, amount: item.amount ?? 0, who: who(item.name, item.wallet), sig: item.signature })) });
           return;
         }
         const arrived = items.filter((item) => item.id && !seen.current.has(item.id));

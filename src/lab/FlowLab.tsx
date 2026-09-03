@@ -98,11 +98,14 @@ function ago(blockTime: number, now: number): string {
 // it would otherwise block.
 const EVENTS_TIMEOUT_MS = 15_000;
 
-async function fetchEvents(minimum: number, limit: number): Promise<FlowEvent[]> {
+// `type` asks the server for one kind only. Exits are a few dozen a day among
+// thousands of one-SKR stakes, so filtering the last page on the phone found
+// none of them and the chip looked broken.
+async function fetchEvents(minimum: number, limit: number, type?: string): Promise<FlowEvent[]> {
   const controller = new AbortController();
   const deadline = setTimeout(() => controller.abort(), EVENTS_TIMEOUT_MS);
   try {
-    const response = await fetch(`${API_BASE_URL}/api/events?limit=${limit}&min=${minimum}`, { headers: { accept: 'application/json' }, signal: controller.signal });
+    const response = await fetch(`${API_BASE_URL}/api/events?limit=${limit}&min=${minimum}${type ? `&type=${type}` : ''}`, { headers: { accept: 'application/json' }, signal: controller.signal });
     if (!response.ok) throw new Error(String(response.status));
     const payload = await response.json() as { items?: FlowEvent[] };
     return payload.items ?? [];
@@ -236,7 +239,7 @@ export function FlowLab({ active }: { active: boolean }) {
     // A phone in a pocket must not keep asking the server for news.
     if (!fresh && appState.current !== 'active') return;
     try {
-      const items = await fetchEvents(minimum, 25);
+      const items = await fetchEvents(minimum, 25, kind === 'all' ? undefined : kind);
       setLive(true);
       if (fresh) {
         seen.current = new Set(items.map((item) => item.id));
@@ -285,7 +288,7 @@ export function FlowLab({ active }: { active: boolean }) {
     } catch {
       setLive(false);
     }
-  }, [haptics, minimum, sound]);
+  }, [haptics, kind, minimum, sound]);
 
   // The pinned block asks the server for large events only, so it is not
   // limited to whatever happens to be in the last page of the feed.

@@ -27,7 +27,6 @@ const TOKEN_PROGRAM = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA
 const ASSOCIATED_TOKEN_PROGRAM = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
 const SYSTEM_PROGRAM = new PublicKey('11111111111111111111111111111111');
 const APP_IDENTITY = { name: 'SKR Eyes', uri: 'https://skr.alexkosa.dev', icon: 'favicon.ico' };
-const PRESETS = ['8', '16', '64'];
 
 // The recipient's token account is created if it does not exist yet, and left
 // alone if it does: the idempotent form of the instruction, one byte of data.
@@ -81,7 +80,8 @@ export function buildTipTransaction(user: PublicKey, amountRaw: bigint, blockhas
 type Phase = 'idle' | 'signing' | 'confirming' | 'done' | 'error';
 
 export function TipSheet({ onClose }: { onClose: () => void }) {
-  const [amount, setAmount] = useState('16');
+  // No suggested amounts on purpose: the person names the number themselves.
+  const [amount, setAmount] = useState('');
   const [phase, setPhase] = useState<Phase>('idle');
   const [signature, setSignature] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -158,18 +158,9 @@ export function TipSheet({ onClose }: { onClose: () => void }) {
           <>
             <Panel style={styles.panel}>
               <Eyebrow>{t('How much')}</Eyebrow>
-              <View style={styles.presets}>
-                {PRESETS.map((option) => {
-                  const on = option === amount;
-                  return (
-                    <Pressable key={option} onPress={() => { void Haptics.selectionAsync(); setAmount(option); }} style={[styles.preset, on && styles.presetOn]}>
-                      <Text style={[styles.presetLabel, on && styles.presetLabelOn]}>{option} SKR</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
               <View style={styles.amountRow}>
                 <TextInput
+                  autoFocus
                   keyboardType="decimal-pad"
                   placeholder="0"
                   placeholderTextColor={colors.faint}
@@ -180,7 +171,7 @@ export function TipSheet({ onClose }: { onClose: () => void }) {
                 <Text style={styles.amountUnit}>SKR</Text>
               </View>
               <Text style={[styles.note, overPrecise && styles.warn]}>
-                {overPrecise ? t('SKR has six decimal places. Shorten the amount.') : held ? t('You hold {held} SKR.', { held }) : t('Goes to {name}, the wallet behind this app.', { name: RECIPIENT_NAME })}
+                {overPrecise ? t('SKR has six decimal places. Shorten the amount.') : held ? t('You hold {held} SKR.', { held }) : t('Any amount you like. Goes to {name}, the wallet behind this app.', { name: RECIPIENT_NAME })}
               </Text>
             </Panel>
 
