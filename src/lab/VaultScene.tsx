@@ -11,7 +11,7 @@ import { VAULT_SCENE_HTML } from './vaultSceneHtml';
 // is exactly the order things happen in.
 
 export type SceneMessage =
-  | { type: 'state'; percent: number; pending: number; todayIn: number; todayOut: number; eventsLastHour: number; now: number; queue: Array<{ k: string; amount: number; who: string | null; unlockAt: number; startAt: number }> }
+  | { type: 'state'; percent: number; pending: number; held?: number; positions?: number; todayIn: number; todayOut: number; eventsLastHour: number; now: number; queue: Array<{ k: string; amount: number; who: string | null; unlockAt: number; startAt: number }> }
   | { type: 'events'; replay?: boolean; items: Array<{ kind: string; amount: number; who: string | null; sig: string }> }
   | { type: 'me'; me: { name: string; amount: number; days: number | null } | null; sixteen?: boolean }
   | { type: 'freeze'; on: boolean }

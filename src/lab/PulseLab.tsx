@@ -255,6 +255,8 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
       type: 'state',
       percent: metrics.stakedPercent,
       pending: metrics.pendingUnstake,
+      held: metrics.activeStaked,
+      positions: metrics.totalPositions,
       todayIn: day?.staked ?? 0,
       todayOut: day?.unstaked ?? 0,
       eventsLastHour: hours[hours.length - 1]?.events ?? 0,
