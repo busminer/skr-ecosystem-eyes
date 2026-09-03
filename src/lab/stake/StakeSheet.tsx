@@ -20,9 +20,12 @@ function partTone(state: string): string {
   return colors.lineStrong;
 }
 
-export function StakeSheet({ wallet, hasPosition, onClose }: { wallet: string; hasPosition: boolean; onClose: () => void }) {
-  const [amount, setAmount] = useState('');
-  const [split, setSplit] = useState(1);
+export function StakeSheet({ wallet, hasPosition, onClose, presetAmount, presetSplit }: { wallet: string; hasPosition: boolean; onClose: () => void; presetAmount?: string; presetSplit?: number }) {
+  // The daily sixteen opens the sheet already filled in: one SKR, sixteen
+  // parts, one approval. Everything else about the sheet stays the same, so
+  // the person still sees the balance check and the total before signing.
+  const [amount, setAmount] = useState(presetAmount ?? '');
+  const [split, setSplit] = useState(presetSplit ?? 1);
 
   // What the wallet actually holds, read once when the sheet opens.
   //

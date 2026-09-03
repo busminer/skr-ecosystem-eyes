@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AppState, Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 import { API_BASE_URL, fetchEcosystemState } from '../api';
@@ -50,6 +50,12 @@ const KINDS = [
 ] as const;
 
 type KindKey = typeof KINDS[number]['key'];
+
+const SIZES = [
+  { label: 'ALL', min: 0 },
+  { label: '1K+', min: 1_000 },
+  { label: '100K+', min: 100_000 },
+] as const;
 
 type FlowEvent = {
   id: string;
@@ -138,10 +144,10 @@ function Headline({ event, now, title }: { event: FlowEvent; now: number; title?
   );
 }
 
-function BigEvent({ event, now }: { event: FlowEvent; now: number }) {
+function BigEvent({ event, now, onPress }: { event: FlowEvent; now: number; onPress?: () => void }) {
   const tone = TONE[event.type] ?? colors.muted;
   return (
-    <Animated.View entering={FadeInDown.duration(280)} layout={Layout.duration(220)}>
+    <Animated.View entering={FadeInDown.duration(280)} layout={Layout.duration(220)} onTouchEnd={onPress}>
       <Panel style={styles.card} tone={tone}>
         <View style={styles.cardTop}>
           <Text style={[styles.kind, { color: tone }]}>{t(VERB[event.type] ?? event.type).toUpperCase()}</Text>
@@ -175,10 +181,10 @@ function FoldedBig({ count, total, expanded, onPress }: { count: number; total: 
   );
 }
 
-function SmallEvent({ event, now }: { event: FlowEvent; now: number }) {
+function SmallEvent({ event, now, onPress }: { event: FlowEvent; now: number; onPress?: () => void }) {
   const tone = TONE[event.type] ?? colors.muted;
   return (
-    <Animated.View entering={FadeInDown.duration(220)} layout={Layout.duration(200)} style={styles.row}>
+    <Animated.View entering={FadeInDown.duration(220)} layout={Layout.duration(200)} style={styles.row} onTouchEnd={onPress}>
       {/* The stripe down the left edge is the whole colour of the card. Filling
           the card itself would turn a quiet feed into a traffic light. */}
       <View style={[styles.rowStripe, { backgroundColor: tone }]} />
@@ -201,7 +207,8 @@ export function FlowLab({ active }: { active: boolean }) {
   const [haptics, setHaptics] = usePref('buzz', true);
   const [sound, setSound] = usePref('sound', true);
   const [kind, setKind] = useState<KindKey>('all');
-  const [bigOnly, setBigOnly] = useState(false);
+  const [minimum, setMinimum] = useState(0);
+  const [receipt, setReceipt] = useState<FlowEvent | null>(null);
   const [day, setDay] = useState<EcosystemState['analytics']['windows'][string] | null>(null);
   const [headlines, setHeadlines] = useState<FlowEvent[]>([]);
   const headRail = useRef<ScrollView>(null);
@@ -226,7 +233,6 @@ export function FlowLab({ active }: { active: boolean }) {
     return () => clearInterval(timer);
   }, []);
 
-  const minimum = bigOnly ? BIG_EVENT : 0;
 
   const pull = useCallback(async (fresh: boolean) => {
     // A phone in a pocket must not keep asking the server for news.
@@ -394,11 +400,44 @@ export function FlowLab({ active }: { active: boolean }) {
             </Pressable>
           );
         })}
-        <Pressable accessibilityRole="button" accessibilityState={{ selected: bigOnly }} hitSlop={8} onPress={() => { void Haptics.selectionAsync(); setBigOnly((value) => !value); }} style={[styles.chip, styles.chipBig, bigOnly && { borderColor: colors.accent }]}>
-          <Text style={[styles.chipLabel, bigOnly && styles.chipLabelOn]}>{t('Big')}</Text>
-          <Text style={styles.chipTotal}>100K+</Text>
-        </Pressable>
       </View>
+
+      {/* The size filter, exactly as it was: everything, a thousand and up,
+          a hundred thousand and up. The chips above say what kind, this row
+          says how big. */}
+      <View style={styles.sizes}>
+        {SIZES.map((option) => {
+          const on = option.min === minimum;
+          return (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              key={option.label}
+              onPress={() => { void Haptics.selectionAsync(); setMinimum(option.min); }}
+              style={[styles.filter, on && styles.filterOn]}
+            >
+              <Text style={[styles.filterLabel, on && styles.filterLabelOn]}>{option.label}</Text>
+            </Pressable>
+          );
+        })}
+        <Text style={styles.filterNote}>{minimum > 0 ? t('only {amount} SKR and up', { amount: compact(minimum) }) : t('everything, dust included')}</Text>
+      </View>
+
+      {receipt ? (
+        <Panel style={styles.receipt} tone={TONE[receipt.type] ?? colors.muted}>
+          <View style={styles.cardTop}>
+            <Eyebrow tone={TONE[receipt.type] ?? colors.muted}>{t('Receipt')}</Eyebrow>
+            <Pressable accessibilityRole="button" hitSlop={10} onPress={() => setReceipt(null)}><Text style={styles.close}>×</Text></Pressable>
+          </View>
+          <Text style={styles.receiptTitle}>{receipt.amount != null ? compact(receipt.amount) : '—'} SKR {t(VERB[receipt.type] ?? receipt.type)}</Text>
+          <Text style={styles.wallet}>{who(receipt)}</Text>
+          <Text style={styles.receiptMono}>{`signature  ${shortAddress(receipt.signature)}\nslot       ${receipt.slot.toLocaleString('en-US')}\nblock time ${new Date(receipt.blockTime * 1000).toLocaleString()}\ncommitment finalized`}</Text>
+          <Pressable accessibilityRole="button" onPress={() => void Linking.openURL(`https://solscan.io/tx/${receipt.signature}`)} style={styles.receiptLink}>
+            <Text style={styles.receiptLinkText}>{t('Open on Solscan')}</Text>
+          </Pressable>
+        </Panel>
+      ) : null}
 
       {events.length === 0 ? (
         <Panel style={styles.empty}>
@@ -435,8 +474,8 @@ export function FlowLab({ active }: { active: boolean }) {
               continue;
             }
             nodes.push(isBig
-              ? <BigEvent key={event.id} event={event} now={now} />
-              : <SmallEvent key={event.id} event={event} now={now} />);
+              ? <BigEvent key={event.id} event={event} now={now} onPress={() => { void Haptics.selectionAsync(); setReceipt(event); }} />
+              : <SmallEvent key={event.id} event={event} now={now} onPress={() => { void Haptics.selectionAsync(); setReceipt(event); }} />);
           }
 
           if (openOlder && foldedIds.size > 0) {
@@ -475,6 +514,13 @@ const styles = StyleSheet.create({
   headlineUnit: { color: colors.muted, fontFamily: font.semibold, fontSize: 12 },
   headlineKind: { marginLeft: 'auto', fontFamily: font.bold, fontSize: 11, letterSpacing: 1 },
   headlineFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sizes: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  receipt: { padding: spacing.md, gap: spacing.xs },
+  close: { color: colors.faint, fontSize: 20, lineHeight: 22 },
+  receiptTitle: { color: colors.text, fontFamily: font.bold, fontSize: 18 },
+  receiptMono: { color: colors.muted, fontFamily: font.mono, ...type.micro, marginTop: spacing.xs },
+  receiptLink: { marginTop: spacing.sm, alignSelf: 'flex-start', borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6 },
+  receiptLinkText: { color: colors.text, fontFamily: font.semibold, fontSize: 12 },
   headRailWrap: { marginHorizontal: -spacing.lg },
   headRail: { gap: spacing.md, paddingHorizontal: spacing.lg },
   filters: { flexDirection: 'row', alignItems: 'stretch', gap: 6 },

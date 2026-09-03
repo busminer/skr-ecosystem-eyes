@@ -1,4 +1,4 @@
-import { t } from './i18n';
+import { lang, t } from './i18n';
 import type { EcosystemState, WalletProfile } from './types';
 
 // Store builds are intentionally pinned to the reviewed HTTPS backend.
@@ -22,7 +22,10 @@ async function getJson<T>(path: string): Promise<T> {
   const deadline = setTimeout(() => controller.abort(), TIMEOUT_MS);
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, { headers: { accept: 'application/json' }, signal: controller.signal });
+    // The phone's language rides along as one header, so the server's request
+    // counter can say which languages people actually open the app in. Nothing
+    // else about the person travels with it.
+    response = await fetch(`${API_BASE_URL}${path}`, { headers: { accept: 'application/json', 'x-skr-lang': lang() }, signal: controller.signal });
   } finally {
     clearTimeout(deadline);
   }

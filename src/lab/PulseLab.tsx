@@ -167,6 +167,16 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
   useEffect(() => { scene.current?.push({ type: 'freeze', on: frozen }); }, [frozen]);
   useEffect(() => { scene.current?.push({ type: 'motion', mode: reducedMotion ? 'off' : motion }); }, [motion, reducedMotion]);
 
+  // The first time this phone opens the vault, it watches it being built:
+  // the pile grows from nothing to today over six seconds. Once.
+  useEffect(() => {
+    AsyncStorage.getItem('skr-eyes:vault-story').then((raw) => {
+      if (raw) return;
+      scene.current?.push({ type: 'story' });
+      void AsyncStorage.setItem('skr-eyes:vault-story', '1').catch(() => undefined);
+    }).catch(() => undefined);
+  }, []);
+
   const metrics = state?.metrics;
   const period = state?.analytics?.windows?.[range];
   const day = state?.analytics?.windows?.['24h'];
@@ -191,6 +201,11 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
       now: Math.floor(Date.now() / 1_000),
       queue,
     });
+    // After nine in the evening the pile becomes a city: the lit windows are
+    // the share of positions whose wallet staked today, from the same window.
+    const hour = new Date().getHours();
+    const lit = day && metrics.totalPositions > 0 ? Math.min(0.5, (day.wallets / metrics.totalPositions) * 3) : 0.1;
+    scene.current?.push({ type: 'night', on: hour >= 21 || hour < 6, lit });
   }, [metrics, day, hours]);
 
   useEffect(() => {
@@ -245,18 +260,20 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
             <Eyebrow tone={receipt.kind === 'stake' ? colors.positive : colors.pending}>{t('Receipt')}</Eyebrow>
             <Pressable accessibilityRole="button" hitSlop={10} onPress={() => setReceipt(null)}><Text style={styles.close}>×</Text></Pressable>
           </View>
-          <Text style={styles.receiptTitle}>{compact(receipt.amount)} SKR {receipt.kind === 'stake' ? t('staked') : t('asked out')}</Text>
+          <Text style={styles.receiptTitle}>{compact(receipt.amount)} SKR {receipt.kind === 'stake' ? t('staked') : receipt.ready ? t('ready to withdraw') : t('cooling down')}</Text>
           {receipt.who ? <Text style={styles.receiptWho}>{receipt.who}</Text> : null}
           <Text style={styles.receiptMono}>
             {receipt.sig ? `signature  ${shortAddress(receipt.sig)}\n` : ''}
-            {receipt.unlockAt ? `unlock at  ${new Date(receipt.unlockAt * 1000).toLocaleString()}\n` : ''}
+            {receipt.unlockAt ? `${receipt.ready ? 'unlocked  ' : 'unlock at '} ${new Date(receipt.unlockAt * 1000).toLocaleString()}\n` : ''}
             commitment finalized
           </Text>
           {receipt.sig ? <Button ghost label={t('Open on Solscan')} onPress={() => void Linking.openURL(`https://solscan.io/tx/${receipt.sig}`)} /> : null}
         </Panel>
       ) : null}
 
-      <DayHeat width={inner} hours={hours} percent={metrics?.stakedPercent ?? null} />
+      {/* The heat strip is what the scene replaced. It comes back only when the
+          person has switched the scene off. */}
+      {motion === 'off' || reducedMotion ? <DayHeat width={inner} hours={hours} percent={metrics?.stakedPercent ?? null} /> : null}
 
       <View style={styles.periodHead}>
         <Eyebrow>{t(RANGE_TITLE[range])}</Eyebrow>

@@ -103,6 +103,12 @@ export type CardFacts = {
   firstSeenAt: number | null;
   positionSkr: number | null;
   networkPositions: number | null;
+  // Two things the person may keep off a picture they post: who they are and
+  // how much they hold. Asked for by @XPiritV and @baelor_sol, promised in
+  // public. With the name hidden the eye in the ring closes — the card's own
+  // way of saying "not showing", rather than an empty gap where a name was.
+  hideName?: boolean;
+  hideAmount?: boolean;
 };
 
 export type CardHandle = { toPng: () => Promise<string> };
@@ -193,7 +199,20 @@ function DaysLine({ days, exact }: { days: number; exact: boolean }) {
 // is already an eye-shaped opening, and putting the almond outline inside it
 // puts one eye shape inside another, where they cut each other up. Here the
 // ring itself does the work of the lid and the gold does the work of the iris.
-function EyeInRing() {
+function EyeInRing({ closed = false }: { closed?: boolean }) {
+  if (closed) {
+    // The lids meet in the middle: a lens with nothing looking out of it and a
+    // fine seam where the two halves touch. Deliberate, not missing.
+    return (
+      <>
+        <Circle cx={RING.x} cy={RING.y} r={RING.inner} fill="url(#lens)" stroke="#3A5B68" strokeWidth={9} />
+        <Circle cx={RING.x} cy={RING.y} r={RING.inner - 6} fill="#111A20" fillOpacity={0.96} />
+        <Circle cx={RING.x} cy={RING.y} r={RING.inner} fill="url(#litByRing)" />
+        <Rect x={RING.x - RING.inner + 22} y={RING.y - 3} width={RING.inner * 2 - 44} height={6} rx={3} fill="#2B3B45" />
+        <Rect x={RING.x - RING.inner + 22} y={RING.y - 6} width={RING.inner * 2 - 44} height={3} rx={1.5} fill="#000A0E" fillOpacity={0.7} />
+      </>
+    );
+  }
   return (
     <>
       <Circle cx={RING.x} cy={RING.y} r={RING.inner} fill="url(#lens)" stroke="#3A5B68" strokeWidth={9} />
@@ -226,7 +245,8 @@ export const CardArt = forwardRef<CardHandle, { facts: CardFacts; width: number;
       }),
     }), []);
 
-    const isAddress = facts.name.includes('…');
+    const shownName = facts.hideName ? 'A Seeker' : facts.name;
+    const isAddress = !facts.hideName && facts.name.includes('…');
 
     const line: string[] = [];
     if (facts.networkPositions != null) line.push(`One of ${grouped(facts.networkPositions)}`);
@@ -311,7 +331,7 @@ export const CardArt = forwardRef<CardHandle, { facts: CardFacts; width: number;
         <G transform={post ? `translate(${POST_TX} ${POST_TY}) scale(${POST_SCALE})` : undefined}>
         <SvgImage href={BACKGROUND} x={0} y={0} width={ART_WIDTH} height={ART_HEIGHT} preserveAspectRatio="xMidYMid meet" />
 
-        <EyeInRing />
+        <EyeInRing closed={facts.hideName} />
 
         <Embossed x={TEXT_LEFT} y={165} size={19} family={SORA.semibold} fill="#FBFAF5" opacity={0.7} letterSpacing={6} halo={4}>
           SKR STAKER
@@ -320,8 +340,8 @@ export const CardArt = forwardRef<CardHandle, { facts: CardFacts; width: number;
         {/* The name is the hero. A wallet with no .skr name shows its short
             address here instead; that is longer and reads as machine text, so
             it is set a size down to keep the line clear of the ring. */}
-        <Embossed x={TEXT_LEFT} y={253} size={isAddress ? 56 : 78} family={SORA.semibold} fill="url(#steel)">
-          {facts.name}
+        <Embossed x={TEXT_LEFT} y={253} size={isAddress ? 56 : 78} family={SORA.semibold} fill="url(#steel)" opacity={facts.hideName ? 0.82 : 1}>
+          {shownName}
         </Embossed>
 
         {facts.days != null ? <DaysLine days={facts.days} exact={facts.exactDays} /> : null}
@@ -336,7 +356,7 @@ export const CardArt = forwardRef<CardHandle, { facts: CardFacts; width: number;
           </Embossed>
         ) : null}
 
-        {facts.positionSkr != null ? (
+        {facts.positionSkr != null && !facts.hideAmount ? (
           <Embossed x={545} y={668} size={20} family={SORA.regular} fill="#FBFAF5" opacity={0.9} halo={5}>
             {`Position ${grouped(facts.positionSkr)} SKR`}
           </Embossed>

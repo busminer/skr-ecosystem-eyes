@@ -8,6 +8,8 @@ import { compact, integer, shortAddress } from '../format';
 import { connectReadOnlyWallet } from '../mwa';
 import { clearStoredSchedule, scheduleUnlockAlerts } from '../notifications';
 import { SESSION_KEY } from '../session';
+import { usePref } from '../prefs';
+import { Switch } from 'react-native';
 import { colors, font, radius, spacing, type } from '../theme';
 import type { WalletProfile } from '../types';
 import { fetchWalletAge, type PositionAge } from './age';
@@ -66,6 +68,13 @@ export function MyLab() {
   const [remembered, setRemembered] = useState<CardFacts | null>(null);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1_000));
   const [staking, setStaking] = useState(false);
+  // The daily sixteen: the stake sheet opened with one SKR in sixteen parts.
+  const [sixteen, setSixteen] = useState(false);
+  // What the shared picture leaves out. Remembered between launches, and
+  // applied to the card on this screen too, so what is seen is what is sent.
+  const [hideName, setHideName] = usePref('card:hideName', false);
+  const [hideAmount, setHideAmount] = usePref('card:hideAmount', false);
+  const privacy = { hideName, hideAmount };
 
   useEffect(() => {
     fetchEcosystemState().then((state) => {
@@ -181,7 +190,7 @@ export function MyLab() {
       void Haptics.selectionAsync();
       const png = await cardArt.current?.toPng();
       if (!png) throw new Error(t('The card is not ready yet'));
-      const shared = await shareCardPng(png, cardFacts(profile, age, walletLabel, networkPositions));
+      const shared = await shareCardPng(png, cardFacts(profile, age, walletLabel, networkPositions, privacy));
       setShareNote(shared.carried
         ? null
         : shared.copied
@@ -192,9 +201,9 @@ export function MyLab() {
     } finally {
       setSharing(false);
     }
-  }, [age, networkPositions, profile, walletLabel]);
+  }, [age, networkPositions, profile, walletLabel, hideName, hideAmount]);
 
-  const live = profile ? cardFacts(profile, age, walletLabel, networkPositions) : null;
+  const live = profile ? cardFacts(profile, age, walletLabel, networkPositions, privacy) : null;
 
   // Written down only when the card is worth remembering: a profile that was
   // read and an age that finished walking. Half a card saved now is half a card
@@ -250,9 +259,10 @@ export function MyLab() {
         networkPositions={networkPositions}
         fallback={remembered}
         width={width - spacing.lg * 2}
+        privacy={privacy}
       />
 
-      {profile ? <CardExporter ref={cardArt} facts={cardFacts(profile, age, walletLabel, networkPositions)} /> : null}
+      {profile ? <CardExporter ref={cardArt} facts={cardFacts(profile, age, walletLabel, networkPositions, privacy)} /> : null}
 
       {claimed ? (
         <>
@@ -290,7 +300,36 @@ export function MyLab() {
             </Text>
           </Panel>
 
-          <Button label={t('Stake SKR')} onPress={() => { void Haptics.selectionAsync(); setStaking(true); }} />
+          <Button label={t('Stake SKR')} onPress={() => { void Haptics.selectionAsync(); setSixteen(false); setStaking(true); }} />
+
+          <Panel style={styles.dailyPanel}>
+            <View style={styles.dailyRow}>
+              <View style={styles.dailyCopy}>
+                <Eyebrow tone={colors.metal}>{t('The daily sixteen')}</Eyebrow>
+                <Text style={styles.dailyNote}>{t('16 parts of 1 SKR, one approval. A small daily habit that keeps your position moving.')}</Text>
+              </View>
+              <Button label={t('Sixteen')} tone={colors.metal} onPress={() => { void Haptics.selectionAsync(); setSixteen(true); setStaking(true); }} />
+            </View>
+          </Panel>
+
+          <Panel style={styles.privacyPanel}>
+            <View style={styles.privacyRow}>
+              <View style={styles.privacyCopy}>
+                <Text style={styles.privacyLabel}>{t('Hide my name on the card')}</Text>
+                <Text style={styles.privacyNote}>{t('The eye in the ring closes and the card says A Seeker.')}</Text>
+              </View>
+              <Switch value={hideName} onValueChange={(value) => { void Haptics.selectionAsync(); setHideName(value); }} trackColor={{ true: colors.accentDim, false: colors.line }} thumbColor={hideName ? colors.accent : colors.faint} />
+            </View>
+            <View style={[styles.privacyRow, styles.privacyDivided]}>
+              <View style={styles.privacyCopy}>
+                <Text style={styles.privacyLabel}>{t('Hide my amount on the card')}</Text>
+                <Text style={styles.privacyNote}>{t('Days, since and one-of stay; the position line goes.')}</Text>
+              </View>
+              <Switch value={hideAmount} onValueChange={(value) => { void Haptics.selectionAsync(); setHideAmount(value); }} trackColor={{ true: colors.accentDim, false: colors.line }} thumbColor={hideAmount ? colors.accent : colors.faint} />
+            </View>
+            {hideName && !hideAmount ? <Text style={styles.privacyWarn}>{t('An exact amount next to a start date is close to a fingerprint. Your choice, said plainly.')}</Text> : null}
+          </Panel>
+
           <Button
             label={sharing ? t('Drawing your card…') : t('Share your card')}
             onPress={() => void shareCard()}
@@ -343,7 +382,7 @@ export function MyLab() {
         </>
       )}
 
-      {staking && profile ? <StakeSheet wallet={profile.wallet} hasPosition={profile.positions.length > 0} onClose={() => { setStaking(false); void inspect(profile.wallet); }} /> : null}
+      {staking && profile ? <StakeSheet wallet={profile.wallet} hasPosition={profile.positions.length > 0} presetAmount={sixteen ? '1' : undefined} presetSplit={sixteen ? 16 : undefined} onClose={() => { setStaking(false); void inspect(profile.wallet); }} /> : null}
       {busy ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
       {error ? <Pressable onPress={() => setError(null)}><Text style={styles.error}>{error}</Text></Pressable> : null}
     </ScrollView>
@@ -372,6 +411,17 @@ const styles = StyleSheet.create({
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.lg, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.line },
   cardFooterText: { color: colors.faint, fontFamily: font.mono, fontSize: 10 },
   tiles: { flexDirection: 'row', gap: spacing.md },
+  dailyPanel: { padding: spacing.md },
+  dailyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  dailyCopy: { flex: 1, gap: 4 },
+  dailyNote: { color: colors.muted, fontFamily: font.regular, ...type.small },
+  privacyPanel: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
+  privacyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
+  privacyDivided: { borderTopWidth: 1, borderTopColor: colors.line },
+  privacyCopy: { flex: 1, gap: 3 },
+  privacyLabel: { color: colors.text, fontFamily: font.semibold, fontSize: 14 },
+  privacyNote: { color: colors.muted, fontFamily: font.regular, ...type.small },
+  privacyWarn: { color: colors.pending, fontFamily: font.regular, ...type.small, paddingBottom: spacing.md },
   sharePanel: { padding: spacing.md },
   shareHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
   shareLabel: { flexShrink: 1 },

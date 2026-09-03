@@ -17,9 +17,11 @@ export type SceneMessage =
   | { type: 'freeze'; on: boolean }
   | { type: 'motion'; mode: 'live' | 'calm' | 'off' }
   | { type: 'pause'; on: boolean }
+  | { type: 'story' }
+  | { type: 'night'; on: boolean; lit?: number }
   | { type: 'demo'; what: 'whalein' | 'whaleout' };
 
-export type SceneTap = { kind: 'stake' | 'exit'; amount: number; who: string; sig: string; unlockAt?: number };
+export type SceneTap = { kind: 'stake' | 'exit'; amount: number; who: string; sig: string; unlockAt?: number; ready?: boolean };
 
 export type SceneHandle = { push: (message: SceneMessage) => void };
 

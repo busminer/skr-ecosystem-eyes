@@ -24,6 +24,7 @@ export function cardFacts(
   age: PositionAge | null,
   label: string | null,
   networkPositions: number | null,
+  privacy?: { hideName: boolean; hideAmount: boolean },
 ): CardFacts {
   return {
     name: label || (profile ? shortAddress(profile.wallet) : 'not connected'),
@@ -32,10 +33,12 @@ export function cardFacts(
     firstSeenAt: age?.firstSeenAt ?? null,
     positionSkr: profile?.found ? profile.totals.activeStaked : null,
     networkPositions,
+    hideName: privacy?.hideName ?? false,
+    hideAmount: privacy?.hideAmount ?? false,
   };
 }
 
-export function StakerCard({ profile, age, share, claimed, name, networkPositions, fallback, width }: {
+export function StakerCard({ profile, age, share, claimed, name, networkPositions, fallback, width, privacy }: {
   profile: WalletProfile | null;
   age: PositionAge | null;
   share: number | null;
@@ -46,13 +49,14 @@ export function StakerCard({ profile, age, share, claimed, name, networkPosition
   // way, so a cold start never has a hole where the card belongs.
   fallback?: CardFacts | null;
   width: number;
+  privacy?: { hideName: boolean; hideAmount: boolean };
 }) {
   // Merged field by field rather than card-or-card. The profile comes back in
   // under a second and the age takes several, so an all-or-nothing swap makes
   // the day count appear, vanish, and appear again — which looks like a fault
   // in the number itself. Anything the live read has not answered yet keeps
   // showing what it said last time.
-  const live = cardFacts(profile, age, name ?? null, networkPositions);
+  const live = cardFacts(profile, age, name ?? null, networkPositions, privacy);
   const facts: CardFacts = fallback
     ? {
         name: profile ? live.name : fallback.name,
@@ -61,6 +65,8 @@ export function StakerCard({ profile, age, share, claimed, name, networkPosition
         firstSeenAt: live.firstSeenAt ?? fallback.firstSeenAt,
         positionSkr: live.positionSkr ?? fallback.positionSkr,
         networkPositions: live.networkPositions ?? fallback.networkPositions,
+        hideName: live.hideName,
+        hideAmount: live.hideAmount,
       }
     : live;
 
