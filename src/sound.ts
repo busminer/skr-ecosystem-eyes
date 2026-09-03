@@ -1,4 +1,6 @@
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
+import * as Haptics from 'expo-haptics';
+import { prefValue } from './prefs';
 
 // The app's interface sounds. They are loaded once and replayed from the
 // start, so a click costs nothing after the first one.
@@ -31,7 +33,26 @@ export async function prepareSound(): Promise<void> {
   }
 }
 
-export function playCue(cue: Cue, volume = 0.5): void {
+// The buzz that belongs to each sound. A sound without a touch is half an
+// event on a phone: the pair is what makes a person feel it land without
+// looking. Heavy things knock twice, light things tap once.
+export function cueHaptic(cue: Cue): void {
+  const impact = (style: Haptics.ImpactFeedbackStyle, delay = 0) => {
+    setTimeout(() => { void Haptics.impactAsync(style).catch(() => undefined); }, delay);
+  };
+  switch (cue) {
+    case 'surge': impact(Haptics.ImpactFeedbackStyle.Heavy); impact(Haptics.ImpactFeedbackStyle.Medium, 160); break;
+    case 'tudum': impact(Haptics.ImpactFeedbackStyle.Medium); impact(Haptics.ImpactFeedbackStyle.Heavy, 300); break;
+    case 'door': impact(Haptics.ImpactFeedbackStyle.Medium); break;
+    case 'coin': impact(Haptics.ImpactFeedbackStyle.Light); impact(Haptics.ImpactFeedbackStyle.Light, 90); break;
+    case 'bird': impact(Haptics.ImpactFeedbackStyle.Light); break;
+    case 'drop': impact(Haptics.ImpactFeedbackStyle.Light); break;
+    case 'flip': break; // the flip board buzzes on its own, once per change
+  }
+}
+
+export function playCue(cue: Cue, volume = 0.5, buzz = true): void {
+  if (buzz && prefValue('buzz', true)) cueHaptic(cue);
   try {
     let player = players.get(cue);
     if (!player) {

@@ -5,7 +5,9 @@ import { API_BASE_URL, fetchEcosystemState, fetchWalletProfile } from '../api';
 import { useReducedMotion } from '../useReducedMotion';
 import { t } from '../i18n';
 import { compact, integer, relativeTime, shortAddress } from '../format';
-import { usePref } from '../prefs';
+import { prefValue, usePref } from '../prefs';
+import { cueHaptic, playCue } from '../sound';
+import { Carousel } from './Carousel';
 import { SESSION_KEY } from '../session';
 import { colors, font, gold, spacing, type } from '../theme';
 import type { EcosystemState } from '../types';
@@ -21,8 +23,6 @@ import { VaultScene, type SceneHandle, type SceneTap } from './VaultScene';
 const REFRESH_MS = 30_000;
 const EVENTS_MS = 6_000;
 const EVENTS_TIMEOUT_MS = 15_000;
-const CARD_MS = 3_200;
-const FACTS = 4;
 const RANGES = ['24h', '7d', '30d'] as const;
 type Range = typeof RANGES[number];
 const RANGE_DAYS: Record<Range, number> = { '24h': 1, '7d': 7, '30d': 30 };
@@ -30,6 +30,9 @@ const RANGE_TITLE: Record<Range, string> = { '24h': 'Last 24 hours', '7d': 'Last
 const RANGE_NOTE: Record<Range, string> = { '24h': 'over the last 24 hours', '7d': 'over the last 7 days', '30d': 'over the last 30 days' };
 const MOTIONS = ['live', 'calm', 'off'] as const;
 const QUEUE_SHORT = 8;
+const BIG_EVENT = 100_000;
+const LABEL_EVENT = 1_000;
+const CUE_GAP_MS = 4_000;
 
 type FeedEvent = { id: string; signature: string; type: string; wallet: string; name?: string | null; amount: number | null; blockTime: number };
 
@@ -88,12 +91,9 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
   const [motionCalm, setMotionCalm] = usePref('motion:calm', false);
   const [motionOff, setMotionOff] = usePref('motion:off', false);
   const scene = useRef<SceneHandle>(null);
-  const facts = useRef<ScrollView>(null);
-  const card = useRef(0);
-  const step = useRef(0);
-  const held = useRef(false);
   const seen = useRef<Set<string>>(new Set());
   const seeded = useRef(false);
+  const lastCue = useRef(0);
   const reducedMotion = useReducedMotion();
   const motion = motionOff ? 'off' : motionCalm ? 'calm' : 'live';
 
@@ -141,6 +141,20 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
         arrived.forEach((item) => seen.current.add(item.id));
         if (seen.current.size > 600) seen.current = new Set([...seen.current].slice(-200));
         scene.current?.push({ type: 'events', items: arrived.reverse().map((item) => ({ kind: item.type, amount: item.amount ?? 0, who: who(item.name, item.wallet), sig: item.signature })) });
+        // The scene has a voice: the vault bell for a large stake, the tudum
+        // for a large exit, the bird for a stake worth a label. One cue per
+        // batch, never more than one every few seconds, and only while the
+        // person is looking at the vault.
+        const stamp = Date.now();
+        if (stamp - lastCue.current < CUE_GAP_MS) return;
+        const heavyStake = arrived.some((item) => item.type === 'stake' && (item.amount ?? 0) >= BIG_EVENT);
+        const heavyExit = arrived.some((item) => (item.type === 'unstake' || item.type === 'withdraw') && (item.amount ?? 0) >= BIG_EVENT);
+        const labelled = arrived.some((item) => item.type === 'stake' && (item.amount ?? 0) >= LABEL_EVENT);
+        const cue = heavyExit ? 'tudum' : heavyStake ? 'surge' : labelled ? 'bird' : null;
+        if (!cue) return;
+        lastCue.current = stamp;
+        if (prefValue('sound', true)) playCue(cue, cue === 'bird' ? 0.35 : 0.6);
+        else if (prefValue('buzz', true)) cueHaptic(cue);
       } catch {
         // The scene keeps raining at its last known tempo.
       }
@@ -208,23 +222,11 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
     scene.current?.push({ type: 'night', on: hour >= 21 || hour < 6, lit });
   }, [metrics, day, hours]);
 
-  useEffect(() => {
-    if (reducedMotion) return undefined;
-    const timer = setInterval(() => {
-      if (held.current || AppState.currentState !== 'active') return;
-      card.current = (card.current + 1) % FACTS;
-      facts.current?.scrollTo({ x: card.current * step.current, animated: true });
-    }, CARD_MS);
-    return () => clearInterval(timer);
-  }, [reducedMotion]);
-
   const coverageDays = state?.analytics?.coverageFrom ? (state.analytics.generatedAt - state.analytics.coverageFrom) / 86_400 : 0;
   const partial = coverageDays > 0 && coverageDays < RANGE_DAYS[range] * 0.98;
   const horizon = metrics?.unlockHorizon;
   const note = t(RANGE_NOTE[range]);
   const inner = width - spacing.lg * 2;
-  const factWidth = Math.min(inner * 0.62, 230);
-  step.current = factWidth + spacing.md;
   const hero = metrics ? splitCompact(metrics.activeStaked) : null;
   const sceneHeight = Math.round(Math.min(440, Math.max(300, height * 0.42)));
   const queue = [...(metrics?.queue ?? [])].sort((left, right) => left.unlockAt - right.unlockAt);
@@ -280,26 +282,18 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
         <RangeSwitch value={range} options={[...RANGES]} onChange={(next) => setRange(next as Range)} />
       </View>
 
-      <ScrollView
-        ref={facts}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        snapToInterval={factWidth + spacing.md}
-        decelerationRate="fast"
-        onScrollBeginDrag={() => { held.current = true; }}
-        contentContainerStyle={styles.facts}
-      >
-        <FactCard width={factWidth} note={note} label={t('staked')} value={period ? compact(period.staked) : '—'} tone={colors.positive} />
-        <FactCard width={factWidth} note={note} label={t('asked out')} value={period ? compact(period.unstaked) : '—'} tone={colors.negative} />
+      <Carousel width={inner} auto={!reducedMotion}>
+        <FactCard width={inner} note={note} label={t('staked')} value={period ? compact(period.staked) : '—'} tone={colors.positive} />
+        <FactCard width={inner} note={note} label={t('asked out')} value={period ? compact(period.unstaked) : '—'} tone={colors.negative} />
         <FactCard
-          width={factWidth}
+          width={inner}
           note={`${note} · ${t('staked minus requested out')}`}
           label={t('net')}
           value={period ? `${period.netFlow >= 0 ? '+' : '−'}${compact(Math.abs(period.netFlow))}` : '—'}
           tone={(period?.netFlow ?? 0) >= 0 ? colors.positive : colors.negative}
         />
-        <FactCard width={factWidth} note={note} label={t('wallets')} value={period ? integer(period.wallets) : '—'} tone={colors.metal} />
-      </ScrollView>
+        <FactCard width={inner} note={note} label={t('wallets')} value={period ? integer(period.wallets) : '—'} tone={colors.metal} />
+      </Carousel>
 
       {partial ? <Text style={styles.partial}>{t('history covers {days}d', { days: Math.floor(coverageDays) })}</Text> : null}
 

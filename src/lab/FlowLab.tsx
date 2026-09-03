@@ -7,7 +7,8 @@ import type { EcosystemState } from '../types';
 import { t } from '../i18n';
 import { compact, shortAddress } from '../format';
 import { usePref } from '../prefs';
-import { playCue } from '../sound';
+import { cueHaptic, playCue } from '../sound';
+import { Carousel } from './Carousel';
 import { colors, font, gold, radius, spacing, type } from '../theme';
 import { Eyebrow, Panel } from './kit';
 
@@ -211,11 +212,8 @@ export function FlowLab({ active }: { active: boolean }) {
   const [receipt, setReceipt] = useState<FlowEvent | null>(null);
   const [day, setDay] = useState<EcosystemState['analytics']['windows'][string] | null>(null);
   const [headlines, setHeadlines] = useState<FlowEvent[]>([]);
-  const headRail = useRef<ScrollView>(null);
-  const headIndex = useRef(0);
-  const headHeld = useRef(false);
   const { width } = useWindowDimensions();
-  const headWidth = Math.min(width - spacing.lg * 2 - 24, 300);
+  const headWidth = width - spacing.lg * 2;
   const [arrivals, setArrivals] = useState(0);
   const [openOlder, setOpenOlder] = useState(false);
   const seen = useRef<Set<string>>(new Set());
@@ -268,18 +266,18 @@ export function FlowLab({ active }: { active: boolean }) {
       // A labelled stake below that sings once, like a bird.
       const heavyExit = arrived.some((item) => (item.amount ?? 0) >= BIG_EVENT && (item.type === 'unstake' || item.type === 'withdraw'));
       const labelled = arrived.some((item) => (item.amount ?? 0) >= LABEL_EVENT && item.type === 'stake');
+      // Every sound comes with its own short buzz, paired inside playCue; with
+      // sound off the buzz alone still says what landed.
       if (heavy && stamp - lastSurge.current > SURGE_GAP_MS) {
         lastSurge.current = stamp;
         lastHaptic.current = stamp;
-        if (haptics) {
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
-          setTimeout(() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined); }, 160);
-        }
-        if (sound) playCue(heavyExit ? 'tudum' : 'surge', 0.6);
+        const cue = heavyExit ? 'tudum' : 'surge';
+        if (sound) playCue(cue, 0.6);
+        else if (haptics) cueHaptic(cue);
       } else if (labelled && stamp - lastSurge.current > BIRD_GAP_MS) {
         lastSurge.current = stamp;
-        if (haptics) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
         if (sound) playCue('bird', 0.35);
+        else if (haptics) cueHaptic('bird');
       } else if (haptics && stamp - lastHaptic.current > HAPTIC_GAP_MS) {
         lastHaptic.current = stamp;
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
@@ -323,17 +321,6 @@ export function FlowLab({ active }: { active: boolean }) {
     return () => { alive = false; clearInterval(dayTimer); };
   }, [active]);
 
-  // The headline cards turn themselves over, like the facts on the vault.
-  useEffect(() => {
-    if (!active || headlines.length < 1) return;
-    const timer = setInterval(() => {
-      if (headHeld.current || AppState.currentState !== 'active') return;
-      headIndex.current = (headIndex.current + 1) % (headlines.length + 1);
-      headRail.current?.scrollTo({ x: headIndex.current * (headWidth + spacing.md), animated: true });
-    }, 3_600);
-    return () => clearInterval(timer);
-  }, [active, headlines.length, headWidth]);
-
   useEffect(() => {
     if (!active) return;
     void pullHeadline();
@@ -364,21 +351,12 @@ export function FlowLab({ active }: { active: boolean }) {
       </View>
 
       {big ? (
-        <ScrollView
-          ref={headRail}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={headWidth + spacing.md}
-          decelerationRate="fast"
-          onScrollBeginDrag={() => { headHeld.current = true; }}
-          contentContainerStyle={styles.headRail}
-          style={styles.headRailWrap}
-        >
-          <View style={{ width: headWidth }}><Headline event={big} now={now} /></View>
-          {headlines.map((item) => (
-            <View key={item.id} style={{ width: headWidth }}><Headline event={item} now={now} title={item.type === 'stake' ? t('Biggest stake today') : item.type === 'unstake' ? t('Biggest exit today') : t('Biggest withdrawal today')} /></View>
+        <Carousel width={headWidth}>
+          <Headline event={big} now={now} />
+          {headlines.filter((item) => item.id !== big.id).map((item) => (
+            <Headline key={item.id} event={item} now={now} title={item.type === 'stake' ? t('Biggest stake today') : item.type === 'unstake' ? t('Biggest exit today') : t('Biggest withdrawal today')} />
           ))}
-        </ScrollView>
+        </Carousel>
       ) : null}
 
       <View style={styles.filters}>

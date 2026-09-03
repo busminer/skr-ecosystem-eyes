@@ -10,6 +10,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { prefValue, prefsReady } from '../prefs';
 import { t } from '../i18n';
 import { colors, font, spacing } from '../theme';
@@ -67,6 +68,10 @@ export function Splash({ onDone }: { onDone: () => void }) {
       }
     };
     const sound = setTimeout(() => void voice(0.55), SOUND_AT);
+    // The opening gets its touch too: one light tap as the device turns, one
+    // as the eye blinks, if the person keeps buzz on.
+    const buzz = setTimeout(() => { void prefsReady.then(() => { if (!gone && prefValue('buzz', true)) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined); }); }, SOUND_AT);
+    const blinkBuzz = setTimeout(() => { void prefsReady.then(() => { if (!gone && prefValue('buzz', true)) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined); }); }, BLINK_AT);
     const echo = setTimeout(() => void voice(ECHO_VOLUME), ECHO_AT);
 
     enter.value = withTiming(1, { duration: ENTER_MS, easing: Easing.out(Easing.cubic) });
@@ -86,6 +91,8 @@ export function Splash({ onDone }: { onDone: () => void }) {
       gone = true;
       clearTimeout(sound);
       clearTimeout(echo);
+      clearTimeout(buzz);
+      clearTimeout(blinkBuzz);
       players.forEach((item) => item.remove());
     };
   }, [enter, turn, eye, lid, leave, onDone]);
