@@ -5,7 +5,7 @@ import { prefValue } from './prefs';
 // The app's interface sounds. They are loaded once and replayed from the
 // start, so a click costs nothing after the first one.
 //
-// One family, one material: metal and glass. A stake sings up (the bird), a
+// One family, one material: metal and glass. A stake is a coin settling into glass, a
 // small labelled stake is a drop into the vault, a large stake is the struck
 // bell, a large exit is the tudum, a withdrawal is a door, and the day's own
 // stake is a coin. The audio mode is set to mix: none of this may pause the
@@ -14,7 +14,7 @@ import { prefValue } from './prefs';
 const sources = {
   flip: require('../assets/sound/flip.wav'),
   surge: require('../assets/sound/surge.wav'),
-  bird: require('../assets/sound/bird.wav'),
+  stake: require('../assets/sound/stake.wav'),
   drop: require('../assets/sound/drop.wav'),
   tudum: require('../assets/sound/tudum.wav'),
   coin: require('../assets/sound/coin.wav'),
@@ -45,7 +45,7 @@ export function cueHaptic(cue: Cue): void {
     case 'tudum': impact(Haptics.ImpactFeedbackStyle.Medium); impact(Haptics.ImpactFeedbackStyle.Heavy, 300); break;
     case 'door': impact(Haptics.ImpactFeedbackStyle.Medium); break;
     case 'coin': impact(Haptics.ImpactFeedbackStyle.Light); impact(Haptics.ImpactFeedbackStyle.Light, 90); break;
-    case 'bird': impact(Haptics.ImpactFeedbackStyle.Light); break;
+    case 'stake': impact(Haptics.ImpactFeedbackStyle.Light); break;
     case 'drop': impact(Haptics.ImpactFeedbackStyle.Light); break;
     case 'flip': break; // the flip board buzzes on its own, once per change
   }

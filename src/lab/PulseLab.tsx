@@ -161,10 +161,10 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
         const heavyStake = arrived.some((item) => item.type === 'stake' && (item.amount ?? 0) >= BIG_EVENT);
         const heavyExit = arrived.some((item) => (item.type === 'unstake' || item.type === 'withdraw') && (item.amount ?? 0) >= BIG_EVENT);
         const labelled = arrived.some((item) => item.type === 'stake' && (item.amount ?? 0) >= LABEL_EVENT);
-        const cue = heavyExit ? 'tudum' : heavyStake ? 'surge' : labelled ? 'bird' : null;
+        const cue = heavyExit ? 'tudum' : heavyStake ? 'surge' : labelled ? 'stake' : null;
         if (!cue) return;
         lastCue.current = stamp;
-        if (prefValue('sound', true)) playCue(cue, cue === 'bird' ? 0.35 : 0.6);
+        if (prefValue('sound', true)) playCue(cue, cue === 'stake' ? 0.35 : 0.6);
         else if (prefValue('buzz', true)) cueHaptic(cue);
       } catch {
         // The scene keeps raining at its last known tempo.

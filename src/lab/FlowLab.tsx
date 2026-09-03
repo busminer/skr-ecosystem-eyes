@@ -279,8 +279,8 @@ export function FlowLab({ active }: { active: boolean }) {
         else if (haptics) cueHaptic(cue);
       } else if (labelled && stamp - lastSurge.current > BIRD_GAP_MS) {
         lastSurge.current = stamp;
-        if (sound) playCue('bird', 0.35);
-        else if (haptics) cueHaptic('bird');
+        if (sound) playCue('stake', 0.35);
+        else if (haptics) cueHaptic('stake');
       } else if (haptics && stamp - lastHaptic.current > HAPTIC_GAP_MS) {
         lastHaptic.current = stamp;
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
