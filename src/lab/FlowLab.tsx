@@ -32,9 +32,9 @@ const SURGE_GAP_MS = 6_000;
 // Whole SKR on purpose: the server parses `min` as an integer and refuses a
 // fraction, so a threshold like 0.5 would silently return nothing.
 const BIG_EVENT = 100_000;
-// From here up a stake earns a label in the vault and a bird in the feed.
+// From here up a stake earns a label in the vault and its own sound in the feed.
 const LABEL_EVENT = 1_000;
-const BIRD_GAP_MS = 4_000;
+const STAKE_GAP_MS = 4_000;
 // Big moves earn a card, but only the two most recent ones. Any older large
 // event folds into a single summary line so the feed never becomes a wall.
 const BIG_CARDS_OPEN = 2;
@@ -277,7 +277,7 @@ export function FlowLab({ active }: { active: boolean }) {
         const cue = heavyExit ? 'tudum' : 'surge';
         if (sound) playCue(cue, 0.6);
         else if (haptics) cueHaptic(cue);
-      } else if (labelled && stamp - lastSurge.current > BIRD_GAP_MS) {
+      } else if (labelled && stamp - lastSurge.current > STAKE_GAP_MS) {
         lastSurge.current = stamp;
         if (sound) playCue('stake', 0.35);
         else if (haptics) cueHaptic('stake');
