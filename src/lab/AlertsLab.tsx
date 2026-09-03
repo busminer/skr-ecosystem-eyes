@@ -12,6 +12,7 @@ import { readSessionAddress } from '../session';
 import { colors, font, radius, spacing, type } from '../theme';
 import type { EcosystemState, WalletProfile } from '../types';
 import { Button, Evidence, Eyebrow, Hairline, Panel } from './kit';
+import { TipSheet } from './TipSheet';
 
 export function AlertsLab() {
   // The language switch lives here because this is the only settings screen the
@@ -29,6 +30,7 @@ export function AlertsLab() {
   const [armed, setArmed] = useState<boolean | null>(null);
   const [arming, setArming] = useState(false);
   const [largeAlerts, setLargeAlerts] = usePref('alert:large', true);
+  const [tipping, setTipping] = useState(false);
 
   useEffect(() => {
     Notifications.getPermissionsAsync().then((result) => {
@@ -210,6 +212,21 @@ export function AlertsLab() {
       <Button label={t('Send a test notification')} onPress={() => void proof()} ghost />
       {status ? <Text style={styles.status}>{status}</Text> : null}
 
+      {/* Quiet, at the bottom, after everything that matters: a way to say
+          thank you in SKR. Not a fee, not a nag, and it says where the tip
+          goes and what happens to it. */}
+      <Panel style={styles.panel} tone={colors.metal}>
+        <View style={styles.tipRow}>
+          <View style={styles.tipCopy}>
+            <Eyebrow tone={colors.metal}>{t('Support SKR Eyes')}</Eyebrow>
+            <Text style={styles.toggleNote}>{t('Free and open source, built by one Seeker. Tips in SKR go to kosa.skr and are staked right away, all of them.')}</Text>
+          </View>
+          <Button label={t('Send a tip')} tone={colors.metal} onPress={() => { void Haptics.selectionAsync(); setTipping(true); }} />
+        </View>
+      </Panel>
+
+      {tipping ? <TipSheet onClose={() => setTipping(false)} /> : null}
+
       <Evidence
         lines={[
           `threshold source  ${config.source}`,
@@ -225,6 +242,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 130, gap: spacing.lg },
   panel: { padding: spacing.md },
+  tipRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  tipCopy: { flex: 1, gap: 4 },
   permissionHead: { flexDirection: 'row', gap: spacing.md },
   permissionCopy: { flex: 1, gap: spacing.sm },
   permissionText: { color: colors.muted, fontFamily: font.regular, ...type.body },
