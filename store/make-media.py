@@ -84,92 +84,87 @@ BAR_SHAPE = ((26, "#7CF0BC"), (40, "#7CF0BC"), (18, "#FF7E79"), (52, "#7CF0BC"),
 
 
 def banner():
-    bars = "".join("<i style='height:%dpx;background:%s'></i>" % pair for pair in BAR_SHAPE)
+    # The living vault is the banner. The store draws its own back button over
+    # the top-left and the app icon over the bottom-left, so the left third is
+    # kept dark and quiet and every word sits inside x 440-1170, y 110-460.
     body = """
 <div class="sheet">
-  <div class="glow"></div>
-  <div class="bars">BARS</div>
-  <div class="row">
-    <div class="badge">MARK</div>
-    <div class="copy">
-      <div class="wordmark">SKR EYES</div>
-      <div class="tag">every number has a receipt</div>
-      <div class="line"></div>
-      <div class="sub">Independent SKR staking analytics for Seeker — and staking itself</div>
-    </div>
+  <div class="scene"></div>
+  <div class="shade"></div>
+  <div class="copy">
+    <div class="wordmark">SKR EYES</div>
+    <div class="tag">Stake SKR. See everything.</div>
+    <div class="line"></div>
+    <div class="sub">The living vault: every stake falls in with its .skr name, every exit hangs and cools. Nothing invented.</div>
   </div>
-</div>""".replace("BARS", bars).replace("MARK", MARK)
+</div>"""
     css = """
-  .sheet{position:relative;width:1200px;height:600px;padding:0 88px 44px;
-         display:flex;align-items:center;overflow:hidden;}
-  .glow{position:absolute;right:-160px;top:-220px;width:760px;height:760px;border-radius:50%;
-        background:radial-gradient(circle,rgba(86,224,255,.16),rgba(86,224,255,0) 62%);}
-  .bars{position:absolute;left:0;right:0;bottom:0;height:150px;display:flex;
-        align-items:flex-end;gap:34px;padding:0 70px;opacity:.20;
-        -webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,1),rgba(0,0,0,0) 96%);}
-  .bars i{flex:1;border-radius:4px 4px 0 0;}
-  .row{position:relative;display:flex;align-items:center;gap:56px;}
-  .badge{width:196px;height:196px;flex:none;border-radius:44px;background:PANEL;
-         border:1px solid LINE;display:flex;align-items:center;justify-content:center;}
-  .badge .mark{width:132px;height:132px;}
-  .wordmark{font-size:78px;line-height:1;}
-  .tag{margin-top:18px;font-size:26px;color:MUTED;letter-spacing:.02em;}
-  .line{margin:28px 0 22px;width:120px;height:2px;background:METAL;opacity:.85;}
-  .sub{font-size:21px;color:FAINT;max-width:720px;line-height:1.45;}
-""".replace("PANEL", PANEL).replace("LINE", LINE).replace("MUTED", MUTED).replace("METAL", METAL).replace("FAINT", FAINT)
+  .sheet{position:relative;width:1200px;height:600px;overflow:hidden;background:BG;}
+  .scene{position:absolute;inset:0;background:url('URI') center/1200px 600px no-repeat;}
+  .shade{position:absolute;inset:0;
+         background:linear-gradient(90deg,rgba(4,7,11,.92) 0,rgba(4,7,11,.6) 260px,rgba(4,7,11,.15) 480px,rgba(4,7,11,.62) 760px,rgba(4,7,11,.7) 1200px),
+                    linear-gradient(0deg,rgba(4,7,11,.92) 0,rgba(4,7,11,0) 230px);}
+  .copy{position:absolute;left:470px;top:118px;width:690px;}
+  .wordmark{font-size:74px;line-height:1;color:TEXT;}
+  .tag{margin-top:18px;font-size:27px;color:ACCENT;letter-spacing:.01em;}
+  .line{margin:24px 0 20px;width:120px;height:2px;background:METAL;opacity:.85;}
+  .sub{font-size:21px;color:MUTED;max-width:660px;line-height:1.45;}
+""".replace("TEXT", TEXT).replace("ACCENT", ACCENT).replace("METAL", METAL).replace("MUTED", MUTED).replace("BG", BG).replace("URI", data_uri(MEDIA / "bg-banner.png"))
     render("banner-1200x600.png", 1200, 600, body, css)
 
 
 def feature():
     cells = "".join('<div class="cell">%s</div>' % ch if ch.isdigit() else '<div class="dot"></div>'
-                    for ch in "5.09")
+                    for ch in "4.95")
     body = """
 <div class="sheet">
-  <div class="glow"></div>
-  <div class="badge">MARK</div>
-  <div class="wordmark">SKR EYES</div>
-  <div class="tag">every number has a receipt</div>
-  <div class="board">CELLS<span class="unit">B SKR staked</span></div>
-  <div class="rule"></div>
-  <div class="foot">Pulse · Flow · Your position · Exit queue · Unlock alerts</div>
+  <div class="scene"></div>
+  <div class="shade"></div>
+  <div class="top">
+    <div class="brand">MARK<span class="wordmark">SKR EYES</span></div>
+    <h1>The vault, alive</h1>
+    <p>Every stake with its .skr name. Every exit, cooling in the open.</p>
+  </div>
+  <div class="bottom">
+    <div class="board">CELLS<span class="unit">B SKR held</span></div>
+    <div class="foot">Vault · Flow · Me · Alerts</div>
+  </div>
 </div>""".replace("CELLS", cells).replace("MARK", MARK)
     css = """
-  .sheet{position:relative;width:1200px;height:1200px;padding:88px 90px 76px;
-         display:flex;flex-direction:column;align-items:center;overflow:hidden;}
-  .glow{position:absolute;left:50%;top:-260px;transform:translateX(-50%);
-        width:1000px;height:1000px;border-radius:50%;
-        background:radial-gradient(circle,rgba(86,224,255,.15),rgba(86,224,255,0) 60%);}
-  .badge{position:relative;width:280px;height:280px;border-radius:64px;background:PANEL;
-         border:1px solid LINE;display:flex;align-items:center;justify-content:center;}
-  .badge .mark{width:190px;height:190px;}
-  .wordmark{position:relative;margin-top:64px;font-size:96px;line-height:1;}
-  .tag{position:relative;margin-top:22px;font-size:30px;color:MUTED;}
-  .board{position:relative;margin-top:auto;margin-bottom:auto;display:flex;align-items:center;gap:10px;}
-  .cell{width:104px;height:168px;border-radius:18px;background:#0B131B;border:1px solid #22323F;
-        font-family:'Geist Mono',monospace;font-weight:900;font-size:104px;color:TEXT;
+  .sheet{position:relative;width:1200px;height:1200px;overflow:hidden;background:BG;}
+  .scene{position:absolute;inset:0;background:url('URI') center/1200px 1200px no-repeat;}
+  .shade{position:absolute;inset:0;
+         background:linear-gradient(180deg,rgba(4,7,11,.96) 0,rgba(4,7,11,.88) 330px,rgba(4,7,11,0) 560px,rgba(4,7,11,0) 760px,rgba(4,7,11,.94) 1060px);}
+  .top{position:absolute;left:84px;right:84px;top:84px;}
+  .brand{display:flex;align-items:center;gap:18px;}
+  .brand .mark{width:52px;height:52px;}
+  .brand .wordmark{font-size:30px;color:TEXT;}
+  h1{margin-top:34px;font-size:84px;line-height:1.05;font-weight:700;letter-spacing:-.02em;color:TEXT;}
+  p{margin-top:20px;font-size:31px;line-height:1.4;color:MUTED;max-width:900px;}
+  .bottom{position:absolute;left:84px;right:84px;bottom:84px;}
+  .board{display:flex;align-items:center;gap:10px;}
+  .cell{width:96px;height:152px;border-radius:16px;background:#0B131B;border:1px solid #22323F;
+        font-family:'Geist Mono',monospace;font-weight:900;font-size:96px;color:TEXT;
         display:flex;align-items:center;justify-content:center;position:relative;}
-  .cell::after{content:'';position:absolute;left:0;right:0;top:50%;height:2px;
-               background:rgba(0,0,0,.55);}
-  .dot{width:16px;height:16px;border-radius:50%;background:METAL;align-self:flex-end;
-       margin:0 8px 26px;}
-  .unit{margin-left:26px;font-size:30px;color:MUTED;font-weight:600;letter-spacing:.04em;}
-  .rule{position:relative;width:150px;height:2px;background:METAL;opacity:.7;margin-bottom:34px;}
-  .foot{position:relative;font-size:26px;color:FAINT;letter-spacing:.02em;}
-""".replace("PANEL", PANEL).replace("LINE", LINE).replace("MUTED", MUTED).replace("METAL", METAL).replace("FAINT", FAINT).replace("TEXT", TEXT)
+  .cell::after{content:'';position:absolute;left:0;right:0;top:50%;height:2px;background:rgba(0,0,0,.55);}
+  .dot{width:14px;height:14px;border-radius:50%;background:METAL;align-self:flex-end;margin:0 8px 24px;}
+  .unit{margin-left:24px;font-size:30px;color:MUTED;font-weight:600;letter-spacing:.04em;}
+  .foot{margin-top:34px;font-size:26px;color:FAINT;letter-spacing:.02em;}
+""".replace("TEXT", TEXT).replace("MUTED", MUTED).replace("METAL", METAL).replace("FAINT", FAINT).replace("BG", BG).replace("URI", data_uri(MEDIA / "bg-feature.png"))
     render("feature-1200x1200.png", 1200, 1200, body, css)
 
 
 SHOTS = [
-    ("cap-pulse.png", "The whole vault, at a glance",
-     "How much SKR is staked, what moved in the last 24 hours, and when the exit queue matures."),
+    ("cap-card.png", "Your staker card",
+     "Days in stake, weight in the vault, what you earned. Hide your name or your amount before you share it."),
+    ("cap-vault.png", "The vault, alive",
+     "Every stake falls in with its .skr name; every exit hangs and cools above the pile of what stays. Tap any move for its receipt."),
     ("cap-flow.png", "Every finalized move, live",
-     "The chain's own floor: each stake, exit and withdrawal as it lands, the big ones pinned."),
-    ("cap-me.png", "Your position, with its age",
-     "What you hold, how long you have held it, your weight in the vault — and Stake SKR."),
-    ("cap-queue.png", "What is leaving, and when",
-     "The 48 hour exit queue, soonest first, so a wave never arrives as a surprise."),
-    ("cap-alerts.png", "Alerts that live on your phone",
-     "Scheduled by the phone itself — no push server, no account, and no address leaves it."),
+     "Stakes, exits and withdrawals as they land, by kind and by size, the day's biggest pinned on top."),
+    ("cap-me.png", "Stake from the same screen",
+     "Sixteen: 16 parts of 1 SKR with one approval. Earned on staking, read from the chain. Two privacy switches for the card."),
+    ("cap-alerts.png", "Ten languages, sounds you can feel",
+     "A glass chime for a stake, the vault bell for a large one, a low boom for a large exit. Unlock alerts set on the phone itself."),
 ]
 
 
