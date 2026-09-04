@@ -37,7 +37,7 @@ export const de: Record<string, string> = {
   'Me': 'Ich',
   'Queue': 'Warteschlange',
   'Alerts': 'Hinweise',
-  'fresh': 'aktuell',
+  'fresh': 'frisch',
   'aging': 'altert',
   'stale': 'veraltet',
   'unavailable': 'keine Daten',
