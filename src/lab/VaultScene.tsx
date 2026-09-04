@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import type { WebViewRenderProcessGoneEvent } from 'react-native-webview/lib/WebViewTypes';
 import { VAULT_SCENE_HTML } from './vaultSceneHtml';
 
 // The React side of the living vault. It owns nothing about drawing; it only
@@ -26,13 +27,24 @@ export type SceneTap = { kind: 'stake' | 'exit'; amount: number; who: string; si
 
 export type SceneHandle = { push: (message: SceneMessage) => void };
 
+// The last of each of these is enough to rebuild the picture after a restart;
+// events and pauses are moments, not state, and are not replayed.
+const REMEMBERED: ReadonlySet<SceneMessage['type']> = new Set<SceneMessage['type']>(['motion', 'state', 'me', 'landmarks', 'night', 'freeze']);
+
 export const VaultScene = forwardRef<SceneHandle, { height: number; onTap?: (hit: SceneTap) => void }>(function VaultScene({ height, onTap }, ref) {
   const web = useRef<WebView>(null);
   const ready = useRef(false);
   const queue = useRef<SceneMessage[]>([]);
   const [failed, setFailed] = useState(false);
+  // Android kills the WebView's renderer whenever it likes, most often while
+  // the app sits in the background. After that the old WebView is a dead
+  // black box and must be replaced, not reloaded. The generation is its key;
+  // bumping it mounts a fresh one, and the memory below refills it.
+  const [generation, setGeneration] = useState(0);
+  const memory = useRef<Map<string, SceneMessage>>(new Map());
 
   const send = useCallback((message: SceneMessage) => {
+    if (REMEMBERED.has(message.type)) memory.current.set(message.type, message);
     if (!ready.current) { queue.current.push(message); return; }
     web.current?.injectJavaScript(`window.__push(${JSON.stringify(message)});true;`);
   }, []);
@@ -50,6 +62,9 @@ export const VaultScene = forwardRef<SceneHandle, { height: number; onTap?: (hit
       const data = JSON.parse(event.nativeEvent.data) as { type: string; hit?: SceneTap };
       if (data.type === 'ready') {
         ready.current = true;
+        // Everything the scene needs to look right again goes first, then
+        // whatever arrived while it was still parsing.
+        REMEMBERED.forEach((type) => { const kept = memory.current.get(type); if (kept) send(kept); });
         const pending = queue.current; queue.current = [];
         pending.forEach((message) => send(message));
       } else if (data.type === 'tap' && data.hit && onTap) {
@@ -60,11 +75,18 @@ export const VaultScene = forwardRef<SceneHandle, { height: number; onTap?: (hit
     }
   }, [onTap, send]);
 
+  const onRenderProcessGone = useCallback((_event: WebViewRenderProcessGoneEvent) => {
+    ready.current = false;
+    queue.current = [];
+    setGeneration((current) => current + 1);
+  }, []);
+
   if (failed) return <View style={[styles.wrap, { height }]} />;
 
   return (
     <View style={[styles.wrap, { height }]}>
       <WebView
+        key={generation}
         ref={web}
         source={{ html: VAULT_SCENE_HTML }}
         originWhitelist={['*']}
@@ -79,6 +101,7 @@ export const VaultScene = forwardRef<SceneHandle, { height: number; onTap?: (hit
         allowFileAccess={false}
         onMessage={onMessage}
         onError={() => setFailed(true)}
+        onRenderProcessGone={onRenderProcessGone}
         style={styles.web}
       />
     </View>
