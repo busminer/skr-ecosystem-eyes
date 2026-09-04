@@ -1,7 +1,37 @@
-The vault is alive. Every stake falls in with its .skr name, every exit hangs and cools above the pile of what stays, and you can tap any move for its receipt.
+SKR Eyes 1.1.0. The biggest update since launch.
 
-What people asked for: earned on staking, read from the chain, and two privacy switches on the card, to hide your name or your amount before you share it.
+THE LIVING VAULT
+Vault, the new home screen: an animated scene of the staking vault. Every stake falls in as a phone with the staker's .skr name under it, larger stakes fall larger and slower, a 100K stake arrives as a shower. Every exit hangs above the pile with a ring that closes over its 48 hours; withdrawals drop, cancelled exits fall back. The pile below is the 4.95 billion SKR that stays, with the day's three largest stakes lit on top of it and your own position marked in gold. The SKR mark stands far behind the rain. After nine in the evening the pile lights its windows. Tap any phone for its on-chain receipt. Motion can be set to Live, Calm or Off.
 
-Sounds you can feel, only for large moves: an old phone rings for a stake, a low boom for an exit, a door closes for a withdrawal, each with a short buzz. Or switch them off.
+A NEW OPENING
+The first stone: one phone falls into the dark, lands with a chime, a wave reveals the pile, the eye opens over it and winks.
 
-Sixteen: 16 parts of 1 SKR with one approval, and a gentle daily nudge you can switch off. Flow filtered by kind and size, with the day's biggest moves pinned and the day drawn hour by hour. German added, as people asked, and all eleven languages reviewed end to end. Tips in SKR, staked right away.
+SOUNDS YOU CAN FEEL
+Only for large moves, from 100K SKR: an old phone rings for a stake, a low boom for an exit, a door closes for a withdrawal, each with a short buzz, on any screen while the app is open. Switch sound, buzz or both off on Alerts.
+
+FLOW
+The day's biggest stake, exit and withdrawal pinned on top. Filter the feed by kind (stakes, exits, withdrawals) and by size (all, 1K+, 100K+). Large moves keep their place in the list for a while instead of being pushed out by dust. Tap a row for its receipt.
+
+THE DAY, HOUR BY HOUR
+The cards under the vault carry their figure drawn as 24 bars: stakes, exits, net flow and active wallets.
+
+YOUR CARD, YOUR PRIVACY
+Two switches on Me: hide your name (the card says A Seeker and the eye closes) and hide your amount before you share the picture.
+
+EARNED ON STAKING
+What your position has earned, read from the chain and shown on Me, with an honest note that it is an estimate from the share price at your last move.
+
+SIXTEEN AND THE DAILY NUDGE
+Sixteen: 16 parts of 1 SKR with one approval, a small daily habit. A gentle reminder around six in the evening, set on the phone itself, which you can switch off. The app asks for notification permission once, on first launch.
+
+STAKING
+A connected wallet with no position yet gets its first Stake button. The wallet that answers a signing request is checked against the address on screen before anything is signed. A stake interrupted by a crash is restored with a warning, never silently forgotten.
+
+NAMES EVERYWHERE
+Your own profile and card now show your .skr name from the registry, not the address, and so does every wallet in the vault, the feed and the queue.
+
+TIPS
+Any amount in SKR to kosa.skr, signed by your wallet, staked right away, all of it.
+
+ELEVEN LANGUAGES
+German added, as people asked. All eleven languages reviewed end to end, with finance terms set straight.
