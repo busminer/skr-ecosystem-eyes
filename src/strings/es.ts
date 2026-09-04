@@ -10,6 +10,8 @@
 // literal.
 
 export const es: Record<string, string> = {
+  'Earned on staking': 'Ganado con el stake',
+  'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Estimación según el precio de la participación en tu último stake o salida. Las recompensas acumuladas antes de ese movimiento ya están dentro de tu posición y no se cuentan aquí.',
   'All': 'Todo',
   'Stakes': 'Stakes',
   'Exits': 'Salidas',

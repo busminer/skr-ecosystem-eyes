@@ -7,6 +7,8 @@
 // içeriği değişmez.
 
 export const tr: Record<string, string> = {
+  'Earned on staking': 'Stake kazancı',
+  'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Son stake veya çıkışındaki pay fiyatına göre tahmin. O hamleden önce biriken ödüller pozisyona katılmıştır ve burada sayılmaz.',
   'All': 'Tümü',
   'Stakes': 'Stake',
   'Exits': 'Çıkış',

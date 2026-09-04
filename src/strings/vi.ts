@@ -6,6 +6,8 @@
 // chỗ nhưng không đổi tên. "Thẻ" là tấm thẻ chia sẻ, các màn hình chính gọi là "mục".
 
 export const vi: Record<string, string> = {
+  'Earned on staking': 'Đã kiếm được từ stake',
+  'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Ước tính theo giá cổ phần tại lần stake hoặc rút gần nhất của bạn. Phần thưởng tích luỹ trước đó đã gộp vào vị thế và không tính ở đây.',
   'All': 'Tất cả',
   'Stakes': 'Stake',
   'Exits': 'Rời kho',

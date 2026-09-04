@@ -312,6 +312,15 @@ export function MyLab() {
             <View style={styles.shareMeter}>
               <Meter percent={share != null ? Math.max(share > 0 ? 1 : 0, Math.min(100, share)) : 0} tone={colors.metal} height={4} />
             </View>
+            {profile!.totals.earned != null ? (
+              <View style={styles.earnedRow}>
+                <View style={styles.shareLabel}><Eyebrow>{t('Earned on staking')}</Eyebrow></View>
+                <Text style={styles.earnedValue}>{`+${compact(profile!.totals.earned)} SKR`}</Text>
+              </View>
+            ) : null}
+            {profile!.totals.earned != null ? (
+              <Text style={styles.shareNote}>{t('An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.')}</Text>
+            ) : null}
             <Text style={styles.shareNote}>
               {age?.days != null
                 ? age.exact
@@ -463,6 +472,8 @@ const styles = StyleSheet.create({
   shareHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
   shareLabel: { flexShrink: 1 },
   shareValue: { color: colors.metal, fontFamily: font.bold, fontSize: 15, fontVariant: ['tabular-nums'] },
+  earnedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.md },
+  earnedValue: { color: colors.positive, fontFamily: font.bold, fontSize: 18, fontVariant: ['tabular-nums'] },
   shareMeter: { marginTop: spacing.md },
   shareNote: { color: colors.muted, fontFamily: font.regular, ...type.small, marginTop: spacing.md },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },

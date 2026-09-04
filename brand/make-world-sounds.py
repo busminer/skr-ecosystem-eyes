@@ -23,8 +23,7 @@ def tudum(t, i):
         if start <= t < start + dec * 1.6:
             p = t - start
             f = f0 + (f1 - f0) * min(1.0, p / dec)
-            v += gain * math.sin(2 * math.pi * f * p) * env(p, 0.004, dec)
-            if p < 0.06: v += nz * 0.35 * noise(i) * env(p, 0.001, 0.03)
+            v += gain * math.sin(2 * math.pi * f * p) * env(p, 0.012, dec)
     if 0.30 <= t: 
         p = t - 0.30
         v += 0.35 * math.sin(2 * math.pi * 44 * p) * env(p, 0.02, 1.1)

@@ -42,10 +42,10 @@ def surge(time: float, index: int) -> float:
     """A large move landing: a struck vault bell, low and unhurried."""
     value = 0.0
     if time < 0.02:
-        value += 0.18 * noise(index) * envelope(time, 0.0008, 0.008)
+        value += 0.06 * noise(index) * envelope(time, 0.0008, 0.008)
     # The partials of a struck metal body, the top ones dying first.
     for ratio, gain, decay in ((1.0, 0.42, 0.95), (2.0, 0.20, 0.55), (3.02, 0.12, 0.30), (5.41, 0.07, 0.16)):
-        value += gain * math.sin(2 * math.pi * 196.0 * ratio * time) * envelope(time, 0.004, decay)
+        value += gain * math.sin(2 * math.pi * 196.0 * ratio * time) * envelope(time, 0.010, decay)
     # The body under it, so the phone speaker still gives it weight.
     value += 0.22 * math.sin(2 * math.pi * 98.0 * time) * envelope(time, 0.02, 0.70)
     return value

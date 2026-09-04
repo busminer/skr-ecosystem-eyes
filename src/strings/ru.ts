@@ -11,6 +11,8 @@
 // и кнопках намеренно короче дословного перевода.
 
 export const ru: Record<string, string> = {
+  'Earned on staking': 'Заработано на стейкинге',
+  'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Оценка по цене доли на момент последнего стейка или выхода. Награды, накопленные до этого хода, уже вошли в позицию и здесь не считаются.',
   'All': 'Все',
   'Stakes': 'Стейки',
   'Exits': 'Выходы',

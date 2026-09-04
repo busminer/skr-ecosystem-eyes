@@ -6,6 +6,8 @@
 // boleh dipindah, tidak boleh diganti.
 
 export const id: Record<string, string> = {
+  'Earned on staking': 'Hasil dari stake',
+  'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Perkiraan dari harga saham pada stake atau keluar terakhirmu. Imbalan yang terkumpul sebelum langkah itu sudah masuk ke posisi dan tidak dihitung di sini.',
   'All': 'Semua',
   'Stakes': 'Stake',
   'Exits': 'Keluar',

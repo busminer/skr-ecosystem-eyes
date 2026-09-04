@@ -10,6 +10,8 @@
 // os rótulos de cartão e de botão são mais curtos que a tradução literal.
 
 export const pt: Record<string, string> = {
+  'Earned on staking': 'Ganho com o stake',
+  'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Estimativa pelo preço da cota no seu último stake ou saída. As recompensas acumuladas antes desse movimento já estão na posição e não entram aqui.',
   'All': 'Tudo',
   'Stakes': 'Stakes',
   'Exits': 'Saídas',

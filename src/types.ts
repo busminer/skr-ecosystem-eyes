@@ -81,6 +81,8 @@ export type WalletProfile = {
   name?: string | null;
   totals: {
     activeStaked: number;
+    // Estimated from the share price at the position's last move; older servers omit it.
+    earned?: number;
     pendingUnstake: number;
     withdrawable: number;
     positions: number;

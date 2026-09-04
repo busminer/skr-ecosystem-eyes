@@ -6,6 +6,8 @@
 // 変えません。
 
 export const ja: Record<string, string> = {
+  'Earned on staking': 'ステークで得た分',
+  'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': '最後にステークまたは解除した時点のシェア価格からの推定です。それ以前に積み上がった報酬はポジションに含まれており、ここでは数えません。',
   'All': 'すべて',
   'Stakes': 'ステーク',
   'Exits': '退出',

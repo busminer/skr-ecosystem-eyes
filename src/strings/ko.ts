@@ -7,6 +7,8 @@
 // 신청) / 대기(48시간 쿨다운) / 해제(대기가 끝나 출금 가능해짐) / 출금.
 
 export const ko: Record<string, string> = {
+  'Earned on staking': '스테이킹 수익',
+  'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': '마지막 스테이킹 또는 언스테이킹 시점의 지분 가격으로 추정한 값입니다. 그 이전에 쌓인 보상은 포지션에 포함되어 여기서는 계산되지 않습니다.',
   'All': '전체',
   'Stakes': '스테이킹',
   'Exits': '언스테이킹',

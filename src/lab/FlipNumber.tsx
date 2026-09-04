@@ -77,8 +77,9 @@ export function FlipNumber({ value, size = 76 }: { value: string; size?: number 
     if (!prefValue('sound', true)) return;
     // One card falls for the whole change. A click per digit, staggered, read
     // as a burst of ticks from across the room; one soft knock reads as a board.
-    const timer = setTimeout(() => playCue('flip', 0.22, false), 0);
-    return () => clearTimeout(timer);
+    // The board is felt, not heard: even one soft knock from the table was a
+    // tick to a person who was not looking at the screen.
+    return undefined;
   }, [value]);
 
   return (

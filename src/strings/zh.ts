@@ -9,6 +9,8 @@
 // Numbers arrive already formatted, so the braces only move, never change.
 
 export const zh: Record<string, string> = {
+  'Earned on staking': '质押收益',
+  'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': '按上次质押或退出时的份额价格估算。在那之前累积的奖励已计入仓位，这里不再计算。',
   'All': '全部',
   'Stakes': '质押',
   'Exits': '退出',
