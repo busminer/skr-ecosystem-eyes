@@ -5,6 +5,7 @@ import { t } from '../../i18n';
 import * as Haptics from 'expo-haptics';
 import { PublicKey } from '@solana/web3.js';
 import { transact } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
+import { base64ToUint8Array } from '@solana-mobile/mobile-wallet-adapter-protocol/encoding';
 import { fetchBlockhash, fetchStatus, GatewayError } from './gateway';
 import { buildStakeTransaction, DEFAULT_GUARDIAN_POOL, equalParts } from './stakeTx';
 
@@ -105,10 +106,14 @@ export function useStakeRun(wallet: string | null) {
         // and the person must be told before they stake the same amount twice.
         if (!saved.parts.some((part) => part.signature)) {
           if (!saved.handed) return void forget();
+          // The sheet shows this warning on the run's own screen, so the run
+          // stays until the person clears it by hand; only then is it forgotten.
+          runRef.current = saved;
+          setRun(saved);
           setUncertain(true);
-          setError(t('The app was closed while the wallet had this stake. Check your position on the Me screen before staking again.'));
+          setError(t('The app was closed while the wallet had this stake. Check your position before staking again, then clear this.'));
           setPhase('error');
-          return void forget();
+          return;
         }
         const unsettled = saved.parts.some((part) => part.state !== 'confirmed' && part.state !== 'failed');
         if (!unsettled) return void forget();
@@ -276,7 +281,12 @@ export function useStakeRun(wallet: string | null) {
 
       setPhase('signing');
       const signatures = await transact(async (adapter) => {
-        await adapter.authorize({ chain: 'solana:mainnet', identity: APP_IDENTITY });
+        const authorization = await adapter.authorize({ chain: 'solana:mainnet', identity: APP_IDENTITY });
+        // The transactions are built for the address on screen. If the wallet
+        // that answered holds a different one, nothing it signs would land on
+        // that position; say so before it is asked to sign anything.
+        const signer = authorization.accounts[0] ? new PublicKey(base64ToUint8Array(authorization.accounts[0].address)) : null;
+        if (!signer || !signer.equals(user)) throw new Error(t('The wallet that answered is not the one on screen. Connect the wallet that holds this position, then stake. Nothing was sent.'));
         // Only past this line can anything have reached the chain. Authorising
         // does not broadcast, so a wallet that is missing, refuses the app or
         // refuses the batch size fails here — and the person deserves to be

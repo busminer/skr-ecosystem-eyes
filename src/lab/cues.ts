@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { subscribeFeed } from './feed';
-import { prefValue } from '../prefs';
+import { prefValue, usePref } from '../prefs';
 import { cueHaptic, playCue, type Cue } from '../sound';
 
 // The app's ear. One listener on the event feed for the whole app, so a large
@@ -13,10 +13,13 @@ const LABEL = 1_000;
 const GAP_MS = 4_000;
 
 export function useEventCues() {
+  const [wanted] = usePref('alert:large', true);
   const seen = useRef<Set<string>>(new Set());
   const lastCue = useRef(0);
 
-  useEffect(() => subscribeFeed((items, first) => {
+  useEffect(() => {
+    if (!wanted) return undefined;
+    return subscribeFeed((items, first) => {
     if (first) {
       items.forEach((item) => seen.current.add(item.id));
       return;
@@ -27,7 +30,6 @@ export function useEventCues() {
     if (seen.current.size > 600) seen.current = new Set([...seen.current].slice(-200));
     // The switch on Alerts is the master for these; sound and buzz below it
     // say how a move is felt, this one says whether it is felt at all.
-    if (!prefValue('alert:large', true)) return;
     const stamp = Date.now();
     if (stamp - lastCue.current < GAP_MS) return;
     const heavyExit = arrived.some((item) => (item.type === 'unstake' || item.type === 'withdraw') && (item.amount ?? 0) >= BIG);
@@ -38,5 +40,6 @@ export function useEventCues() {
     lastCue.current = stamp;
     if (prefValue('sound', true)) playCue(cue, cue === 'stake' ? 0.5 : 0.6);
     else if (prefValue('buzz', true)) cueHaptic(cue);
-  }), []);
+  });
+  }, [wanted]);
 }

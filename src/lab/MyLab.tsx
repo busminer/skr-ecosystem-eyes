@@ -41,6 +41,9 @@ export function MyLab() {
   const { width } = useWindowDimensions();
   const [address, setAddress] = useState('');
   const [walletLabel, setWalletLabel] = useState<string | null>(null);
+  // True only for the wallet that answered Mobile Wallet Adapter. A pasted
+  // address is looked at, never staked from: the phone cannot sign for it.
+  const [connected, setConnected] = useState(false);
   const [profile, setProfile] = useState<WalletProfile | null>(null);
   const [age, setAge] = useState<PositionAge | null>(null);
   const ageExact = useRef(false);
@@ -103,8 +106,10 @@ export function MyLab() {
     AsyncStorage.getItem(SESSION_KEY).then((raw) => {
       if (cancelled || !raw) return;
       try {
-        const saved = JSON.parse(raw) as { address?: string; label?: string };
+        const saved = JSON.parse(raw) as { address?: string; label?: string | null };
         if (saved.label) setWalletLabel(saved.label);
+        // Connect saves the label key even when the wallet gave none; a look-up saves only the address.
+        if ('label' in saved) setConnected(true);
         if (saved.address) void inspect(saved.address);
       } catch {
         // A corrupted session is simply a session we do not have.
@@ -163,6 +168,7 @@ export function MyLab() {
     try {
       const account = await connectReadOnlyWallet();
       setWalletLabel(account.label ?? null);
+      setConnected(true);
       void AsyncStorage.setItem(SESSION_KEY, JSON.stringify({ address: account.address, label: account.label ?? null })).catch(() => undefined);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await inspect(account.address);
@@ -254,6 +260,7 @@ export function MyLab() {
     setProfile(null);
     setAge(null);
     setWalletLabel(null);
+    setConnected(false);
     setAddress('');
     setAlertStatus(null);
   }, [address, profile]);
@@ -300,7 +307,7 @@ export function MyLab() {
               <Text style={styles.shareValue}>{share != null ? `${share.toFixed(5)}%` : '—'}</Text>
             </View>
             <View style={styles.shareMeter}>
-              <Meter percent={share != null ? Math.min(100, share * 100) : 0} tone={colors.metal} height={4} />
+              <Meter percent={share != null ? Math.max(share > 0 ? 1 : 0, Math.min(100, share)) : 0} tone={colors.metal} height={4} />
             </View>
             <Text style={styles.shareNote}>
               {age?.days != null
@@ -311,7 +318,7 @@ export function MyLab() {
             </Text>
           </Panel>
 
-          <Button label={t('Stake SKR')} onPress={() => { void Haptics.selectionAsync(); setSixteen(false); setStaking(true); }} />
+          {connected ? <Button label={t('Stake SKR')} onPress={() => { void Haptics.selectionAsync(); setSixteen(false); setStaking(true); }} /> : null}
 
           <Panel style={styles.dailyPanel}>
             <View style={styles.dailyRow}>
@@ -371,10 +378,12 @@ export function MyLab() {
         <>
           <Text style={styles.lead}>
             {profile && !profile.found
-              ? t('This address holds no SKR position right now.')
+              ? connected ? t('This wallet holds no SKR position yet. The first stake opens one; the position account costs a little rent once.') : t('This address holds no SKR position right now.')
               : t('Connect the wallet that holds your stake, or paste any public address. Nothing is signed.')}
           </Text>
-          <Button label={t('Connect Solana Mobile')} onPress={() => void connect()} disabled={busy} />
+          {profile && !profile.found && connected
+            ? <Button label={t('Stake SKR')} onPress={() => { void Haptics.selectionAsync(); setSixteen(false); setStaking(true); }} />
+            : <Button label={t('Connect Solana Mobile')} onPress={() => void connect()} disabled={busy} />}
           <View style={styles.orRow}>
             <View style={styles.orLine} />
             <Text style={styles.or}>{t('OR')}</Text>
@@ -389,7 +398,7 @@ export function MyLab() {
             onChangeText={setAddress}
             style={styles.input}
           />
-          <Button label={t('Look up')} onPress={() => { setWalletLabel(null); void inspect(address); }} disabled={busy || !address.trim()} ghost />
+          <Button label={t('Look up')} onPress={() => { setWalletLabel(null); setConnected(false); void inspect(address); }} disabled={busy || !address.trim()} ghost />
         </>
       )}
 

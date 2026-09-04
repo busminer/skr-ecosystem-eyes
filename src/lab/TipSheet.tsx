@@ -131,7 +131,10 @@ export function TipSheet({ onClose }: { onClose: () => void }) {
     } catch (caught) {
       setPhase('error');
       const message = caught instanceof Error ? caught.message : String(caught);
-      setError(/cancel|declin|reject/i.test(message) ? t('The wallet declined. Nothing was sent.') : message);
+      // The chain's own rejection carries our wording and must not be read as
+      // the wallet declining: by then the wallet has signed and a fee may be paid.
+      const chainRejected = message === t('The chain rejected the transfer.');
+      setError(!chainRejected && /cancel|declin|reject/i.test(message) ? t('The wallet declined. Nothing was sent.') : message);
     }
   }, [raw]);
 
@@ -143,7 +146,7 @@ export function TipSheet({ onClose }: { onClose: () => void }) {
             <Eyebrow tone={colors.metal}>{t('Support SKR Eyes')}</Eyebrow>
             <Text style={styles.title}>{t('A tip in SKR')}</Text>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={onClose} style={styles.close}><Text style={styles.closeText}>×</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={phase === 'signing' || phase === 'confirming' ? undefined : onClose} style={[styles.close, (phase === 'signing' || phase === 'confirming') && { opacity: 0.3 }]}><Text style={styles.closeText}>×</Text></Pressable>
         </View>
 
         <Panel style={styles.panel}>

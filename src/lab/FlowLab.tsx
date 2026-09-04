@@ -236,12 +236,15 @@ export function FlowLab({ active }: { active: boolean }) {
 
 
   const generation = useRef(0);
+  const inFlight = useRef(false);
   const pull = useCallback(async (fresh: boolean) => {
     // A phone in a pocket must not keep asking the server for news.
     if (!fresh && appState.current !== 'active') return;
     // An answer for a filter the person has since left is thrown away, or a
     // slow page of dust would land under a chip that promised none.
     const ticket = generation.current;
+    if (inFlight.current && !fresh) return;
+    inFlight.current = true;
     try {
       const items = await fetchEvents(minimum, 25, kind === 'all' ? undefined : kind);
       if (ticket !== generation.current) return;
@@ -274,7 +277,9 @@ export function FlowLab({ active }: { active: boolean }) {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
       }
     } catch {
-      setLive(false);
+      if (ticket === generation.current) setLive(false);
+    } finally {
+      inFlight.current = false;
     }
   }, [haptics, kind, minimum]);
 
