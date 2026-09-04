@@ -84,73 +84,87 @@ BAR_SHAPE = ((26, "#7CF0BC"), (40, "#7CF0BC"), (18, "#FF7E79"), (52, "#7CF0BC"),
 
 
 def banner():
-    # The living vault is the banner. The store draws its own back button over
-    # the top-left and the app icon over the bottom-left, so the left third is
-    # kept dark and quiet and every word sits inside x 440-1170, y 110-460.
+    # Depth: the vault sky at the back, the SKR mark far left where the store's
+    # own back button and icon sit anyway, the staker card standing a little
+    # way off, and the phone with the living scene in front, turned towards
+    # the reader. Every word stays inside x 440-1170, y 110-460.
     body = """
 <div class="sheet">
   <div class="scene"></div>
   <div class="shade"></div>
+  <div class="stage">
+    <div class="card"><img src="CARD"></div>
+    <div class="phone"><div class="glow"></div><div class="body"><img src="PHONE"></div></div>
+  </div>
   <div class="copy">
     <div class="wordmark">SKR EYES</div>
     <div class="tag">Stake SKR. See everything.</div>
     <div class="line"></div>
-    <div class="sub">The living vault: every stake falls in with its .skr name, every exit hangs and cools. Nothing invented.</div>
+    <div class="sub">The vault, alive: every stake falls in with its .skr name, every exit hangs and cools. Your card beside it.</div>
   </div>
 </div>"""
     css = """
   .sheet{position:relative;width:1200px;height:600px;overflow:hidden;background:BG;}
-  .scene{position:absolute;inset:0;background:url('URI') center/1200px 600px no-repeat;}
+  .scene{position:absolute;inset:0;background:url('SCENE') center/1200px 600px no-repeat;}
   .shade{position:absolute;inset:0;
-         background:linear-gradient(90deg,rgba(4,7,11,.92) 0,rgba(4,7,11,.6) 260px,rgba(4,7,11,.15) 480px,rgba(4,7,11,.62) 760px,rgba(4,7,11,.7) 1200px),
-                    linear-gradient(0deg,rgba(4,7,11,.92) 0,rgba(4,7,11,0) 230px);}
-  .copy{position:absolute;left:470px;top:118px;width:690px;}
-  .wordmark{font-size:74px;line-height:1;color:TEXT;}
-  .tag{margin-top:18px;font-size:27px;color:ACCENT;letter-spacing:.01em;}
-  .line{margin:24px 0 20px;width:120px;height:2px;background:METAL;opacity:.85;}
-  .sub{font-size:21px;color:MUTED;max-width:660px;line-height:1.45;}
-""".replace("TEXT", TEXT).replace("ACCENT", ACCENT).replace("METAL", METAL).replace("MUTED", MUTED).replace("BG", BG).replace("URI", data_uri(MEDIA / "bg-banner.png"))
+         background:linear-gradient(90deg,rgba(4,7,11,.9) 0,rgba(4,7,11,.55) 260px,rgba(4,7,11,.25) 470px,rgba(4,7,11,.62) 700px,rgba(4,7,11,.35) 1200px),
+                    linear-gradient(0deg,rgba(4,7,11,.9) 0,rgba(4,7,11,0) 230px);}
+  .stage{position:absolute;inset:0;perspective:1400px;perspective-origin:70% 45%;}
+  .card{position:absolute;left:790px;top:342px;width:330px;transform:rotateY(-32deg) rotateX(10deg) translateZ(-230px);
+        transform-origin:left center;opacity:.85;filter:brightness(.9);border-radius:14px;overflow:hidden;
+        box-shadow:0 30px 60px rgba(0,0,0,.65);}
+  .card img{width:100%;display:block;}
+  .phone{position:absolute;left:872px;top:26px;width:300px;transform:rotateY(-18deg) rotateX(4deg);transform-origin:center;}
+  .phone .glow{position:absolute;left:-120px;top:-60px;width:540px;height:640px;border-radius:50%;
+        background:radial-gradient(circle,rgba(86,224,255,.22),rgba(124,240,188,.10) 40%,rgba(0,0,0,0) 68%);}
+  .phone .body{position:relative;width:300px;border-radius:30px;border:1px solid #2A3B48;background:#04070B;
+        box-shadow:0 40px 90px rgba(0,0,0,.75),0 0 0 6px #0B1219,0 0 40px rgba(86,224,255,.18);overflow:hidden;}
+  .phone .body img{width:100%;display:block;}
+  .copy{position:absolute;left:470px;top:150px;width:420px;}
+  .wordmark{font-size:64px;line-height:1;color:TEXT;}
+  .tag{margin-top:16px;font-size:24px;color:ACCENT;}
+  .line{margin:20px 0 16px;width:110px;height:2px;background:METAL;opacity:.85;}
+  .sub{font-size:18px;color:MUTED;max-width:330px;line-height:1.45;}
+""".replace("TEXT", TEXT).replace("ACCENT", ACCENT).replace("METAL", METAL).replace("MUTED", MUTED).replace("BG", BG)
+    body = body.replace("CARD", data_uri(MEDIA / "card-only.png")).replace("PHONE", data_uri(MEDIA / "phone-scene.png"))
+    css = css.replace("SCENE", data_uri(MEDIA / "bg-banner.png"))
     render("banner-1200x600.png", 1200, 600, body, css)
 
 
 def feature():
-    cells = "".join('<div class="cell">%s</div>' % ch if ch.isdigit() else '<div class="dot"></div>'
-                    for ch in "4.95")
+    # The scene as the phone shows it, large, with the sky behind it and a
+    # cold glow around it. Nothing invented: the frame holds a real capture.
     body = """
 <div class="sheet">
   <div class="scene"></div>
   <div class="shade"></div>
+  <div class="stars"></div>
   <div class="top">
     <div class="brand">MARK<span class="wordmark">SKR EYES</span></div>
     <h1>The vault, alive</h1>
-    <p>Every stake with its .skr name. Every exit, cooling in the open.</p>
   </div>
-  <div class="bottom">
-    <div class="board">CELLS<span class="unit">B SKR held</span></div>
-    <div class="foot">Vault · Flow · Me · Alerts</div>
-  </div>
-</div>""".replace("CELLS", cells).replace("MARK", MARK)
+  <div class="phone"><div class="glow"></div><div class="body"><img src="PHONE"></div></div>
+  <div class="foot">Every stake with its .skr name · every exit cooling in the open · 4.95B SKR held</div>
+</div>"""
     css = """
   .sheet{position:relative;width:1200px;height:1200px;overflow:hidden;background:BG;}
-  .scene{position:absolute;inset:0;background:url('URI') center/1200px 1200px no-repeat;}
-  .shade{position:absolute;inset:0;
-         background:linear-gradient(180deg,rgba(4,7,11,.96) 0,rgba(4,7,11,.88) 330px,rgba(4,7,11,0) 560px,rgba(4,7,11,0) 760px,rgba(4,7,11,.94) 1060px);}
-  .top{position:absolute;left:84px;right:84px;top:84px;}
-  .brand{display:flex;align-items:center;gap:18px;}
-  .brand .mark{width:52px;height:52px;}
-  .brand .wordmark{font-size:30px;color:TEXT;}
-  h1{margin-top:34px;font-size:84px;line-height:1.05;font-weight:700;letter-spacing:-.02em;color:TEXT;}
-  p{margin-top:20px;font-size:31px;line-height:1.4;color:MUTED;max-width:900px;}
-  .bottom{position:absolute;left:84px;right:84px;bottom:84px;}
-  .board{display:flex;align-items:center;gap:10px;}
-  .cell{width:96px;height:152px;border-radius:16px;background:#0B131B;border:1px solid #22323F;
-        font-family:'Geist Mono',monospace;font-weight:900;font-size:96px;color:TEXT;
-        display:flex;align-items:center;justify-content:center;position:relative;}
-  .cell::after{content:'';position:absolute;left:0;right:0;top:50%;height:2px;background:rgba(0,0,0,.55);}
-  .dot{width:14px;height:14px;border-radius:50%;background:METAL;align-self:flex-end;margin:0 8px 24px;}
-  .unit{margin-left:24px;font-size:30px;color:MUTED;font-weight:600;letter-spacing:.04em;}
-  .foot{margin-top:34px;font-size:26px;color:FAINT;letter-spacing:.02em;}
-""".replace("TEXT", TEXT).replace("MUTED", MUTED).replace("METAL", METAL).replace("FAINT", FAINT).replace("BG", BG).replace("URI", data_uri(MEDIA / "bg-feature.png"))
+  .scene{position:absolute;inset:0;background:url('SCENE') center/1200px 1200px no-repeat;filter:brightness(.55);}
+  .shade{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 58%,rgba(4,7,11,0) 0,rgba(4,7,11,.35) 45%,rgba(4,7,11,.92) 80%);}
+  .top{position:absolute;left:0;right:0;top:78px;text-align:center;}
+  .brand{display:flex;align-items:center;justify-content:center;gap:16px;}
+  .brand .mark{width:44px;height:44px;}
+  .brand .wordmark{font-size:26px;color:TEXT;}
+  h1{margin-top:22px;font-size:66px;line-height:1.05;font-weight:700;letter-spacing:-.02em;color:TEXT;}
+  .phone{position:absolute;left:50%;top:262px;width:700px;margin-left:-350px;}
+  .phone .glow{position:absolute;left:-220px;top:-160px;width:1140px;height:1100px;border-radius:50%;
+        background:radial-gradient(circle,rgba(86,224,255,.26),rgba(124,240,188,.12) 38%,rgba(0,0,0,0) 66%);}
+  .phone .body{position:relative;width:700px;height:760px;border-radius:52px 52px 0 0;border:1px solid #2A3B48;border-bottom:none;
+        background:#04070B;box-shadow:0 0 0 10px #0B1219,0 40px 120px rgba(0,0,0,.8),0 0 80px rgba(86,224,255,.22);overflow:hidden;}
+  .phone .body img{width:100%;display:block;}
+  .foot{position:absolute;left:0;right:0;bottom:64px;text-align:center;font-size:24px;color:MUTED;letter-spacing:.02em;}
+""".replace("TEXT", TEXT).replace("MUTED", MUTED).replace("BG", BG)
+    body = body.replace("MARK", MARK).replace("PHONE", data_uri(MEDIA / "phone-scene.png"))
+    css = css.replace("SCENE", data_uri(MEDIA / "bg-feature.png"))
     render("feature-1200x1200.png", 1200, 1200, body, css)
 
 
