@@ -11,6 +11,7 @@
 // и кнопках намеренно короче дословного перевода.
 
 export const ru: Record<string, string> = {
+  'Vault': 'Хранилище',
   'over the last 7 days': 'за последние 7 дней',
   'over the last 30 days': 'за последние 30 дней',
   '{percent}% of all SKR is staked': '{percent}% всех SKR в стейке',

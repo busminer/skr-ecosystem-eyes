@@ -9,6 +9,7 @@
 // Numbers arrive already formatted, so the braces only move, never change.
 
 export const zh: Record<string, string> = {
+  'Vault': '金库',
   'over the last 7 days': '最近 7 天',
   'over the last 30 days': '最近 30 天',
   '{percent}% of all SKR is staked': '全部 SKR 的 {percent}% 已质押',

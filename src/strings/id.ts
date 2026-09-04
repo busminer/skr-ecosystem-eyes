@@ -6,6 +6,7 @@
 // boleh dipindah, tidak boleh diganti.
 
 export const id: Record<string, string> = {
+  'Vault': 'Brankas',
   'over the last 7 days': 'dalam 7 hari terakhir',
   'over the last 30 days': 'dalam 30 hari terakhir',
   '{percent}% of all SKR is staked': '{percent}% dari seluruh SKR sedang di-stake',

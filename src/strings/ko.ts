@@ -7,6 +7,7 @@
 // 신청) / 대기(48시간 쿨다운) / 해제(대기가 끝나 출금 가능해짐) / 출금.
 
 export const ko: Record<string, string> = {
+  'Vault': '금고',
   'over the last 7 days': '최근 7일',
   'over the last 30 days': '최근 30일',
   '{percent}% of all SKR is staked': '전체 SKR의 {percent}%가 스테이킹 중',

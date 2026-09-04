@@ -10,6 +10,7 @@
 // literal.
 
 export const es: Record<string, string> = {
+  'Vault': 'Bóveda',
   'over the last 7 days': 'en los últimos 7 días',
   'over the last 30 days': 'en los últimos 30 días',
   '{percent}% of all SKR is staked': 'el {percent}% de todo el SKR está en stake',

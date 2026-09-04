@@ -6,6 +6,7 @@
 // 変えません。
 
 export const ja: Record<string, string> = {
+  'Vault': '金庫',
   'over the last 7 days': '直近 7 日',
   'over the last 30 days': '直近 30 日',
   '{percent}% of all SKR is staked': '全 SKR の {percent}% がステーク中',

@@ -10,6 +10,7 @@
 // os rótulos de cartão e de botão são mais curtos que a tradução literal.
 
 export const pt: Record<string, string> = {
+  'Vault': 'Cofre',
   'over the last 7 days': 'nos últimos 7 dias',
   'over the last 30 days': 'nos últimos 30 dias',
   '{percent}% of all SKR is staked': '{percent}% de todo o SKR está em stake',
