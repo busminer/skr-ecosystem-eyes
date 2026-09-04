@@ -18,7 +18,6 @@ export const es: Record<string, string> = {
   'net': 'neto',
   'wallets': 'carteras',
   // Pestañas e indicador de frescura
-  'Pulse': 'Pulso',
   'Flow': 'Flujo',
   'Me': 'Yo',
   'Queue': 'Cola',
@@ -59,10 +58,6 @@ export const es: Record<string, string> = {
   'Open on Solscan': 'Abrir en Solscan',
 
   // Cola
-  'Ready to withdraw': 'Listo para retirar',
-  '{amount} SKR is still cooling down across {count} positions': 'Aún se enfrían {amount} SKR repartidos en {count} posiciones',
-  'Reading the queue': 'Leyendo la cola',
-  'Time to maturity': 'Tiempo hasta el vencimiento',
   'Exits in flight, soonest first': 'Salidas en curso, las más próximas primero',
   '{count} shown': '{count} en pantalla',
   'Show all {count}': 'Ver todo ({count})',

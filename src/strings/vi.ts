@@ -14,7 +14,6 @@ export const vi: Record<string, string> = {
   'net': 'ròng',
   'wallets': 'ví',
   // Các mục và huy hiệu độ mới
-  'Pulse': 'Nhịp',
   'Flow': 'Dòng',
   'Me': 'Tôi',
   'Queue': 'Hàng chờ',
@@ -57,10 +56,6 @@ export const vi: Record<string, string> = {
   'Open on Solscan': 'Mở trên Solscan',
 
   // Hàng chờ
-  'Ready to withdraw': 'Sẵn sàng rút',
-  '{amount} SKR is still cooling down across {count} positions': 'Còn {amount} SKR đang chờ trong {count} vị thế',
-  'Reading the queue': 'Đang đọc hàng chờ',
-  'Time to maturity': 'Còn bao lâu tới hạn',
   'Exits in flight, soonest first': 'Các lệnh rời kho đang chờ, gần hạn nhất lên trước',
   '{count} shown': 'hiện {count}',
   'Show all {count}': 'Hiện tất cả {count}',

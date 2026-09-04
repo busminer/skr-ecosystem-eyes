@@ -15,7 +15,6 @@ export const ko: Record<string, string> = {
   'net': '순증감',
   'wallets': '지갑',
   // 탭과 최신성 배지
-  'Pulse': '맥박',
   'Flow': '흐름',
   'Me': '내 정보',
   'Queue': '대기열',
@@ -56,10 +55,6 @@ export const ko: Record<string, string> = {
   'Open on Solscan': 'Solscan에서 열기',
 
   // 대기열
-  'Ready to withdraw': '출금 가능',
-  '{amount} SKR is still cooling down across {count} positions': '{count}개 포지션에서 아직 {amount} SKR이 대기 중',
-  'Reading the queue': '대기열을 읽는 중',
-  'Time to maturity': '풀릴 때까지',
   'Exits in flight, soonest first': '진행 중인 언스테이킹, 가까운 순',
   '{count} shown': '{count}개 표시',
   'Show all {count}': '{count}개 모두 보기',

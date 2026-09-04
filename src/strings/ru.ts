@@ -19,7 +19,6 @@ export const ru: Record<string, string> = {
   'net': 'итог',
   'wallets': 'кошельков',
   // Вкладки и значок свежести
-  'Pulse': 'Пульс',
   'Flow': 'Поток',
   'Me': 'Я',
   'Queue': 'Очередь',
@@ -60,10 +59,6 @@ export const ru: Record<string, string> = {
   'Open on Solscan': 'Открыть в Solscan',
 
   // Очередь
-  'Ready to withdraw': 'Можно забрать',
-  '{amount} SKR is still cooling down across {count} positions': 'Ещё {amount} SKR остывает в {count} позициях',
-  'Reading the queue': 'Читаем очередь',
-  'Time to maturity': 'До созревания',
   'Exits in flight, soonest first': 'Выходы в пути, ближайшие сверху',
   '{count} shown': 'показано {count}',
   'Show all {count}': 'Показать все {count}',

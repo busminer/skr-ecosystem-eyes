@@ -17,7 +17,6 @@ export const ja: Record<string, string> = {
   'in': '流入',
   '24h': '24h',
   // タブと鮮度バッジ
-  'Pulse': '鼓動',
   'Flow': '流れ',
   'Me': '自分',
   'Queue': '待ち行列',
@@ -55,10 +54,6 @@ export const ja: Record<string, string> = {
   'Open on Solscan': 'Solscan で開く',
 
   // 待ち行列
-  'Ready to withdraw': '引き出せます',
-  '{amount} SKR is still cooling down across {count} positions': 'まだ {count} 件のポジションで {amount} SKR がクールダウン中です',
-  'Reading the queue': '待ち行列を読んでいます',
-  'Time to maturity': '満了までの時間',
   'Exits in flight, soonest first': '進行中の退出、近い順',
   '{count} shown': '{count} 件表示',
   'Show all {count}': '{count} 件すべて表示',

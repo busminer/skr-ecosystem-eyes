@@ -17,7 +17,6 @@ export const zh: Record<string, string> = {
   'net': '净额',
   'wallets': '钱包',
   // Tabs and the freshness badge
-  'Pulse': '脉搏',
   'Flow': '流水',
   'Me': '我的',
   'Queue': '队列',
@@ -58,10 +57,6 @@ export const zh: Record<string, string> = {
   'Open on Solscan': '在 Solscan 打开',
 
   // Queue
-  'Ready to withdraw': '可提取',
-  '{amount} SKR is still cooling down across {count} positions': '还有 {amount} SKR 在 {count} 个仓位中冷却',
-  'Reading the queue': '正在读取队列',
-  'Time to maturity': '距离到期',
   'Exits in flight, soonest first': '进行中的退出，最快到期的在前',
   '{count} shown': '显示 {count} 条',
   'Show all {count}': '显示全部 {count} 条',

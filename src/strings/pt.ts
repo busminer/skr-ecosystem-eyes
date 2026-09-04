@@ -21,7 +21,6 @@ export const pt: Record<string, string> = {
   'staked minus requested out': 'stake menos saída pedida',
   '24h': '24h',
   // Abas e selo de atualidade
-  'Pulse': 'Pulso',
   'Flow': 'Fluxo',
   'Me': 'Eu',
   'Queue': 'Fila',
@@ -61,10 +60,6 @@ export const pt: Record<string, string> = {
   'Open on Solscan': 'Abrir no Solscan',
 
   // Fila
-  'Ready to withdraw': 'Pronto para sacar',
-  '{amount} SKR is still cooling down across {count} positions': 'Ainda há {amount} SKR aguardando em {count} posições',
-  'Reading the queue': 'Lendo a fila',
-  'Time to maturity': 'Tempo até vencer',
   'Exits in flight, soonest first': 'Saídas em andamento, as mais próximas primeiro',
   '{count} shown': '{count} na tela',
   'Nothing is queued to leave right now.': 'Agora não há nada na fila para sair.',

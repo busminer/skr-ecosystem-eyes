@@ -14,7 +14,6 @@ export const id: Record<string, string> = {
   'net': 'bersih',
   'wallets': 'dompet',
   // Tab dan tanda kesegaran data
-  'Pulse': 'Denyut',
   'Flow': 'Aliran',
   'Me': 'Saya',
   'Queue': 'Antrean',
@@ -55,10 +54,6 @@ export const id: Record<string, string> = {
   'Open on Solscan': 'Buka di Solscan',
 
   // Antrean
-  'Ready to withdraw': 'Siap ditarik',
-  '{amount} SKR is still cooling down across {count} positions': 'Masih ada {amount} SKR dalam masa tunggu di {count} posisi',
-  'Reading the queue': 'Membaca antrean',
-  'Time to maturity': 'Waktu sampai jatuh tempo',
   'Exits in flight, soonest first': 'Proses keluar yang berjalan, terdekat di atas',
   '{count} shown': '{count} ditampilkan',
   'Show all {count}': 'Tampilkan semua {count}',

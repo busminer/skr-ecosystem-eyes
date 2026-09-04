@@ -15,7 +15,6 @@ export const tr: Record<string, string> = {
   'net': 'net',
   'wallets': 'cüzdan',
   // Sekmeler ve tazelik rozeti
-  'Pulse': 'Nabız',
   'Flow': 'Akış',
   'Me': 'Ben',
   'Queue': 'Sıra',
@@ -58,10 +57,6 @@ export const tr: Record<string, string> = {
   'Open on Solscan': 'Solscan\'de aç',
 
   // Sıra
-  'Ready to withdraw': 'Çekilmeye hazır',
-  '{amount} SKR is still cooling down across {count} positions': '{count} pozisyonda hâlâ {amount} SKR bekliyor',
-  'Reading the queue': 'Sıra okunuyor',
-  'Time to maturity': 'Dolmasına kalan süre',
   'Exits in flight, soonest first': 'Yoldaki çıkışlar, en yakını başta',
   '{count} shown': '{count} tanesi görünüyor',
   'Show all {count}': 'Hepsini göster ({count})',
