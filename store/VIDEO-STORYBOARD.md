@@ -53,9 +53,13 @@ en-GB-RyanNeural (edge-tts, бесплатно, без ключа), реплик
 | The big ones ring. | 100K+ | Крупно: три крупнейших стейка дня на куче | ring |
 | The day, hour by hour. | 24 BARS | Карточки со столбиками | |
 | The biggest moves, pinned. | PINNED | Flow, закреплённый стейк, фильтр 100K+ | |
-| Your card. Your privacy. | A SEEKER | Карточка kosa.skr растворяется в A Seeker | |
-| SKR Eyes. On the dApp Store. | | Финал: иконка, SKR EYES | tudum тихо |
-| тишина | | Глаз открывается и подмигивает, темнота | wake, wink |
+| See what's happening in the ecosystem. | THE ECOSYSTEM | Экран Vault в рамке телефона | |
+| SKR Eyes. On the dApp Store. | | Глаз из заставки открывается, под ним SKR EYES; кадр держится, пока голос не закончит | tudum тихо, wake |
+| тишина | | Глаз подмигивает, темнота | wink |
+
+Финальная версия `build3.py`: карточка с иконкой и слова про приватность
+вырезаны по слову Alex (04.09 вечером, релиз уже одобрен). Сборка с
+карточкой была `build2.py`, не использовать.
 
 Грабли: `-stats` у ffmpeg при уходе команды в фон подвешивает процесс на
 записи в оборванный канал; Chrome при перерисовке PNG по тому же адресу файла
