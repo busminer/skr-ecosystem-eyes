@@ -5,10 +5,9 @@ import { prefValue } from './prefs';
 // The app's interface sounds. They are loaded once and replayed from the
 // start, so a click costs nothing after the first one.
 //
-// One family, one material: metal and glass. A stake is a coin settling into glass, a
-// small labelled stake is a drop into the vault, a large stake is the struck
-// bell, a large exit is the tudum, a withdrawal is a door, and the day's own
-// stake is a coin. The audio mode is set to mix: none of this may pause the
+// Three voices for three moves, all from a hundred thousand SKR: a large stake
+// is an old phone ringing twice, a large exit is the tudum, a large withdrawal
+// is a door closing. The rest of the set serves the opening and the tip sheet. The audio mode is set to mix: none of this may pause the
 // music the person is already listening to.
 
 const sources = {
@@ -19,6 +18,7 @@ const sources = {
   tudum: require('../assets/sound/tudum.wav'),
   coin: require('../assets/sound/coin.wav'),
   door: require('../assets/sound/door.wav'),
+  ring: require('../assets/sound/ring.wav'),
 } as const;
 
 export type Cue = keyof typeof sources;
@@ -44,6 +44,7 @@ export function cueHaptic(cue: Cue): void {
     case 'surge': impact(Haptics.ImpactFeedbackStyle.Heavy); impact(Haptics.ImpactFeedbackStyle.Medium, 160); break;
     case 'tudum': impact(Haptics.ImpactFeedbackStyle.Medium); impact(Haptics.ImpactFeedbackStyle.Heavy, 300); break;
     case 'door': impact(Haptics.ImpactFeedbackStyle.Medium); break;
+    case 'ring': impact(Haptics.ImpactFeedbackStyle.Light); impact(Haptics.ImpactFeedbackStyle.Light, 420); break;
     case 'coin': impact(Haptics.ImpactFeedbackStyle.Light); impact(Haptics.ImpactFeedbackStyle.Light, 90); break;
     case 'stake': impact(Haptics.ImpactFeedbackStyle.Light); break;
     case 'drop': impact(Haptics.ImpactFeedbackStyle.Light); break;

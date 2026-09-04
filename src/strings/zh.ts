@@ -196,7 +196,7 @@ export const zh: Record<string, string> = {
   'One hour before, and again the moment the cooldown ends. Scheduled by this phone from the exact on-chain time.': '提前一小时提醒一次，冷却结束时再提醒一次。由这台手机按链上的准确时间安排。',
   'Nothing of yours is unlocking, so there is nothing to wake you for yet.': '你没有正在解锁的仓位，暂时没有需要叫醒你的事。',
   'Large moves, heard and felt': '大额变动，听得到也感受得到',
-  'A stake of 10K SKR or more rings like a glass coin, a stake of 100K rings the vault bell, an exit of 100K lands with a low boom. On every screen while the app is open, each with a short buzz.': '10K SKR 以上的质押像玻璃硬币一样清脆作响，100K 的质押会敲响金库的钟，100K 的退出则伴随一声低沉的轰鸣。应用打开时在每个页面都会响，并伴有短促的震动。',
+  'From 100K SKR only: a stake rings like an old phone, an exit lands with a low boom, a withdrawal closes a door. On every screen while the app is open, each with a short buzz.': '仅限 100K SKR 以上：质押像老式电话一样响铃，退出伴随一声低沉的轰鸣，提取则像关上一扇门。应用打开时在每个页面都会响，并伴有短促震动。',
   'Other people\'s moves do not wake the phone while the app is closed. Only your own unlock does.': '应用关闭时，别人的变动不会唤醒手机。只有你自己的解锁会。',
   'What counts as large': '多大算大额',
   'Built-in thresholds behind the bell and the boom, until the server publishes its own.': '钟声和轰鸣背后的内置阈值，在服务器给出自己的阈值之前使用。',

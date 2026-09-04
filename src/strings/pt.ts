@@ -202,7 +202,7 @@ export const pt: Record<string, string> = {
   'One hour before, and again the moment the cooldown ends. Scheduled by this phone from the exact on-chain time.': 'Uma hora antes e de novo no momento em que a espera acaba. Programado por este telefone pela hora exata da rede.',
   'Nothing of yours is unlocking, so there is nothing to wake you for yet.': 'Você não tem nada desbloqueando, então ainda não há por que te acordar.',
   'Large moves, heard and felt': 'Grandes movimentos, ouvidos e sentidos',
-  'A stake of 10K SKR or more rings like a glass coin, a stake of 100K rings the vault bell, an exit of 100K lands with a low boom. On every screen while the app is open, each with a short buzz.': 'Um stake de 10K SKR ou mais soa como uma moeda de vidro, um stake de 100K toca o sino do cofre, uma saída de 100K chega com um estrondo grave. Em qualquer tela enquanto o app está aberto, cada um com uma vibração curta.',
+  'From 100K SKR only: a stake rings like an old phone, an exit lands with a low boom, a withdrawal closes a door. On every screen while the app is open, each with a short buzz.': 'Só a partir de 100K SKR: um stake toca como um telefone antigo, uma saída chega com um estrondo grave, um saque fecha uma porta. Em qualquer tela enquanto o app está aberto, cada um com uma vibração curta.',
   'Other people\'s moves do not wake the phone while the app is closed. Only your own unlock does.': 'Os movimentos de outras pessoas não acordam o telefone com o app fechado. Só o seu próprio desbloqueio acorda.',
   'What counts as large': 'O que conta como grande',
   'Built-in thresholds behind the bell and the boom, until the server publishes its own.': 'Limites embutidos por trás do sino e do estrondo, até o servidor publicar os dele.',

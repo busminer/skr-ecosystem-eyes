@@ -50,12 +50,38 @@ function remaining(seconds: number): string {
   return `${minutes}m ${String(safe % 60).padStart(2, '0')}s`;
 }
 
-function FactCard({ label, value, note, tone, width }: { label: string; value: string; note: string; tone?: string; width: number }) {
+// The right half of a fact card is the same figure drawn hour by hour: twenty
+// four bars in the card's own colour, the last one the hour we are in. A net
+// series has its baseline in the middle, inflow up, outflow down.
+function HourBars({ series, tone, bipolar }: { series: number[]; tone: string; bipolar?: boolean }) {
+  const peak = series.reduce((top, item) => Math.max(top, Math.abs(item)), 0);
+  if (series.length === 0 || peak <= 0) return null;
+  const height = 46;
+  return (
+    <View style={styles.bars} pointerEvents="none">
+      {series.map((item, index) => {
+        const share = Math.abs(item) / peak;
+        const size = Math.max(2, Math.round((bipolar ? height / 2 : height) * share));
+        const last = index === series.length - 1;
+        const color = bipolar ? (item >= 0 ? colors.positive : colors.negative) : tone;
+        return (
+          <View key={index} style={styles.barSlot}>
+            <View style={{ position: 'absolute', left: 0, width: 4, borderRadius: 2, backgroundColor: color, opacity: last ? 1 : 0.55,
+              height: size, bottom: bipolar ? (item >= 0 ? height / 2 : height / 2 - size) : 0 }} />
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function FactCard({ label, value, note, tone, width, series, bipolar }: { label: string; value: string; note: string; tone?: string; width: number; series?: number[]; bipolar?: boolean }) {
   return (
     <Panel style={[styles.fact, { width }]} tone={tone}>
+      {series ? <HourBars series={series} tone={tone ?? colors.accent} bipolar={bipolar} /> : null}
       <Text numberOfLines={1} style={styles.factLabel}>{label.toUpperCase()}</Text>
       <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={[styles.factValue, tone ? { color: tone } : null]}>{value}</Text>
-      <Text numberOfLines={2} style={styles.factNote}>{note}</Text>
+      <Text numberOfLines={2} style={[styles.factNote, series ? styles.factNoteNarrow : null]}>{note}</Text>
     </Panel>
   );
 }
@@ -248,6 +274,8 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
   const hero = metrics ? splitCompact(metrics.activeStaked) : null;
   // The sky runs up behind the header, so the header floats over the scene
   // instead of sitting on a black band above it.
+  // The hourly series is the day's own; the week and the month have no hours to draw.
+  const hourSeries = range === '24h' && Array.isArray(state?.analytics?.hourly) ? state!.analytics.hourly : null;
   const sceneHeight = Math.round(Math.min(420, Math.max(300, height * 0.4))) + topInset;
   const queue = [...(metrics?.queue ?? [])].sort((left, right) => left.unlockAt - right.unlockAt);
   const shownQueue = allQueue ? queue : queue.slice(0, QUEUE_SHORT);
@@ -314,16 +342,18 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
       </View>
 
       <Carousel width={inner} auto={!reducedMotion}>
-        <FactCard width={inner} note={note} label={t('staked')} value={period ? compact(period.staked) : '—'} tone={colors.positive} />
-        <FactCard width={inner} note={note} label={t('asked out')} value={period ? compact(period.unstaked) : '—'} tone={colors.negative} />
+        <FactCard width={inner} note={note} label={t('staked')} value={period ? compact(period.staked) : '—'} tone={colors.positive} series={hourSeries?.map((hour) => hour.staked)} />
+        <FactCard width={inner} note={note} label={t('asked out')} value={period ? compact(period.unstaked) : '—'} tone={colors.negative} series={hourSeries?.map((hour) => hour.unstaked)} />
         <FactCard
           width={inner}
           note={`${note} · ${t('staked minus requested out')}`}
           label={t('net')}
           value={period ? `${period.netFlow >= 0 ? '+' : '−'}${compact(Math.abs(period.netFlow))}` : '—'}
           tone={(period?.netFlow ?? 0) >= 0 ? colors.positive : colors.negative}
+          series={hourSeries?.map((hour) => hour.staked - hour.unstaked)}
+          bipolar
         />
-        <FactCard width={inner} note={note} label={t('wallets')} value={period ? integer(period.wallets) : '—'} tone={colors.metal} />
+        <FactCard width={inner} note={note} label={t('wallets')} value={period ? integer(period.wallets) : '—'} tone={colors.metal} series={hourSeries?.map((hour) => hour.events)} />
       </Carousel>
 
       {partial ? <Text style={styles.partial}>{t('history covers {days}d', { days: Math.floor(coverageDays) })}</Text> : null}
@@ -396,7 +426,10 @@ const styles = StyleSheet.create({
   receiptWho: { fontFamily: font.semibold, fontSize: 13, ...gold },
   receiptMono: { color: colors.muted, fontFamily: font.mono, ...type.micro, marginTop: spacing.xs, marginBottom: spacing.sm },
   facts: { gap: spacing.md, paddingRight: spacing.lg },
-  fact: { padding: spacing.md, minHeight: 108, justifyContent: 'space-between' },
+  fact: { padding: spacing.md, minHeight: 108, justifyContent: 'space-between', overflow: 'hidden' },
+  bars: { position: 'absolute', right: spacing.md, top: spacing.md + 4, height: 46, flexDirection: 'row', gap: 2 },
+  barSlot: { width: 4, height: 46 },
+  factNoteNarrow: { maxWidth: '58%' },
   factLabel: { color: colors.muted, fontFamily: font.semibold, ...type.eyebrow },
   factValue: { color: colors.text, fontFamily: font.black, fontVariant: ['tabular-nums'], fontSize: 30, letterSpacing: -1 },
   factNote: { color: colors.faint, fontFamily: font.regular, ...type.micro },

@@ -9,9 +9,6 @@ import { cueHaptic, playCue, type Cue } from '../sound';
 // feels, and it stops the moment the app leaves the foreground.
 
 const BIG = 100_000;
-// Below ten thousand a stake is seen, not heard: at six an hour the chime
-// was a tick from the table every ten minutes.
-const LABEL = 10_000;
 const GAP_MS = 4_000;
 
 export function useEventCues() {
@@ -34,13 +31,13 @@ export function useEventCues() {
     // say how a move is felt, this one says whether it is felt at all.
     const stamp = Date.now();
     if (stamp - lastCue.current < GAP_MS) return;
-    const heavyExit = arrived.some((item) => (item.type === 'unstake' || item.type === 'withdraw') && (item.amount ?? 0) >= BIG);
-    const heavyStake = arrived.some((item) => item.type === 'stake' && (item.amount ?? 0) >= BIG);
-    const labelled = arrived.some((item) => item.type === 'stake' && (item.amount ?? 0) >= LABEL);
-    const cue: Cue | null = heavyExit ? 'tudum' : heavyStake ? 'surge' : labelled ? 'stake' : null;
+    // Three moves, three voices, and only from a hundred thousand: an exit is
+    // the boom, a withdrawal the door, a stake the old phone ringing.
+    const heavy = (type: string) => arrived.some((item) => item.type === type && (item.amount ?? 0) >= BIG);
+    const cue: Cue | null = heavy('unstake') ? 'tudum' : heavy('withdraw') ? 'door' : heavy('stake') ? 'ring' : null;
     if (!cue) return;
     lastCue.current = stamp;
-    if (prefValue('sound', true)) playCue(cue, cue === 'stake' ? 0.5 : 0.6);
+    if (prefValue('sound', true)) playCue(cue, cue === 'ring' ? 0.5 : 0.6);
     else if (prefValue('buzz', true)) cueHaptic(cue);
   });
   }, [wanted]);
