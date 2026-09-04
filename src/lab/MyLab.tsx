@@ -321,7 +321,14 @@ export function MyLab() {
             </Text>
           </Panel>
 
-          {connected ? <Button label={t('Stake SKR')} onPress={() => { void Haptics.selectionAsync(); setSixteen(false); setStaking(true); }} /> : null}
+          {connected
+            ? <Button label={t('Stake SKR')} onPress={() => { void Haptics.selectionAsync(); setSixteen(false); setStaking(true); }} />
+            : (
+              <>
+                <Text style={styles.lead}>{t('This position is being looked at, not signed for. Connect the wallet that holds it to stake from it.')}</Text>
+                <Button label={t('Connect Solana Mobile')} onPress={() => void connect()} disabled={busy} />
+              </>
+            )}
 
           {/* The sixteen is a stake too: only the wallet that can sign gets the button. */}
           {connected ? (

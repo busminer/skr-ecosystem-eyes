@@ -43,6 +43,15 @@ export const VaultScene = forwardRef<SceneHandle, { height: number; onTap?: (hit
   // bumping it mounts a fresh one, and the memory below refills it.
   const [generation, setGeneration] = useState(0);
   const memory = useRef<Map<string, SceneMessage>>(new Map());
+  // Two watchdogs. A page that has not said 'ready' six seconds after it was
+  // mounted is replaced; a page that has said it but has not beaten for
+  // twelve seconds while the app is in front is replaced too. Three tries,
+  // then the wrapper stops insisting: a phone that cannot run the page at all
+  // gets a dark panel, not an endless reload.
+  const lastBeat = useRef(0);
+  const mountedAt = useRef(Date.now());
+  const paused = useRef(false);
+  const restarts = useRef(0);
 
   const send = useCallback((message: SceneMessage) => {
     if (REMEMBERED.has(message.type)) memory.current.set(message.type, message);
@@ -54,15 +63,39 @@ export const VaultScene = forwardRef<SceneHandle, { height: number; onTap?: (hit
 
   // A scene in a pocket must not draw a single frame.
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (next) => send({ type: 'pause', on: next !== 'active' }));
+    const subscription = AppState.addEventListener('change', (next) => { paused.current = next !== 'active'; send({ type: 'pause', on: next !== 'active' }); });
     return () => subscription.remove();
   }, [send]);
+
+  const restart = useCallback(() => {
+    if (restarts.current >= 3) return;
+    restarts.current += 1;
+    ready.current = false;
+    queue.current = [];
+    lastBeat.current = 0;
+    mountedAt.current = Date.now();
+    setGeneration((current) => current + 1);
+  }, []);
+
+  useEffect(() => {
+    mountedAt.current = Date.now();
+    const timer = setInterval(() => {
+      if (paused.current || AppState.currentState !== 'active') return;
+      const now = Date.now();
+      if (!ready.current && now - mountedAt.current > 6_000) restart();
+      else if (ready.current && lastBeat.current > 0 && now - lastBeat.current > 12_000) restart();
+    }, 3_000);
+    return () => clearInterval(timer);
+  }, [generation, restart]);
 
   const onMessage = useCallback((event: WebViewMessageEvent) => {
     try {
       const data = JSON.parse(event.nativeEvent.data) as { type: string; hit?: SceneTap };
-      if (data.type === 'ready') {
+      if (data.type === 'beat') {
+        lastBeat.current = Date.now();
+      } else if (data.type === 'ready') {
         ready.current = true;
+        lastBeat.current = Date.now();
         // Everything the scene needs to look right again goes first, then
         // whatever arrived while it was still parsing.
         REMEMBERED.forEach((type) => { const kept = memory.current.get(type); if (kept) send(kept); });
@@ -77,10 +110,9 @@ export const VaultScene = forwardRef<SceneHandle, { height: number; onTap?: (hit
   }, [onTap, send]);
 
   const onRenderProcessGone = useCallback((_event: WebViewRenderProcessGoneEvent) => {
-    ready.current = false;
-    queue.current = [];
-    setGeneration((current) => current + 1);
-  }, []);
+    restarts.current = 0;
+    restart();
+  }, [restart]);
 
   if (failed) return <View style={[styles.wrap, { height }]} />;
 
