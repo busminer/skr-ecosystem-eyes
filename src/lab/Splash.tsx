@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo } from 'react';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { createAudioPlayer } from 'expo-audio';
+import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Mask, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import Animated, {
   Easing,
   runOnJS,
+  useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -12,54 +14,90 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { prefValue, prefsReady } from '../prefs';
-import { t } from '../i18n';
 import { colors, font, spacing } from '../theme';
 
-// The opening: a device stands facing you, turns the way a person turns, and
-// the eye comes out of its camera and blinks once. That blink is the whole
-// name of the product.
+// The opening: the first stone.
 //
-// The silhouette is deliberately our own — a plain slab with a camera island.
-// It must read as "a phone", never as a copy of the Seeker's industrial
-// design, since the app declares it is not affiliated with Solana Mobile.
+// One phone falls into the dark. It lands with the glass chime every stake
+// makes in the vault, and from where it lands a wave runs through the pile:
+// thousands of holders come up out of the black. Over the pile the eye opens,
+// the name settles under it, and the eye winks once before the app takes
+// over. Nothing here is invented data: the pile is a silhouette, the stone is
+// a stone.
 //
-// Timings are tied to the sound: the sweep runs while the body turns, and the
-// two dry ticks land exactly on the blink.
+// The sounds are the ones the app already had. The opening sweep with its two
+// dry ticks plays during the fall, twice, the second a breath behind and
+// quieter; the landing borrows the stake chime from the scene; the wink
+// borrows the drop. Every sound has its touch when buzz is on.
 
-const ENTER_MS = 260;
-const TURN_AT = 260;
-const TURN_MS = 620;
-const EYE_AT = 900;
-const EYE_MS = 350;
-const BLINK_AT = 1_290;
-const LEAVE_AT = 1_760;
-const LEAVE_MS = 300;
+const FALL_MS = 700;
+const LAND_AT = 700;
+const WAVE_MS = 760;
+const EYE_AT = 1_320;
+const EYE_MS = 380;
+const WORD_AT = 1_540;
+const WINK_AT = 2_020;
+const LEAVE_AT = 2_480;
+const LEAVE_MS = 320;
 const SOUND_AT = 240;
-// The opening sound is played twice, the second a breath behind the first and
-// quieter. This started as an accident — a re-running effect created a second
-// player at an unpredictable moment — and Alex liked how it sounded, so it is
-// now deliberate: a fixed offset instead of a race, the same on every launch.
 const ECHO_AT = SOUND_AT + 300;
 const ECHO_VOLUME = 0.38;
 
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
+const AnimatedRect = Animated.createAnimatedComponent(Rect);
+
+// A fixed seed: the pile looks the same on every launch, like a logo.
+function seeded(seed: number) {
+  let s = seed;
+  return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+type Piled = { x: number; y: number; w: number; h: number; r: number; a: number };
+
 export function Splash({ onDone }: { onDone: () => void }) {
-  const enter = useSharedValue(0);
-  const turn = useSharedValue(0);
+  const { width: W, height: H } = useWindowDimensions();
+  const pileTop = Math.round(H * 0.66);
+  const landX = W / 2;
+  const landY = pileTop - 8;
+  const eyeY = Math.round(H * 0.40);
+
+  const pile = useMemo<Piled[]>(() => {
+    const rnd = seeded(7);
+    const rows: Piled[] = [];
+    const surface = (x: number) => pileTop + Math.sin(x * 0.02) * 4 + Math.sin(x * 0.055 + 2) * 2.5;
+    for (let i = 0; i < 260; i += 1) {
+      const u = rnd();
+      const d = Math.pow(rnd(), 1.3);
+      const x = u * W;
+      const w = rnd() > 0.5 ? 7 : 5.2;
+      rows.push({ x, y: surface(x) + d * (H - pileTop - 10) + 6, w, h: w * 1.75, r: (rnd() - 0.5) * 18, a: 0.55 - 0.4 * d });
+    }
+    return rows;
+  }, [W, H, pileTop]);
+
+  const surfacePath = useMemo(() => {
+    let d = `M0 ${pileTop}`;
+    for (let x = 0; x <= W; x += 6) d += ` L${x} ${(pileTop + Math.sin(x * 0.02) * 4 + Math.sin(x * 0.055 + 2) * 2.5).toFixed(1)}`;
+    return d;
+  }, [W, pileTop]);
+
+  const fall = useSharedValue(0);
+  const wave = useSharedValue(0);
+  const flash = useSharedValue(0);
   const eye = useSharedValue(0);
-  const lid = useSharedValue(0);
+  const lid = useSharedValue(1);
+  const word = useSharedValue(0);
   const leave = useSharedValue(0);
 
   useEffect(() => {
     let gone = false;
     const players: Array<ReturnType<typeof createAudioPlayer>> = [];
-    // The switch on Flow says whether this phone makes sounds at all, and the
-    // opening is a sound like any other. It used to play regardless, so the one
-    // person who had turned sound off got a chime on every single launch.
-    const voice = async (volume: number) => {
+    const voice = async (source: number, volume: number) => {
       await prefsReady;
       if (gone || !prefValue('sound', true)) return;
       try {
-        const player = createAudioPlayer(require('../../assets/sound/wake.wav'));
+        const player = createAudioPlayer(source);
         player.volume = volume;
         players.push(player);
         player.play();
@@ -67,140 +105,137 @@ export function Splash({ onDone }: { onDone: () => void }) {
         // A launch that cannot make a sound is still a launch.
       }
     };
-    const sound = setTimeout(() => void voice(0.55), SOUND_AT);
-    // The opening gets its touch too: one light tap as the device turns, one
-    // as the eye blinks, if the person keeps buzz on.
-    const buzz = setTimeout(() => { void prefsReady.then(() => { if (!gone && prefValue('buzz', true)) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined); }); }, SOUND_AT);
-    const blinkBuzz = setTimeout(() => { void prefsReady.then(() => { if (!gone && prefValue('buzz', true)) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined); }); }, BLINK_AT);
-    const echo = setTimeout(() => void voice(ECHO_VOLUME), ECHO_AT);
+    const touch = (style: Haptics.ImpactFeedbackStyle) => {
+      void prefsReady.then(() => { if (!gone && prefValue('buzz', true)) void Haptics.impactAsync(style).catch(() => undefined); });
+    };
+    const timers = [
+      setTimeout(() => void voice(require('../../assets/sound/wake.wav'), 0.55), SOUND_AT),
+      setTimeout(() => touch(Haptics.ImpactFeedbackStyle.Light), SOUND_AT),
+      setTimeout(() => void voice(require('../../assets/sound/wake.wav'), ECHO_VOLUME), ECHO_AT),
+      setTimeout(() => { void voice(require('../../assets/sound/stake.wav'), 0.6); touch(Haptics.ImpactFeedbackStyle.Medium); }, LAND_AT),
+      setTimeout(() => { void voice(require('../../assets/sound/drop.wav'), 0.35); touch(Haptics.ImpactFeedbackStyle.Light); }, WINK_AT),
+    ];
 
-    enter.value = withTiming(1, { duration: ENTER_MS, easing: Easing.out(Easing.cubic) });
-    turn.value = withDelay(TURN_AT, withTiming(1, { duration: TURN_MS, easing: Easing.inOut(Easing.cubic) }));
-    eye.value = withDelay(EYE_AT, withTiming(1, { duration: EYE_MS, easing: Easing.out(Easing.back(1.6)) }));
-    lid.value = withDelay(BLINK_AT, withSequence(
-      withTiming(1, { duration: 110, easing: Easing.in(Easing.quad) }),
-      withTiming(0, { duration: 130, easing: Easing.out(Easing.quad) }),
-      withDelay(70, withTiming(1, { duration: 120, easing: Easing.in(Easing.quad) })),
-      withTiming(0, { duration: 140, easing: Easing.out(Easing.quad) }),
+    fall.value = withTiming(1, { duration: FALL_MS, easing: Easing.in(Easing.quad) });
+    wave.value = withDelay(LAND_AT, withTiming(1, { duration: WAVE_MS, easing: Easing.out(Easing.cubic) }));
+    flash.value = withDelay(LAND_AT, withSequence(withTiming(0.22, { duration: 40 }), withTiming(0, { duration: 180 })));
+    eye.value = withDelay(EYE_AT, withTiming(1, { duration: EYE_MS, easing: Easing.out(Easing.back(1.4)) }));
+    // The wink: shut fast, hold a beat, open a little slower, the way a real one goes.
+    lid.value = withDelay(WINK_AT, withSequence(
+      withTiming(0.04, { duration: 90, easing: Easing.in(Easing.quad) }),
+      withDelay(60, withTiming(1, { duration: 170, easing: Easing.out(Easing.back(1.2)) })),
     ));
+    word.value = withDelay(WORD_AT, withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) }));
     leave.value = withDelay(LEAVE_AT, withTiming(1, { duration: LEAVE_MS, easing: Easing.in(Easing.cubic) }, (finished) => {
       if (finished) runOnJS(onDone)();
     }));
 
     return () => {
       gone = true;
-      clearTimeout(sound);
-      clearTimeout(echo);
-      clearTimeout(buzz);
-      clearTimeout(blinkBuzz);
+      timers.forEach((timer) => clearTimeout(timer));
       players.forEach((item) => item.remove());
     };
-  }, [enter, turn, eye, lid, leave, onDone]);
+  }, [fall, wave, flash, eye, lid, word, leave, onDone]);
 
   const screenStyle = useAnimatedStyle(() => ({ opacity: 1 - leave.value }));
 
-  // The turn: the front narrows away and the back comes round. No 3D engine,
-  // just honest foreshortening on two faces that hand over at the halfway mark.
-  const frontStyle = useAnimatedStyle(() => ({
-    opacity: enter.value * (turn.value < 0.5 ? 1 : 0),
+  // The stone: straight down, a little spin, and it sinks a touch when it lands.
+  const stoneStyle = useAnimatedStyle(() => ({
     transform: [
-      { perspective: 900 },
-      { scale: 0.94 + enter.value * 0.06 },
-      { rotateY: `${turn.value * 90}deg` },
+      { translateY: -40 + (landY + 40) * fall.value + wave.value * 5 },
+      { rotate: `${(1 - fall.value) * 14}deg` },
     ],
   }));
 
-  const rearStyle = useAnimatedStyle(() => ({
-    opacity: turn.value < 0.5 ? 0 : 1,
-    transform: [
-      { perspective: 900 },
-      { rotateY: `${-90 + turn.value * 90}deg` },
-    ],
-  }));
-
-  const lensStyle = useAnimatedStyle(() => ({ opacity: 1 - eye.value }));
+  const revealProps = useAnimatedProps(() => ({ r: 1 + wave.value * W * 1.25 }));
+  const rippleProps = useAnimatedProps(() => ({ rx: wave.value * W * 0.9, ry: wave.value * W * 0.2, strokeOpacity: 0.7 * (1 - wave.value) }));
+  const flashProps = useAnimatedProps(() => ({ fillOpacity: flash.value }));
+  const glowProps = useAnimatedProps(() => ({ fillOpacity: 0.9 * (1 - wave.value * 0.5) }));
 
   const eyeStyle = useAnimatedStyle(() => ({
     opacity: eye.value,
-    transform: [{ scale: 0.15 + eye.value * 0.85 }],
+    transform: [
+      { scale: 0.6 + 0.4 * eye.value },
+      { scaleY: lid.value },
+    ],
   }));
-
-  const lidTopStyle = useAnimatedStyle(() => ({ transform: [{ translateY: -26 + lid.value * 26 }] }));
-  const lidBottomStyle = useAnimatedStyle(() => ({ transform: [{ translateY: 26 - lid.value * 26 }] }));
-
-  const wordStyle = useAnimatedStyle(() => ({
-    opacity: turn.value,
-    transform: [{ translateY: (1 - turn.value) * 10 }],
-  }));
+  const haloStyle = useAnimatedStyle(() => ({ opacity: eye.value * (0.6 + 0.4 * lid.value) }));
+  const wordStyle = useAnimatedStyle(() => ({ opacity: word.value, transform: [{ translateY: (1 - word.value) * 8 }] }));
 
   return (
     <Animated.View style={[styles.screen, screenStyle]} pointerEvents="none">
-      <View style={styles.stage}>
-        <Animated.View style={[styles.body, styles.front, frontStyle]}>
-          <View style={styles.display}>
-            <View style={styles.earpiece} />
-            <View style={styles.selfie} />
-          </View>
-        </Animated.View>
+      <Svg width={W} height={H} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <RadialGradient id="soft" cx="50%" cy="50%" r="50%">
+            <Stop offset="0" stopColor="#fff" stopOpacity={1} />
+            <Stop offset="0.72" stopColor="#fff" stopOpacity={1} />
+            <Stop offset="1" stopColor="#fff" stopOpacity={0} />
+          </RadialGradient>
+          <RadialGradient id="stoneGlow" cx="50%" cy="50%" r="50%">
+            <Stop offset="0" stopColor="#7CF0BC" stopOpacity={0.55} />
+            <Stop offset="1" stopColor="#7CF0BC" stopOpacity={0} />
+          </RadialGradient>
+          <LinearGradient id="pileFill" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor="#7CF0BC" stopOpacity={0.16} />
+            <Stop offset="1" stopColor="#7CF0BC" stopOpacity={0} />
+          </LinearGradient>
+          <Mask id="reveal" maskUnits="userSpaceOnUse" x={0} y={0} width={W} height={H}>
+            <AnimatedCircle cx={landX} cy={landY} animatedProps={revealProps} fill="url(#soft)" />
+          </Mask>
+        </Defs>
 
-        <Animated.View style={[styles.body, styles.rear, rearStyle]}>
-          <View style={styles.island}>
-            <View style={styles.islandLens} />
-            <View style={styles.islandLens} />
-          </View>
-          <View style={styles.flash} />
+        {/* a few motes in the dark, so the black is a sky and not a hole */}
+        {STARS.map((s, i) => <Circle key={i} cx={s[0] * W} cy={s[1] * H * 0.6} r={0.8} fill="#A0CDE1" opacity={0.10 + s[2] * 0.14} />)}
 
-          <View style={styles.camera}>
-            <Animated.View style={[styles.cameraLens, lensStyle]} />
-            <Animated.View style={[styles.eye, eyeStyle]}>
-              <View style={styles.iris}>
-                <View style={styles.pupil} />
-                <View style={styles.spark} />
-              </View>
-              <Animated.View style={[styles.lid, styles.lidTop, lidTopStyle]} />
-              <Animated.View style={[styles.lid, styles.lidBottom, lidBottomStyle]} />
-            </Animated.View>
-          </View>
+        <G mask="url(#reveal)">
+          <Rect x={0} y={pileTop} width={W} height={H - pileTop} fill="url(#pileFill)" />
+          <Path d={surfacePath} stroke="#7CF0BC" strokeOpacity={0.3} strokeWidth={1} fill="none" />
+          {pile.map((q, i) => (
+            <Rect key={i} x={q.x - q.w / 2} y={q.y - q.h / 2} width={q.w} height={q.h} rx={q.w * 0.22} fill="#0F2A36" fillOpacity={0.9} stroke="#7CF0BC" strokeOpacity={q.a} strokeWidth={1} transform={`rotate(${q.r.toFixed(1)} ${q.x.toFixed(1)} ${q.y.toFixed(1)})`} />
+          ))}
+        </G>
 
-          <View style={styles.vaultPanel}>
-            <View style={styles.vaultRing} />
-          </View>
-          <View style={styles.sideButton} />
-        </Animated.View>
-      </View>
+        <AnimatedEllipse cx={landX} cy={landY} stroke="#7CF0BC" strokeWidth={1.5} fill="none" animatedProps={rippleProps} />
+        <AnimatedCircle cx={landX} cy={landY} r={70} fill="url(#stoneGlow)" animatedProps={glowProps} />
+        <AnimatedRect x={0} y={0} width={W} height={H} fill="#7CF0BC" animatedProps={flashProps} />
+      </Svg>
 
-      <Animated.View style={wordStyle}>
+      {/* the stone itself, a phone the colour of every stake in the vault */}
+      <Animated.View style={[styles.stone, { left: landX - 5 }, stoneStyle]}>
+        <View style={styles.stoneBody} />
+      </Animated.View>
+
+      <Animated.View style={[styles.halo, { top: eyeY - 130, left: W / 2 - 130 }, haloStyle]} />
+      <Animated.View style={[styles.eye, { top: eyeY - 60, left: W / 2 - 60 }, eyeStyle]}>
+        <Svg width={120} height={120} viewBox="0 0 100 100">
+          <Path d="M12 50 C22 29 34 24 50 24 C66 24 78 29 88 50 C78 71 66 76 50 76 C34 76 22 71 12 50 Z" fill="#070B0E" stroke={colors.accent} strokeWidth={3.2} />
+          <Path d="M13 50 C24 37 34 33 50 33 L50 67 C34 67 24 63 13 50 Z" fill="#101A21" />
+          <Path d="M87 50 C76 37 66 33 50 33 L50 67 C66 67 76 63 87 50 Z" fill="#16242D" />
+          <Circle cx={50} cy={50} r={16} fill="#050B10" stroke="#3A5B68" strokeWidth={2.4} />
+          <Circle cx={50} cy={50} r={8.5} fill={colors.metal} />
+          <Circle cx={50} cy={50} r={3.6} fill="#020304" />
+          <Circle cx={46.5} cy={46.5} r={1.9} fill="#F4FBFD" />
+        </Svg>
+      </Animated.View>
+
+      <Animated.View style={[styles.word, { top: eyeY + 74 }, wordStyle]}>
         <Text style={styles.wordmark}>SKR EYES</Text>
-        <Text style={styles.tagline}>{t('every number has a receipt')}</Text>
       </Animated.View>
     </Animated.View>
   );
 }
 
+const STARS: Array<[number, number, number]> = (() => {
+  const rnd = seeded(3);
+  return Array.from({ length: 46 }, () => [rnd(), rnd(), rnd()] as [number, number, number]);
+})();
+
 const styles = StyleSheet.create({
-  screen: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', gap: spacing.xxl, zIndex: 20 },
-  stage: { width: 150, height: 300, alignItems: 'center', justifyContent: 'center' },
-  body: { position: 'absolute', width: 132, height: 276, borderRadius: 24, borderWidth: 1.5, backfaceVisibility: 'hidden' },
-  front: { backgroundColor: '#10161C', borderColor: '#31454f', alignItems: 'center', paddingTop: spacing.lg },
-  display: { position: 'absolute', left: 4, right: 4, top: 4, bottom: 4, borderRadius: 20, backgroundColor: '#04070B', borderWidth: 1, borderColor: 'rgba(167,228,239,0.10)', alignItems: 'center', paddingTop: 10 },
-  earpiece: { width: 24, height: 2, borderRadius: 2, backgroundColor: '#293c45' },
-  selfie: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#1f3a44', marginTop: 5 },
-  rear: { backgroundColor: '#1B262D', borderColor: '#415761' },
-  island: { position: 'absolute', left: 16, top: 44, width: 26, height: 54, borderRadius: 13, backgroundColor: '#030506', borderWidth: 2, borderColor: '#354a54', alignItems: 'center', justifyContent: 'space-around', paddingVertical: 4 },
-  islandLens: { width: 15, height: 15, borderRadius: 8, backgroundColor: '#050B10', borderWidth: 1, borderColor: '#1b2a30' },
-  flash: { position: 'absolute', left: 52, top: 46, width: 8, height: 8, borderRadius: 4, backgroundColor: '#9daaaa' },
-  camera: { position: 'absolute', left: 16, top: 15, width: 26, height: 26, borderRadius: 13, backgroundColor: '#020405', borderWidth: 2, borderColor: '#435762', alignItems: 'center', justifyContent: 'center' },
-  cameraLens: { position: 'absolute', left: 4, right: 4, top: 4, bottom: 4, borderRadius: 9, backgroundColor: '#0A1520', borderWidth: 1, borderColor: '#233b45' },
-  eye: { width: 34, height: 26, borderRadius: 13, backgroundColor: '#F4F1E9', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  iris: { width: 17, height: 17, borderRadius: 9, backgroundColor: colors.metal, alignItems: 'center', justifyContent: 'center' },
-  pupil: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#020304' },
-  spark: { position: 'absolute', left: 3, top: 3, width: 4, height: 4, borderRadius: 2, backgroundColor: '#FFFFFF' },
-  lid: { position: 'absolute', left: 0, right: 0, height: 15, backgroundColor: '#42505A' },
-  lidTop: { top: 0 },
-  lidBottom: { bottom: 0 },
-  vaultPanel: { position: 'absolute', left: -1, top: 110, width: 46, height: 66, borderRadius: 8, backgroundColor: '#0A1017', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', paddingLeft: 9, paddingTop: 8 },
-  vaultRing: { width: 11, height: 11, borderRadius: 6, borderWidth: 1, borderColor: '#86989f', opacity: 0.75 },
-  sideButton: { position: 'absolute', right: -3, top: 104, width: 3, height: 22, borderRadius: 2, backgroundColor: '#74858c' },
-  wordmark: { color: colors.text, fontFamily: font.black, fontSize: 20, letterSpacing: 3, textAlign: 'center' },
-  tagline: { color: colors.faint, fontFamily: font.regular, fontSize: 12, letterSpacing: 0.4, textAlign: 'center', marginTop: spacing.sm },
+  screen: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#05080D', zIndex: 20 },
+  stone: { position: 'absolute', top: 0, width: 10, height: 17, alignItems: 'center', justifyContent: 'center' },
+  stoneBody: { width: 10, height: 17, borderRadius: 3, backgroundColor: colors.positive, shadowColor: colors.positive, shadowOpacity: 0.9, shadowRadius: 8, elevation: 6 },
+  halo: { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: 'rgba(86,224,255,0.06)' },
+  eye: { position: 'absolute', width: 120, height: 120 },
+  word: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  wordmark: { color: colors.text, fontFamily: font.black, fontSize: 15, letterSpacing: 3.4, textAlign: 'center', paddingLeft: 3.4, marginTop: spacing.sm },
 });
