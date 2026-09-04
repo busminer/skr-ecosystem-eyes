@@ -150,7 +150,6 @@ export function Splash({ onDone }: { onDone: () => void }) {
   const revealProps = useAnimatedProps(() => ({ r: 1 + wave.value * W * 1.25 }));
   const rippleProps = useAnimatedProps(() => ({ rx: wave.value * W * 0.9, ry: wave.value * W * 0.2, strokeOpacity: 0.7 * (1 - wave.value) }));
   const flashProps = useAnimatedProps(() => ({ fillOpacity: flash.value }));
-  const glowProps = useAnimatedProps(() => ({ fillOpacity: 0.9 * (1 - wave.value * 0.5) }));
 
   const eyeStyle = useAnimatedStyle(() => ({
     opacity: eye.value,
@@ -196,16 +195,35 @@ export function Splash({ onDone }: { onDone: () => void }) {
         </G>
 
         <AnimatedEllipse cx={landX} cy={landY} stroke="#7CF0BC" strokeWidth={1.5} fill="none" animatedProps={rippleProps} />
-        <AnimatedCircle cx={landX} cy={landY} r={70} fill="url(#stoneGlow)" animatedProps={glowProps} />
         <AnimatedRect x={0} y={0} width={W} height={H} fill="#7CF0BC" animatedProps={flashProps} />
       </Svg>
 
       {/* the stone itself, a phone the colour of every stake in the vault */}
-      <Animated.View style={[styles.stone, { left: landX - 5 }, stoneStyle]}>
+      <Animated.View style={[styles.stone, { left: landX - 45 }, stoneStyle]}>
+        <Svg width={90} height={90} viewBox="0 0 90 90" style={StyleSheet.absoluteFill}>
+          <Defs>
+            <RadialGradient id="stoneHalo" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor="#7CF0BC" stopOpacity={0.5} />
+              <Stop offset="1" stopColor="#7CF0BC" stopOpacity={0} />
+            </RadialGradient>
+          </Defs>
+          <Circle cx={45} cy={45} r={45} fill="url(#stoneHalo)" />
+        </Svg>
         <View style={styles.stoneBody} />
       </Animated.View>
 
-      <Animated.View style={[styles.halo, { top: eyeY - 130, left: W / 2 - 130 }, haloStyle]} />
+      <Animated.View style={[styles.halo, { top: eyeY - 150, left: W / 2 - 150 }, haloStyle]}>
+        <Svg width={300} height={300} viewBox="0 0 300 300">
+          <Defs>
+            <RadialGradient id="eyeHalo" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor="#56E0FF" stopOpacity={0.16} />
+              <Stop offset="0.55" stopColor="#56E0FF" stopOpacity={0.05} />
+              <Stop offset="1" stopColor="#56E0FF" stopOpacity={0} />
+            </RadialGradient>
+          </Defs>
+          <Circle cx={150} cy={150} r={150} fill="url(#eyeHalo)" />
+        </Svg>
+      </Animated.View>
       <Animated.View style={[styles.eye, { top: eyeY - 60, left: W / 2 - 60 }, eyeStyle]}>
         <Svg width={120} height={120} viewBox="0 0 100 100">
           <Path d="M12 50 C22 29 34 24 50 24 C66 24 78 29 88 50 C78 71 66 76 50 76 C34 76 22 71 12 50 Z" fill="#070B0E" stroke={colors.accent} strokeWidth={3.2} />
@@ -232,9 +250,9 @@ const STARS: Array<[number, number, number]> = (() => {
 
 const styles = StyleSheet.create({
   screen: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#05080D', zIndex: 20 },
-  stone: { position: 'absolute', top: 0, width: 10, height: 17, alignItems: 'center', justifyContent: 'center' },
-  stoneBody: { width: 10, height: 17, borderRadius: 3, backgroundColor: colors.positive, shadowColor: colors.positive, shadowOpacity: 0.9, shadowRadius: 8, elevation: 6 },
-  halo: { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: 'rgba(86,224,255,0.06)' },
+  stone: { position: 'absolute', top: -36, width: 90, height: 90, alignItems: 'center', justifyContent: 'center' },
+  stoneBody: { width: 10, height: 17, borderRadius: 3, backgroundColor: colors.positive },
+  halo: { position: 'absolute', width: 300, height: 300 },
   eye: { position: 'absolute', width: 120, height: 120 },
   word: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   wordmark: { color: colors.text, fontFamily: font.black, fontSize: 15, letterSpacing: 3.4, textAlign: 'center', paddingLeft: 3.4, marginTop: spacing.sm },
