@@ -25,23 +25,22 @@ import { colors, font, spacing } from '../theme';
 // over. Nothing here is invented data: the pile is a silhouette, the stone is
 // a stone.
 //
-// The sounds are the ones the app already had. The opening sweep with its two
-// dry ticks plays during the fall, twice, the second a breath behind and
-// quieter; the landing borrows the stake chime from the scene; the wink
-// borrows the drop. Every sound has its touch when buzz is on.
+// The sound scheme, one voice per moment and nothing sharp in it: a soft
+// whistle of air as the stone falls; the vault's own glass chime when it
+// lands; the old opening sweep, once, as the eye opens; two mellow notes for
+// the wink. Every sound has its touch when buzz is on.
 
-const FALL_MS = 700;
-const LAND_AT = 700;
-const WAVE_MS = 760;
-const EYE_AT = 1_320;
-const EYE_MS = 380;
-const WORD_AT = 1_540;
-const WINK_AT = 2_020;
-const LEAVE_AT = 2_480;
-const LEAVE_MS = 320;
-const SOUND_AT = 240;
-const ECHO_AT = SOUND_AT + 300;
-const ECHO_VOLUME = 0.38;
+const FALL_MS = 900;
+const LAND_AT = 900;
+const WAVE_MS = 900;
+const EYE_AT = 1_800;
+const EYE_MS = 420;
+const WORD_AT = 2_080;
+const WINK_AT = 2_900;
+const SETTLE_AT = 3_700;
+const LEAVE_AT = 4_300;
+const LEAVE_MS = 400;
+const WHISTLE_AT = 60;
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
@@ -109,21 +108,23 @@ export function Splash({ onDone }: { onDone: () => void }) {
       void prefsReady.then(() => { if (!gone && prefValue('buzz', true)) void Haptics.impactAsync(style).catch(() => undefined); });
     };
     const timers = [
-      setTimeout(() => void voice(require('../../assets/sound/wake.wav'), 0.55), SOUND_AT),
-      setTimeout(() => touch(Haptics.ImpactFeedbackStyle.Light), SOUND_AT),
-      setTimeout(() => void voice(require('../../assets/sound/wake.wav'), ECHO_VOLUME), ECHO_AT),
+      setTimeout(() => void voice(require('../../assets/sound/whistle.wav'), 0.5), WHISTLE_AT),
       setTimeout(() => { void voice(require('../../assets/sound/stake.wav'), 0.6); touch(Haptics.ImpactFeedbackStyle.Medium); }, LAND_AT),
-      setTimeout(() => { void voice(require('../../assets/sound/drop.wav'), 0.35); touch(Haptics.ImpactFeedbackStyle.Light); }, WINK_AT),
+      setTimeout(() => { void voice(require('../../assets/sound/wake.wav'), 0.42); touch(Haptics.ImpactFeedbackStyle.Light); }, EYE_AT),
+      setTimeout(() => { void voice(require('../../assets/sound/wink.wav'), 0.5); touch(Haptics.ImpactFeedbackStyle.Light); }, WINK_AT),
     ];
 
-    fall.value = withTiming(1, { duration: FALL_MS, easing: Easing.in(Easing.quad) });
+    fall.value = withTiming(1, { duration: FALL_MS, easing: Easing.in(Easing.cubic) });
     wave.value = withDelay(LAND_AT, withTiming(1, { duration: WAVE_MS, easing: Easing.out(Easing.cubic) }));
     flash.value = withDelay(LAND_AT, withSequence(withTiming(0.22, { duration: 40 }), withTiming(0, { duration: 180 })));
     eye.value = withDelay(EYE_AT, withTiming(1, { duration: EYE_MS, easing: Easing.out(Easing.back(1.4)) }));
     // The wink: shut fast, hold a beat, open a little slower, the way a real one goes.
     lid.value = withDelay(WINK_AT, withSequence(
-      withTiming(0.04, { duration: 90, easing: Easing.in(Easing.quad) }),
-      withDelay(60, withTiming(1, { duration: 170, easing: Easing.out(Easing.back(1.2)) })),
+      withTiming(0.04, { duration: 100, easing: Easing.in(Easing.quad) }),
+      withDelay(70, withTiming(1, { duration: 190, easing: Easing.out(Easing.back(1.2)) })),
+      // A slow half-close later, the eye settling, so the hold is not a still.
+      withDelay(SETTLE_AT - WINK_AT - 360, withTiming(0.55, { duration: 260, easing: Easing.inOut(Easing.quad) })),
+      withTiming(1, { duration: 320, easing: Easing.out(Easing.quad) }),
     ));
     word.value = withDelay(WORD_AT, withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) }));
     leave.value = withDelay(LEAVE_AT, withTiming(1, { duration: LEAVE_MS, easing: Easing.in(Easing.cubic) }, (finished) => {

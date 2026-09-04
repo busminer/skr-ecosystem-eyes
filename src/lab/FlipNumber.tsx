@@ -13,7 +13,6 @@ import { colors, font, radius } from '../theme';
 
 const FLIP_MS = 320;
 const STAGGER_MS = 55;
-const MAX_CLICKS = 4;
 
 function Cell({ char, size, width, height, delay }: { char: string; size: number; width: number; height: number; delay: number }) {
   const [pair, setPair] = useState({ next: char, previous: char });
@@ -76,8 +75,10 @@ export function FlipNumber({ value, size = 76 }: { value: string; size?: number 
 
     if (prefValue('buzz', true)) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     if (!prefValue('sound', true)) return;
-    const timers = changed.slice(0, MAX_CLICKS).map((index) => setTimeout(() => playCue('flip', 0.4), index * STAGGER_MS));
-    return () => timers.forEach(clearTimeout);
+    // One card falls for the whole change. A click per digit, staggered, read
+    // as a burst of ticks from across the room; one soft knock reads as a board.
+    const timer = setTimeout(() => playCue('flip', 0.22, false), 0);
+    return () => clearTimeout(timer);
   }, [value]);
 
   return (
