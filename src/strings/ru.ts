@@ -11,6 +11,10 @@
 // и кнопках намеренно короче дословного перевода.
 
 export const ru: Record<string, string> = {
+  'All': 'Все',
+  'Stakes': 'Стейки',
+  'Exits': 'Выходы',
+  'Withdrew': 'Выводы',
   'Vault': 'Хранилище',
   'over the last 7 days': 'за последние 7 дней',
   'over the last 30 days': 'за последние 30 дней',
@@ -98,9 +102,9 @@ export const ru: Record<string, string> = {
   // Я: профиль и карточка
   'Leaving': 'Уходит',
   '1 position in cooldown': '1 позиция остывает',
-  '{count} positions in cooldown': 'остывает позиций: {count}',
+  '{count} positions in cooldown': '{count} позиций остывает',
   'Ready now': 'Уже готово',
-  'Next unlock': 'Ближайшая разблокировка',
+  'Next unlock': 'Разблокировка',
   'Cooldown finished': 'Остывание закончилось',
   'Until this position is free': 'Пока позиция не освободится',
   'Nothing queued': 'Очереди нет',

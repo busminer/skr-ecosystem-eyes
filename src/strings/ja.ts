@@ -6,6 +6,10 @@
 // 変えません。
 
 export const ja: Record<string, string> = {
+  'All': 'すべて',
+  'Stakes': 'ステーク',
+  'Exits': '退出',
+  'Withdrew': '引き出し',
   'Vault': '金庫',
   'over the last 7 days': '直近 7 日',
   'over the last 30 days': '直近 30 日',

@@ -404,7 +404,7 @@ export function FlowLab({ active }: { active: boolean }) {
               onPress={() => { void Haptics.selectionAsync(); setMinimum(option.min); }}
               style={[styles.filter, on && styles.filterOn]}
             >
-              <Text style={[styles.filterLabel, on && styles.filterLabelOn]}>{option.label}</Text>
+              <Text style={[styles.filterLabel, on && styles.filterLabelOn]}>{t(option.label)}</Text>
             </Pressable>
           );
         })}

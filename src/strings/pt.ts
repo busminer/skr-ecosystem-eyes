@@ -10,6 +10,10 @@
 // os rótulos de cartão e de botão são mais curtos que a tradução literal.
 
 export const pt: Record<string, string> = {
+  'All': 'Tudo',
+  'Stakes': 'Stakes',
+  'Exits': 'Saídas',
+  'Withdrew': 'Saques',
   'Vault': 'Cofre',
   'over the last 7 days': 'nos últimos 7 dias',
   'over the last 30 days': 'nos últimos 30 dias',

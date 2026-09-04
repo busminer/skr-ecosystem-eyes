@@ -6,6 +6,10 @@
 // boleh dipindah, tidak boleh diganti.
 
 export const id: Record<string, string> = {
+  'All': 'Semua',
+  'Stakes': 'Stake',
+  'Exits': 'Keluar',
+  'Withdrew': 'Tarik',
   'Vault': 'Brankas',
   'over the last 7 days': 'dalam 7 hari terakhir',
   'over the last 30 days': 'dalam 30 hari terakhir',

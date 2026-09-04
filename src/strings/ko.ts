@@ -7,6 +7,10 @@
 // 신청) / 대기(48시간 쿨다운) / 해제(대기가 끝나 출금 가능해짐) / 출금.
 
 export const ko: Record<string, string> = {
+  'All': '전체',
+  'Stakes': '스테이킹',
+  'Exits': '언스테이킹',
+  'Withdrew': '출금',
   'Vault': '금고',
   'over the last 7 days': '최근 7일',
   'over the last 30 days': '최근 30일',

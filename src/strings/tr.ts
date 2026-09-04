@@ -7,6 +7,10 @@
 // içeriği değişmez.
 
 export const tr: Record<string, string> = {
+  'All': 'Tümü',
+  'Stakes': 'Stake',
+  'Exits': 'Çıkış',
+  'Withdrew': 'Çekim',
   'Vault': 'Kasa',
   'over the last 7 days': 'son 7 günde',
   'over the last 30 days': 'son 30 günde',

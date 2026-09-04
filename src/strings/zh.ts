@@ -9,6 +9,10 @@
 // Numbers arrive already formatted, so the braces only move, never change.
 
 export const zh: Record<string, string> = {
+  'All': '全部',
+  'Stakes': '质押',
+  'Exits': '退出',
+  'Withdrew': '提取',
   'Vault': '金库',
   'over the last 7 days': '最近 7 天',
   'over the last 30 days': '最近 30 天',

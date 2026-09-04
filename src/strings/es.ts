@@ -10,6 +10,10 @@
 // literal.
 
 export const es: Record<string, string> = {
+  'All': 'Todo',
+  'Stakes': 'Stakes',
+  'Exits': 'Salidas',
+  'Withdrew': 'Retiros',
   'Vault': 'Bóveda',
   'over the last 7 days': 'en los últimos 7 días',
   'over the last 30 days': 'en los últimos 30 días',

@@ -6,6 +6,10 @@
 // chỗ nhưng không đổi tên. "Thẻ" là tấm thẻ chia sẻ, các màn hình chính gọi là "mục".
 
 export const vi: Record<string, string> = {
+  'All': 'Tất cả',
+  'Stakes': 'Stake',
+  'Exits': 'Rời kho',
+  'Withdrew': 'Đã rút',
   'Vault': 'Kho',
   'over the last 7 days': 'trong 7 ngày qua',
   'over the last 30 days': 'trong 30 ngày qua',
