@@ -188,7 +188,7 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
       if (!saved.address) return;
       const profile = await fetchWalletProfile(saved.address).catch(() => null);
       if (!alive || !profile?.found) return;
-      scene.current?.push({ type: 'me', me: { name: saved.label ?? shortAddress(saved.address), amount: profile.totals.activeStaked, days: null } });
+      scene.current?.push({ type: 'me', me: { name: profile.name ? `${profile.name}.skr` : saved.label ?? shortAddress(saved.address), amount: profile.totals.activeStaked, days: null } });
     }).catch(() => undefined);
     return () => { alive = false; };
   }, []);

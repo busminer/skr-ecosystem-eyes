@@ -23,6 +23,7 @@ import { Eyebrow, Panel } from './kit';
 const POLL_MS = 6_000;
 const HEADLINE_POLL_MS = 90_000;
 const FEED_LIMIT = 60;
+const STICKY_SECONDS = 15 * 60;
 // How many event ids the screen keeps in mind before it starts forgetting.
 const SEEN_LIMIT = 600;
 const HAPTIC_GAP_MS = 260;
@@ -263,7 +264,14 @@ export function FlowLab({ active }: { active: boolean }) {
       if (seen.current.size > SEEN_LIMIT) {
         seen.current = new Set([...seen.current].slice(-FEED_LIMIT * 2));
       }
-      setEvents((current) => [...arrived, ...current].slice(0, FEED_LIMIT));
+      // Forty-odd moves a minute, nearly all of them dust, used to push a
+      // large move off the bottom of the list within two minutes. A large move
+      // now keeps its place for a quarter of an hour, in order, past the cap.
+      setEvents((current) => {
+        const merged = [...arrived, ...current];
+        const floor = Math.floor(Date.now() / 1_000) - STICKY_SECONDS;
+        return merged.filter((item, index) => index < FEED_LIMIT || ((item.amount ?? 0) >= BIG_EVENT && item.blockTime >= floor));
+      });
       setArrivals((current) => current + arrived.length);
       // One tap per batch, never a machine-gun. A large move gets its own
       // answer: two firm knocks and the vault chime, so a person watching the

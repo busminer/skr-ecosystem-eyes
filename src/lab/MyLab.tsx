@@ -205,7 +205,7 @@ export function MyLab() {
       void Haptics.selectionAsync();
       const png = await cardArt.current?.toPng();
       if (!png) throw new Error(t('The card is not ready yet'));
-      const shared = await shareCardPng(png, cardFacts(profile, age, walletLabel, networkPositions, privacy));
+      const shared = await shareCardPng(png, cardFacts(profile, age, shownName, networkPositions, privacy));
       setShareNote(shared.carried
         ? null
         : shared.copied
@@ -218,7 +218,10 @@ export function MyLab() {
     }
   }, [age, networkPositions, profile, walletLabel, hideName, hideAmount]);
 
-  const live = profile ? cardFacts(profile, age, walletLabel, networkPositions, privacy) : null;
+  // What the card calls the person: the .skr name the server knows, else
+  // whatever label the wallet app gave when it connected, else nothing.
+  const shownName = profile?.name ? `${profile.name}.skr` : walletLabel;
+  const live = profile ? cardFacts(profile, age, shownName, networkPositions, privacy) : null;
 
   // Written down only when the card is worth remembering: a profile that was
   // read and an age that finished walking. Half a card saved now is half a card
@@ -273,14 +276,14 @@ export function MyLab() {
         age={age}
         share={share}
         claimed={claimed}
-        name={walletLabel}
+        name={shownName}
         networkPositions={networkPositions}
         fallback={remembered}
         width={width - spacing.lg * 2}
         privacy={privacy}
       />
 
-      {profile ? <CardExporter ref={cardArt} facts={cardFacts(profile, age, walletLabel, networkPositions, privacy)} /> : null}
+      {profile ? <CardExporter ref={cardArt} facts={cardFacts(profile, age, shownName, networkPositions, privacy)} /> : null}
 
       {claimed ? (
         <>
@@ -370,7 +373,7 @@ export function MyLab() {
             lines={[
               `read       ${readAt ? `${Math.max(0, now - readAt)}s ago · re-read every minute` : 'pending'}`,
               `wallet     ${profile!.wallet}`,
-              `name       ${walletLabel ? `${walletLabel} · from the wallet` : 'the wallet returned no name'}`,
+              `name       ${profile?.name ? `${profile.name}.skr · from the .skr registry` : walletLabel ? `${walletLabel} · from the wallet` : 'no .skr name on this wallet'}`,
               `accuracy   ${profile!.provenance.accuracy} · ${profile!.provenance.commitment}`,
               `age proof  ${age?.signature ? `${shortAddress(age.signature)} · ${age.exact ? 'first signature' : 'oldest seen so far'}` : ageError ? ageError : 'pending'}`,
               `tier rule  share of active stake, nothing else`,

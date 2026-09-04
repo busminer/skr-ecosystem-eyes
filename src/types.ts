@@ -77,6 +77,8 @@ export type EcosystemState = {
 export type WalletProfile = {
   wallet: string;
   found: boolean;
+  // The .skr name from the server's mirror of the namespace; null when the wallet has none.
+  name?: string | null;
   totals: {
     activeStaked: number;
     pendingUnstake: number;
