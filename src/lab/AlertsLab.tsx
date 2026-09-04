@@ -152,7 +152,7 @@ export function AlertsLab() {
           <View style={styles.toggleCopy}>
             <Text style={styles.toggleLabel}>{t('Large moves, heard and felt')}</Text>
             <Text style={styles.toggleNote}>
-              {t('A stake of 1K SKR or more rings like a glass coin, a stake of 100K rings the vault bell, an exit of 100K lands with a low boom. On every screen while the app is open, each with a short buzz.')}
+              {t('A stake of 10K SKR or more rings like a glass coin, a stake of 100K rings the vault bell, an exit of 100K lands with a low boom. On every screen while the app is open, each with a short buzz.')}
             </Text>
           </View>
           <Switch

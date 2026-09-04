@@ -192,7 +192,7 @@ export const ja: Record<string, string> = {
   'One hour before, and again the moment the cooldown ends. Scheduled by this phone from the exact on-chain time.': '1 時間前に一度、クールダウンが終わる瞬間にもう一度。チェーン上の正確な時刻をもとに、この端末が予約します。',
   'Nothing of yours is unlocking, so there is nothing to wake you for yet.': '解除されるものがないので、いまお知らせする用事はありません。',
   'Large moves, heard and felt': '大きな動きを音と振動で',
-  'A stake of 1K SKR or more rings like a glass coin, a stake of 100K rings the vault bell, an exit of 100K lands with a low boom. On every screen while the app is open, each with a short buzz.': '1K SKR 以上のステークはガラスのコインのように鳴り、100K のステークは金庫の鐘を鳴らし、100K の退出は低い音で響きます。アプリを開いている間はどの画面でも、それぞれ短い振動つきです。',
+  'A stake of 10K SKR or more rings like a glass coin, a stake of 100K rings the vault bell, an exit of 100K lands with a low boom. On every screen while the app is open, each with a short buzz.': '10K SKR 以上のステークはガラスのコインのように鳴り、100K のステークは金庫の鐘を鳴らし、100K の退出は低い音で響きます。アプリを開いている間はどの画面でも、それぞれ短い振動つきです。',
   "Other people's moves do not wake the phone while the app is closed. Only your own unlock does.": 'アプリを閉じている間は、他の人の動きで端末は起きません。起こすのは自分の解除だけです。',
   'What counts as large': '何を大きいとみなすか',
   'Built-in thresholds behind the bell and the boom, until the server publishes its own.': '鐘と低い音を鳴らす内蔵のしきい値です。サーバーが独自の値を公開するまで使います。',

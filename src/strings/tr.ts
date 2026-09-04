@@ -197,7 +197,7 @@ export const tr: Record<string, string> = {
   'One hour before, and again the moment the cooldown ends. Scheduled by this phone from the exact on-chain time.': 'Bir saat önce, bir de bekleme süresinin bittiği anda. Zincirdeki tam saate göre bu telefon kurar.',
   'Nothing of yours is unlocking, so there is nothing to wake you for yet.': 'Açılan bir şeyin yok, yani şimdilik seni uyandıracak bir sebep de yok.',
   'Large moves, heard and felt': 'Büyük hareketler, duyulur ve hissedilir',
-  'A stake of 1K SKR or more rings like a glass coin, a stake of 100K rings the vault bell, an exit of 100K lands with a low boom. On every screen while the app is open, each with a short buzz.': '1K SKR ve üstü bir stake cam bir para gibi çınlar, 100K\'lık bir stake kasa çanını çalar, 100K\'lık bir çıkış derin bir gümbürtüyle iner. Uygulama açıkken her ekranda, her biri kısa bir titreşimle.',
+  'A stake of 10K SKR or more rings like a glass coin, a stake of 100K rings the vault bell, an exit of 100K lands with a low boom. On every screen while the app is open, each with a short buzz.': '10K SKR ve üstü bir stake cam bir para gibi çınlar, 100K\'lık bir stake kasa çanını çalar, 100K\'lık bir çıkış derin bir gümbürtüyle iner. Uygulama açıkken her ekranda, her biri kısa bir titreşimle.',
   'Other people\'s moves do not wake the phone while the app is closed. Only your own unlock does.': 'Uygulama kapalıyken başkalarının hareketleri telefonu uyandırmaz. Yalnızca senin açılışın uyandırır.',
   'What counts as large': 'Ne büyük sayılır',
   'Built-in thresholds behind the bell and the boom, until the server publishes its own.': 'Sunucu kendi eşiklerini yayınlayana kadar çanın ve gümbürtünün arkasındaki gömülü eşikler.',

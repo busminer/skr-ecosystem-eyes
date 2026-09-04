@@ -1,5 +1,5 @@
-"""The stake sound: a coin settling into the vault. A short bright strike on a
-glass bar with a warm ring that rises, and a small body under it so the phone
+"""The stake sound: a coin settling into the vault. A soft touch on a
+glass bar, no strike with a warm ring that rises, and a small body under it so the phone
 speaker still gives it weight. Written, not downloaded, like the rest."""
 import math, struct, wave
 RATE = 44_100
@@ -10,10 +10,9 @@ def noise(i):
     return (v / 0x3FFFFFFF) - 1.0
 def stake(t, i):
     v = 0.0
-    if t < 0.012: v += 0.30 * noise(i) * env(t, 0.0005, 0.005)
     # the glass bar: fundamental and the inharmonic partial that says "glass"
-    for f, g, d in ((880.0, 0.42, 0.42), (2430.0, 0.16, 0.16), (1760.0, 0.10, 0.22)):
-        v += g * math.sin(2 * math.pi * f * t) * env(t, 0.003, d)
+    for f, g, d in ((880.0, 0.42, 0.42), (2430.0, 0.06, 0.12), (1760.0, 0.08, 0.22)):
+        v += g * math.sin(2 * math.pi * f * t) * env(t, 0.010, d)
     # the ring that rises: a fifth above, arriving a hair later
     if t >= 0.07:
         p = t - 0.07

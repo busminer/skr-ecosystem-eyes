@@ -193,7 +193,7 @@ export const ko: Record<string, string> = {
   'One hour before, and again the moment the cooldown ends. Scheduled by this phone from the exact on-chain time.': '한 시간 전에 한 번, 대기가 끝나는 순간에 다시 한 번. 체인의 정확한 시각을 기준으로 이 휴대폰이 예약합니다.',
   'Nothing of yours is unlocking, so there is nothing to wake you for yet.': '해제되는 것이 없어서 아직 깨울 이유가 없습니다.',
   'Large moves, heard and felt': '큰 움직임을 소리와 진동으로',
-  'A stake of 1K SKR or more rings like a glass coin, a stake of 100K rings the vault bell, an exit of 100K lands with a low boom. On every screen while the app is open, each with a short buzz.': '1K SKR 이상 스테이킹은 유리 동전 소리로, 100K 스테이킹은 금고 종소리로, 100K 언스테이킹은 낮은 울림으로 도착합니다. 앱이 열려 있는 동안 어느 화면에서든, 짧은 진동과 함께요.',
+  'A stake of 10K SKR or more rings like a glass coin, a stake of 100K rings the vault bell, an exit of 100K lands with a low boom. On every screen while the app is open, each with a short buzz.': '10K SKR 이상 스테이킹은 유리 동전 소리로, 100K 스테이킹은 금고 종소리로, 100K 언스테이킹은 낮은 울림으로 도착합니다. 앱이 열려 있는 동안 어느 화면에서든, 짧은 진동과 함께요.',
   "Other people's moves do not wake the phone while the app is closed. Only your own unlock does.": '앱이 닫혀 있을 때 다른 사람의 움직임은 휴대폰을 깨우지 않습니다. 내 해제만 깨웁니다.',
   'What counts as large': '무엇이 큰 건인지',
   'Built-in thresholds behind the bell and the boom, until the server publishes its own.': '종소리와 울림의 내장 기준값입니다. 서버가 자체 기준을 내놓기 전까지 씁니다.',

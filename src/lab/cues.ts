@@ -9,7 +9,9 @@ import { cueHaptic, playCue, type Cue } from '../sound';
 // feels, and it stops the moment the app leaves the foreground.
 
 const BIG = 100_000;
-const LABEL = 1_000;
+// Below ten thousand a stake is seen, not heard: at six an hour the chime
+// was a tick from the table every ten minutes.
+const LABEL = 10_000;
 const GAP_MS = 4_000;
 
 export function useEventCues() {

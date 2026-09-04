@@ -197,7 +197,7 @@ export const ru: Record<string, string> = {
   'One hour before, and again the moment the cooldown ends. Scheduled by this phone from the exact on-chain time.': 'За час до и ещё раз в момент конца остывания. Ставит сам телефон по точному времени из цепочки.',
   'Nothing of yours is unlocking, so there is nothing to wake you for yet.': 'Ничего не разблокируется, так что будить пока незачем.',
   'Large moves, heard and felt': 'Крупные движения, звуком и вибрацией',
-  'A stake of 1K SKR or more rings like a glass coin, a stake of 100K rings the vault bell, an exit of 100K lands with a low boom. On every screen while the app is open, each with a short buzz.': 'Стейк от 1K SKR звенит как стеклянная монета, стейк от 100K бьёт в колокол хранилища, выход на 100K ложится низким гулом. На любом экране, пока приложение открыто, и каждый раз с короткой вибрацией.',
+  'A stake of 10K SKR or more rings like a glass coin, a stake of 100K rings the vault bell, an exit of 100K lands with a low boom. On every screen while the app is open, each with a short buzz.': 'Стейк от 10K SKR звенит как стеклянная монета, стейк от 100K бьёт в колокол хранилища, выход на 100K ложится низким гулом. На любом экране, пока приложение открыто, и каждый раз с короткой вибрацией.',
   "Other people's moves do not wake the phone while the app is closed. Only your own unlock does.": 'Чужие движения не будят телефон, пока приложение закрыто. Будит только собственная разблокировка.',
   'What counts as large': 'Что считается крупным',
   'Built-in thresholds behind the bell and the boom, until the server publishes its own.': 'Встроенные пороги для колокола и гула, пока сервер не опубликует свои.',
