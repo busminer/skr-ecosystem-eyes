@@ -67,7 +67,7 @@ The vault is alive. Every stake falls in with its .skr name, every exit hangs an
 
 What people asked for: earned on staking, read from the chain, and two privacy switches on the card, to hide your name or your amount before you share it.
 
-Sounds you can feel: a glass chime for a large stake, the vault bell for a huge one, a low boom for a large exit, each with a short buzz. Or switch them off.
+Sounds you can feel, only for large moves: an old phone rings for a stake, a low boom for an exit, a door closes for a withdrawal, each with a short buzz. Or switch them off.
 
 Sixteen: 16 parts of 1 SKR with one approval, and a gentle daily nudge you can switch off. Flow filtered by kind and size, with the day's biggest moves pinned and the day drawn hour by hour. German added, as people asked, and all eleven languages reviewed end to end. Tips in SKR, staked right away.
 ```
