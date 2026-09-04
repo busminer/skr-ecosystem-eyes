@@ -6,6 +6,10 @@
 // boleh dipindah, tidak boleh diganti.
 
 export const id: Record<string, string> = {
+  'Sixteen today?': 'Enam belas hari ini?',
+  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '16 bagian 1 SKR, satu persetujuan. Kebiasaan kecil yang menjaga stake-mu tetap bergerak.',
+  'A daily nudge for the Sixteen': 'Pengingat harian untuk Enam Belas',
+  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': 'Sekali sehari, sekitar pukul enam sore, pengingat lembut untuk menjaga stake-mu tetap bergerak. Diatur di ponsel sendiri, tidak ada yang dikirim ke mana pun.',
   'Earned on staking': 'Hasil dari stake',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Perkiraan dari harga saham pada stake atau keluar terakhirmu. Imbalan yang terkumpul sebelum langkah itu sudah masuk ke posisi dan tidak dihitung di sini.',
   'All': 'Semua',

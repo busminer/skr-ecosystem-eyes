@@ -10,6 +10,10 @@
 // literal.
 
 export const es: Record<string, string> = {
+  'Sixteen today?': '¿Los dieciséis de hoy?',
+  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '16 partes de 1 SKR, una aprobación. Un pequeño hábito que mantiene tu stake en movimiento.',
+  'A daily nudge for the Sixteen': 'Un recordatorio diario de los Dieciséis',
+  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': 'Una vez al día, hacia las seis de la tarde, un recordatorio suave para mantener tu stake en movimiento. Se programa en el propio teléfono; no se envía nada a ningún sitio.',
   'Earned on staking': 'Ganado con el stake',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Estimación según el precio de la participación en tu último stake o salida. Las recompensas acumuladas antes de ese movimiento ya están dentro de tu posición y no se cuentan aquí.',
   'All': 'Todo',

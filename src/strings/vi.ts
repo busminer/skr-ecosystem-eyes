@@ -6,6 +6,10 @@
 // chỗ nhưng không đổi tên. "Thẻ" là tấm thẻ chia sẻ, các màn hình chính gọi là "mục".
 
 export const vi: Record<string, string> = {
+  'Sixteen today?': 'Mười sáu hôm nay chứ?',
+  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '16 phần 1 SKR, một lần duyệt. Một thói quen nhỏ giúp stake của bạn luôn chuyển động.',
+  'A daily nudge for the Sixteen': 'Nhắc nhẹ mỗi ngày về Mười sáu',
+  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': 'Mỗi ngày một lần, khoảng sáu giờ chiều, một lời nhắc nhẹ để stake của bạn luôn chuyển động. Đặt ngay trên điện thoại, không gửi gì đi đâu.',
   'Earned on staking': 'Đã kiếm được từ stake',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Ước tính theo giá cổ phần tại lần stake hoặc rút gần nhất của bạn. Phần thưởng tích luỹ trước đó đã gộp vào vị thế và không tính ở đây.',
   'All': 'Tất cả',

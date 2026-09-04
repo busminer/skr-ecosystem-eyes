@@ -9,6 +9,10 @@
 // Numbers arrive already formatted, so the braces only move, never change.
 
 export const zh: Record<string, string> = {
+  'Sixteen today?': '今天十六份了吗？',
+  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '1 SKR 分成十六份，一次确认。一个让质押持续流动的小习惯。',
+  'A daily nudge for the Sixteen': '每日十六份提醒',
+  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': '每天傍晚六点左右，轻轻提醒你让质押保持流动。设置在手机本机，不会向外发送任何内容。',
   'Earned on staking': '质押收益',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': '按上次质押或退出时的份额价格估算。在那之前累积的奖励已计入仓位，这里不再计算。',
   'All': '全部',

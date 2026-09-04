@@ -7,6 +7,10 @@
 // içeriği değişmez.
 
 export const tr: Record<string, string> = {
+  'Sixteen today?': 'Bugünkü on altı?',
+  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '16 parça 1 SKR, tek onay. Stake\'ini hareket halinde tutan küçük bir alışkanlık.',
+  'A daily nudge for the Sixteen': 'On altı için günlük hatırlatma',
+  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': 'Günde bir kez, akşam altı civarı, stake\'ini hareket halinde tutman için nazik bir hatırlatma. Telefonun kendisinde kurulur, hiçbir yere bir şey gönderilmez.',
   'Earned on staking': 'Stake kazancı',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Son stake veya çıkışındaki pay fiyatına göre tahmin. O hamleden önce biriken ödüller pozisyona katılmıştır ve burada sayılmaz.',
   'All': 'Tümü',

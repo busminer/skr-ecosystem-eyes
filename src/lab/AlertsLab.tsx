@@ -6,7 +6,7 @@ import { resolveAlertThresholds } from '../alertThresholds';
 import { fetchEcosystemState, fetchWalletProfile } from '../api';
 import { LANGS, LANG_LABEL, lang, setLang, t, useLang, type Lang } from '../i18n';
 import { compact } from '../format';
-import { clearStoredSchedule, hasUnlockAlerts, scheduleNotificationProof, scheduleUnlockAlerts } from '../notifications';
+import { scheduleDailyNudge, clearStoredSchedule, hasUnlockAlerts, scheduleNotificationProof, scheduleUnlockAlerts } from '../notifications';
 import { usePref } from '../prefs';
 import { readSessionAddress } from '../session';
 import { colors, font, radius, spacing, type } from '../theme';
@@ -30,6 +30,7 @@ export function AlertsLab() {
   const [armed, setArmed] = useState<boolean | null>(null);
   const [arming, setArming] = useState(false);
   const [largeAlerts, setLargeAlerts] = usePref('alert:large', true);
+  const [nudge, setNudge] = usePref('nudge:daily', true);
   const [tipping, setTipping] = useState(false);
 
   useEffect(() => {
@@ -160,6 +161,21 @@ export function AlertsLab() {
             onValueChange={(value) => { void Haptics.selectionAsync(); setLargeAlerts(value); }}
             trackColor={{ true: colors.accentDim, false: colors.line }}
             thumbColor={largeAlerts ? colors.accent : colors.faint}
+          />
+        </View>
+        <Hairline />
+        <View style={styles.toggleRow}>
+          <View style={styles.toggleCopy}>
+            <Text style={styles.toggleLabel}>{t('A daily nudge for the Sixteen')}</Text>
+            <Text style={styles.toggleNote}>
+              {t('Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.')}
+            </Text>
+          </View>
+          <Switch
+            value={nudge}
+            onValueChange={(value) => { void Haptics.selectionAsync(); setNudge(value); void scheduleDailyNudge(value); }}
+            trackColor={{ true: colors.accentDim, false: colors.line }}
+            thumbColor={nudge ? colors.accent : colors.faint}
           />
         </View>
         <Hairline />

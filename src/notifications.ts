@@ -6,6 +6,9 @@ import type { WalletProfile } from './types';
 
 const STORAGE_PREFIX = 'skr-eyes:unlock-alerts:';
 const CHANNEL_ID = 'skr-unlocks';
+const NUDGE_CHANNEL_ID = 'skr-nudges';
+const NUDGE_ID_KEY = 'skr-eyes:nudge:id';
+const ASKED_KEY = 'skr-eyes:notifications:asked';
 
 type StoredSchedule = { unlockAt: number; notificationIds: string[] };
 
@@ -25,6 +28,59 @@ export async function configureNotifications() {
       vibrationPattern: [0, 140, 80, 140],
       lightColor: '#67DFFF',
     });
+    // The daily nudge is a lighter thing than an unlock: its own channel, so a
+    // person can mute the nudge in Android and keep the unlock.
+    await Notifications.setNotificationChannelAsync(NUDGE_CHANNEL_ID, {
+      name: 'Daily sixteen',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      vibrationPattern: [0, 80],
+      lightColor: '#C9A96A',
+    });
+  }
+}
+
+// Asked once, on the first launch after the opening, so the unlock alert and
+// the nudge can both work without a second dialog later. Android remembers
+// the answer; a refusal is respected and never asked about again by us.
+export async function askNotificationPermissionOnce(): Promise<boolean> {
+  try {
+    const asked = await AsyncStorage.getItem(ASKED_KEY);
+    const current = await Notifications.getPermissionsAsync();
+    if (current.granted) return true;
+    if (asked) return false;
+    await AsyncStorage.setItem(ASKED_KEY, '1');
+    const answer = await Notifications.requestPermissionsAsync();
+    return answer.granted;
+  } catch {
+    return false;
+  }
+}
+
+// One gentle reminder a day, around six in the evening, to stake the sixteen.
+// Scheduled on the phone itself, nothing leaves it. Off is honoured by
+// cancelling whatever was scheduled.
+export async function scheduleDailyNudge(on: boolean): Promise<void> {
+  try {
+    const previous = await AsyncStorage.getItem(NUDGE_ID_KEY);
+    if (previous) {
+      await Notifications.cancelScheduledNotificationAsync(previous).catch(() => undefined);
+      await AsyncStorage.removeItem(NUDGE_ID_KEY);
+    }
+    if (!on) return;
+    const permission = await Notifications.getPermissionsAsync();
+    if (!permission.granted) return;
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: t('Sixteen today?'),
+        body: t('16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.'),
+        sound: 'default',
+        data: { nudge: true },
+      },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 18, minute: 0, channelId: NUDGE_CHANNEL_ID },
+    });
+    await AsyncStorage.setItem(NUDGE_ID_KEY, id);
+  } catch {
+    // A nudge that could not be set is not worth a crash.
   }
 }
 

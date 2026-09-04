@@ -7,6 +7,10 @@
 // 신청) / 대기(48시간 쿨다운) / 해제(대기가 끝나 출금 가능해짐) / 출금.
 
 export const ko: Record<string, string> = {
+  'Sixteen today?': '오늘의 열여섯?',
+  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '1 SKR을 16개로 나눠 한 번의 승인으로. 스테이킹을 계속 움직이게 하는 작은 습관입니다.',
+  'A daily nudge for the Sixteen': '열여섯 매일 알림',
+  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': '하루 한 번, 저녁 여섯 시쯤, 스테이킹을 계속 움직이게 하는 부드러운 알림입니다. 휴대폰 자체에 설정되며 어디에도 전송되지 않습니다.',
   'Earned on staking': '스테이킹 수익',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': '마지막 스테이킹 또는 언스테이킹 시점의 지분 가격으로 추정한 값입니다. 그 이전에 쌓인 보상은 포지션에 포함되어 여기서는 계산되지 않습니다.',
   'All': '전체',

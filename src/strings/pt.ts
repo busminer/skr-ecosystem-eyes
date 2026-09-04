@@ -10,6 +10,10 @@
 // os rótulos de cartão e de botão são mais curtos que a tradução literal.
 
 export const pt: Record<string, string> = {
+  'Sixteen today?': 'Os dezesseis de hoje?',
+  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '16 partes de 1 SKR, uma aprovação. Um pequeno hábito que mantém seu stake em movimento.',
+  'A daily nudge for the Sixteen': 'Um lembrete diário dos Dezesseis',
+  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': 'Uma vez por dia, por volta das seis da tarde, um lembrete suave para manter seu stake em movimento. Programado no próprio telefone, nada é enviado a lugar nenhum.',
   'Earned on staking': 'Ganho com o stake',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Estimativa pelo preço da cota no seu último stake ou saída. As recompensas acumuladas antes desse movimento já estão na posição e não entram aqui.',
   'All': 'Tudo',

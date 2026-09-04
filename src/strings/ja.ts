@@ -6,6 +6,10 @@
 // 変えません。
 
 export const ja: Record<string, string> = {
+  'Sixteen today?': '今日の 16 分割は？',
+  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '1 SKR を 16 分割、承認は一回。ステークを動かし続ける小さな習慣です。',
+  'A daily nudge for the Sixteen': '16 分割の毎日のひと押し',
+  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': '一日一回、夕方六時ごろ、ステークを動かし続けるためのやさしいリマインダーです。端末内で設定され、どこにも送信されません。',
   'Earned on staking': 'ステークで得た分',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': '最後にステークまたは解除した時点のシェア価格からの推定です。それ以前に積み上がった報酬はポジションに含まれており、ここでは数えません。',
   'All': 'すべて',

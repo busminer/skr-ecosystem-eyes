@@ -11,6 +11,10 @@
 // и кнопках намеренно короче дословного перевода.
 
 export const ru: Record<string, string> = {
+  'Sixteen today?': 'Сегодня шестнадцать?',
+  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '1 SKR шестнадцатью частями, одно подтверждение. Маленькая привычка, которая держит стейк в движении.',
+  'A daily nudge for the Sixteen': 'Ежедневный толчок про Шестнадцать',
+  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': 'Раз в день, около шести вечера, мягкое напоминание держать стейк в движении. Ставится на самом телефоне, наружу ничего не уходит.',
   'Earned on staking': 'Заработано на стейкинге',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Оценка по цене доли на момент последнего стейка или выхода. Награды, накопленные до этого хода, уже вошли в позицию и здесь не считаются.',
   'All': 'Все',
