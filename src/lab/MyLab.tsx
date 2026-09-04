@@ -320,6 +320,8 @@ export function MyLab() {
 
           {connected ? <Button label={t('Stake SKR')} onPress={() => { void Haptics.selectionAsync(); setSixteen(false); setStaking(true); }} /> : null}
 
+          {/* The sixteen is a stake too: only the wallet that can sign gets the button. */}
+          {connected ? (
           <Panel style={styles.dailyPanel}>
             <View style={styles.dailyRow}>
               <View style={styles.dailyCopy}>
@@ -329,6 +331,7 @@ export function MyLab() {
               <Button label={t('Sixteen')} tone={colors.metal} onPress={() => { void Haptics.selectionAsync(); setSixteen(true); setStaking(true); }} />
             </View>
           </Panel>
+          ) : null}
 
           <Panel style={styles.privacyPanel}>
             <View style={styles.privacyRow}>
