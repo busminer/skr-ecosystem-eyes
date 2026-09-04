@@ -5,6 +5,7 @@ import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 import { API_BASE_URL, fetchEcosystemState } from '../api';
 import type { EcosystemState } from '../types';
 import { t } from '../i18n';
+import { useReducedMotion } from '../useReducedMotion';
 import { compact, shortAddress } from '../format';
 import { usePref } from '../prefs';
 import { playCue } from '../sound';
@@ -205,6 +206,7 @@ function SmallEvent({ event, now, onPress }: { event: FlowEvent; now: number; on
 }
 
 export function FlowLab({ active }: { active: boolean }) {
+  const reducedMotion = useReducedMotion();
   const [events, setEvents] = useState<FlowEvent[]>([]);
   const [big, setBig] = useState<FlowEvent | null>(null);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1_000));
@@ -358,7 +360,7 @@ export function FlowLab({ active }: { active: boolean }) {
       </View>
 
       {big ? (
-        <Carousel width={headWidth}>
+        <Carousel width={headWidth} auto={!reducedMotion}>
           <Headline event={big} now={now} />
           {headlines.filter((item) => item.id !== big.id).map((item) => (
             <Headline key={item.id} event={item} now={now} title={item.type === 'stake' ? t('Biggest stake today') : item.type === 'unstake' ? t('Biggest exit today') : t('Biggest withdrawal today')} />
