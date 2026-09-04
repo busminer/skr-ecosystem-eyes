@@ -3,8 +3,9 @@
 versionCode 6 · arm64-v8a · signed with the release key
 (`d90bb194498ee4dce0669aa5ddcc30c6a13d43750fac4768a240ade9228e4763`)
 
-Ships alongside server release `f00c26c` (names in the wallet profile and in the
-state's recent events), deployed 04.09.2026.
+Ships alongside server release `20f93be` (names in the wallet profile and in the
+state's recent events, earned per position), deployed 04.09.2026. Release build:
+lab tag `lab-AZ`, commit `05f205e`, `builds/skr-eyes-1.1.0-release.apk`.
 
 Listing texts and media are in the portal (saved 04.09.2026, 15:50). The short
 description stays as it is: it passed review and fits the 30-character limit.
@@ -68,7 +69,7 @@ What people asked for: earned on staking, read from the chain, and two privacy s
 
 Sounds you can feel: a glass chime for a large stake, the vault bell for a huge one, a low boom for a large exit, each with a short buzz. Or switch them off.
 
-Sixteen: 16 parts of 1 SKR with one approval. Flow filtered by kind and size, with the day's biggest moves pinned. All ten languages reviewed end to end. Tips in SKR, staked right away.
+Sixteen: 16 parts of 1 SKR with one approval, and a gentle daily nudge you can switch off. Flow filtered by kind and size, with the day's biggest moves pinned and the day drawn hour by hour. All ten languages reviewed end to end. Tips in SKR, staked right away.
 ```
 
 ## What actually changed since 1.0.4
