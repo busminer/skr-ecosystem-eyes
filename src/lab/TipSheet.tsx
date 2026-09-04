@@ -84,6 +84,7 @@ export function TipSheet({ onClose }: { onClose: () => void }) {
   const [amount, setAmount] = useState('');
   const [phase, setPhase] = useState<Phase>('idle');
   const [signature, setSignature] = useState<string | null>(null);
+  const [checked, setChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [held, setHeld] = useState<string | null>(null);
   const raw = useMemo(() => toRaw(amount), [amount]);
@@ -115,12 +116,16 @@ export function TipSheet({ onClose }: { onClose: () => void }) {
       setPhase('confirming');
       // Ask the chain a few times, then stop: the signature is on the sheet
       // either way, and Solscan can answer the rest.
+      // A poll that fails looks the same as one that says 'not yet'; neither
+      // is a confirmation, so the sheet only says 'checked' when it really did.
+      let checked = false;
       for (let attempt = 0; attempt < 10; attempt += 1) {
         await new Promise((resolve) => setTimeout(resolve, 1_500));
         const status = await fetchStatus(sent).catch(() => null);
         if (status?.err) throw new Error(t('The chain rejected the transfer.'));
-        if (status?.confirmationStatus === 'confirmed' || status?.confirmationStatus === 'finalized') break;
+        if (status?.confirmationStatus === 'confirmed' || status?.confirmationStatus === 'finalized') { checked = true; break; }
       }
+      setChecked(checked);
       setPhase('done');
       playCue('coin', 0.5);
     } catch (caught) {
@@ -150,7 +155,7 @@ export function TipSheet({ onClose }: { onClose: () => void }) {
           <Panel style={styles.panel} tone={colors.positive}>
             <Eyebrow tone={colors.positive}>{t('Thank you')}</Eyebrow>
             <Text style={styles.doneTitle}>{t('{amount} SKR on its way to {name}', { amount: fromRaw(raw), name: RECIPIENT_NAME })}</Text>
-            <Text style={styles.mono}>{`signature  ${signature.slice(0, 8)}…${signature.slice(-8)}\ncommitment confirmed by the wallet, checked by the app`}</Text>
+            <Text style={styles.mono}>{`signature  ${signature.slice(0, 8)}…${signature.slice(-8)}\ncommitment ${checked ? 'confirmed by the wallet, checked by the app' : 'sent by the wallet, not yet seen by the app · check Solscan'}`}</Text>
             <Button ghost label={t('Open on Solscan')} onPress={() => void Linking.openURL(`https://solscan.io/tx/${signature}`)} />
             <Button label={t('Done')} onPress={onClose} tone={colors.metal} />
           </Panel>

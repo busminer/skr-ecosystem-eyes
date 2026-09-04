@@ -150,9 +150,9 @@ export function AlertsLab() {
         <Hairline />
         <View style={styles.toggleRow}>
           <View style={styles.toggleCopy}>
-            <Text style={styles.toggleLabel}>{t('Large moves while you were away')}</Text>
+            <Text style={styles.toggleLabel}>{t('Large moves, heard and felt')}</Text>
             <Text style={styles.toggleNote}>
-              {t('Anything above the threshold below is summed up at the top of Flow when you come back to it, and lands with a chime and a buzz while you are watching.')}
+              {t('A stake of 1K SKR or more rings like a glass coin, a stake of 100K rings the vault bell, an exit of 100K lands with a low boom. On every screen while the app is open, each with a short buzz.')}
             </Text>
           </View>
           <Switch
@@ -164,12 +164,12 @@ export function AlertsLab() {
         </View>
         <Hairline />
         <Text style={[styles.toggleNote, styles.spaced]}>
-          {t("Waking the phone for someone else's large move while the app is closed needs a background check that Android schedules on its own terms. That is the next version — promising it here before it exists would be the same lie this screen just removed.")}
+          {t("Other people's moves do not wake the phone while the app is closed. Only your own unlock does.")}
         </Text>
       </Panel>
 
       <Panel style={styles.panel}>
-        <Eyebrow>{t('What counts as large in Flow')}</Eyebrow>
+        <Eyebrow>{t('What counts as large')}</Eyebrow>
         <View style={styles.thresholds}>
           {(['stake', 'unstake', 'withdraw'] as const).map((event) => (
             <View key={event} style={styles.thresholdRow}>
@@ -180,7 +180,7 @@ export function AlertsLab() {
           ))}
         </View>
         <Text style={styles.thresholdNote}>
-          {fallback ? t('Built-in thresholds, used by the chime and the buzz on the Flow screen, until the server publishes its own.') : t('These come from the server, move with real traffic, and drive the chime and the buzz on the Flow screen.')}
+          {fallback ? t('Built-in thresholds behind the bell and the boom, until the server publishes its own.') : t('These come from the server, move with real traffic, and drive the bell and the boom.')}
         </Text>
       </Panel>
 

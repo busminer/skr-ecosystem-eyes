@@ -47,7 +47,7 @@ export function usePref(key: string, fallback: boolean): [boolean, (value: boole
 
 // Every switch the app reads from outside React. They have to be in the cache
 // before the first screen paints, because prefValue cannot wait for anything.
-const STORED_KEYS = ['sound', 'buzz', 'alert:large'] as const;
+const STORED_KEYS = ['sound', 'buzz', 'alert:large', 'motion:calm', 'motion:off'] as const;
 
 // Without this the cache filled only when a screen mounted the matching hook,
 // and the hook for sound and buzz lives on Flow. The app opens on Pulse, where

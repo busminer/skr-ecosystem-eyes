@@ -249,7 +249,7 @@ export const CardArt = forwardRef<CardHandle, { facts: CardFacts; width: number;
     const isAddress = !facts.hideName && facts.name.includes('…');
 
     const line: string[] = [];
-    if (facts.networkPositions != null) line.push(`One of ${grouped(facts.networkPositions)}`);
+    if (facts.networkPositions != null) line.push(`One of ${grouped(facts.networkPositions)} positions`);
     if (facts.firstSeenAt != null) line.push(`staking since ${formatDate(facts.firstSeenAt)}`);
 
     return (

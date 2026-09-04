@@ -14,14 +14,13 @@ import { DayHeat } from './DayHeat';
 import { FlipNumber } from './FlipNumber';
 import { Button, Evidence, Eyebrow, HorizonRail, Panel, RangeSwitch, Tile } from './kit';
 import { VaultScene, type SceneHandle, type SceneTap } from './VaultScene';
+import { fetchEvents, subscribeFeed } from './feed';
 
 // The Vault tab: the living scene on top, the numbers under it, and the exit
 // queue at the bottom — one screen for the whole vault, where there used to be
 // two (Pulse and Queue) showing the same rail twice.
 
 const REFRESH_MS = 30_000;
-const EVENTS_MS = 6_000;
-const EVENTS_TIMEOUT_MS = 15_000;
 const RANGES = ['24h', '7d', '30d'] as const;
 type Range = typeof RANGES[number];
 const RANGE_DAYS: Record<Range, number> = { '24h': 1, '7d': 7, '30d': 30 };
@@ -30,7 +29,6 @@ const RANGE_NOTE: Record<Range, string> = { '24h': 'over the last 24 hours', '7d
 const MOTIONS = ['live', 'calm', 'off'] as const;
 const QUEUE_SHORT = 8;
 
-type FeedEvent = { id: string; signature: string; type: string; wallet: string; name?: string | null; amount: number | null; blockTime: number };
 
 function splitCompact(value: number): { figure: string; unit: string } {
   const text = compact(value);
@@ -50,19 +48,6 @@ function remaining(seconds: number): string {
   if (hours >= 24) return `${Math.floor(hours / 24)}d ${String(hours % 24).padStart(2, '0')}h`;
   if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m`;
   return `${minutes}m ${String(safe % 60).padStart(2, '0')}s`;
-}
-
-async function fetchEvents(limit = 25, minimum = 0, type?: string): Promise<FeedEvent[]> {
-  const controller = new AbortController();
-  const deadline = setTimeout(() => controller.abort(), EVENTS_TIMEOUT_MS);
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/events?limit=${limit}&min=${minimum}${type ? `&type=${type}` : ''}`, { headers: { accept: 'application/json' }, signal: controller.signal });
-    if (!response.ok) throw new Error(String(response.status));
-    const payload = await response.json() as { items?: FeedEvent[] };
-    return payload.items ?? [];
-  } finally {
-    clearTimeout(deadline);
-  }
 }
 
 function FactCard({ label, value, note, tone, width }: { label: string; value: string; note: string; tone?: string; width: number }) {
@@ -124,7 +109,6 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
   const [motionOff, setMotionOff] = usePref('motion:off', false);
   const scene = useRef<SceneHandle>(null);
   const seen = useRef<Set<string>>(new Set());
-  const seeded = useRef(false);
   const page = useRef<ScrollView>(null);
   const queueY = useRef(0);
   const openQueue = useCallback(() => {
@@ -156,37 +140,22 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
   }, [load]);
 
 
-  // Every finalized move reaches the scene within seconds. The first page only
-  // seeds what has been seen, so an old day is not replayed on open.
-  useEffect(() => {
-    let alive = true;
-    const pull = async () => {
-      if (AppState.currentState !== 'active') return;
-      try {
-        const items = await fetchEvents(seeded.current ? 25 : 60);
-        if (!alive) return;
-        if (!seeded.current) {
-          seeded.current = true;
-          items.forEach((item) => seen.current.add(item.id));
-          // The last sixty moves are replayed once, oldest first and spread
-          // over most of a minute, so the vault is alive from the first look
-          // and every phone in it is still a real finalized move.
-          scene.current?.push({ type: 'events', replay: true, items: [...items].reverse().map((item) => ({ kind: item.type, amount: item.amount ?? 0, who: who(item.name, item.wallet), sig: item.signature })) });
-          return;
-        }
-        const arrived = items.filter((item) => item.id && !seen.current.has(item.id));
-        if (arrived.length === 0) return;
-        arrived.forEach((item) => seen.current.add(item.id));
-        if (seen.current.size > 600) seen.current = new Set([...seen.current].slice(-200));
-        scene.current?.push({ type: 'events', items: arrived.reverse().map((item) => ({ kind: item.type, amount: item.amount ?? 0, who: who(item.name, item.wallet), sig: item.signature })) });
-      } catch {
-        // The scene keeps raining at its last known tempo.
-      }
-    };
-    void pull();
-    const timer = setInterval(() => void pull(), EVENTS_MS);
-    return () => { alive = false; clearInterval(timer); };
-  }, []);
+  // Every finalized move reaches the scene within seconds, from the one feed
+  // the whole app listens to. The first page seeds what has been seen and is
+  // replayed once, oldest first and spread over most of a minute, so the vault
+  // is alive from the first look and every phone in it is a real move.
+  useEffect(() => subscribeFeed((items, first) => {
+    if (first) {
+      items.forEach((item) => seen.current.add(item.id));
+      scene.current?.push({ type: 'events', replay: true, items: [...items].reverse().map((item) => ({ kind: item.type, amount: item.amount ?? 0, who: who(item.name, item.wallet), sig: item.signature })) });
+      return;
+    }
+    const arrived = items.filter((item) => item.id && !seen.current.has(item.id));
+    if (arrived.length === 0) return;
+    arrived.forEach((item) => seen.current.add(item.id));
+    if (seen.current.size > 600) seen.current = new Set([...seen.current].slice(-200));
+    scene.current?.push({ type: 'events', items: arrived.reverse().map((item) => ({ kind: item.type, amount: item.amount ?? 0, who: who(item.name, item.wallet), sig: item.signature })) });
+  }), []);
 
   // The day's largest stakes rest on the pile, lit, as the counterweight to
   // the exits hanging above: the vault takes in more than it lets go most
@@ -396,7 +365,7 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
           `commitment  finalized · ${state?.status.phase ?? 'syncing'}`,
           `vault read  ${relativeTime(metrics?.updatedAt ?? null)}`,
           `guardians   ${metrics ? `${metrics.guardians.count}, top pool ${metrics.guardians.topConcentrationPercent.toFixed(1)}%` : '—'}`,
-          'scene       drizzle is density; labels are finalized moves',
+          'scene       every phone is a finalized move · last 60 replayed on open',
           error ? `last error  ${error}` : 'source      skr.alexkosa.dev · own indexer',
         ]}
       />

@@ -101,7 +101,7 @@ export function StakerCard({ profile, age, share, claimed, name, networkPosition
             </View>
           </View>
         ) : (
-          <Text style={styles.empty}>{t('Connect the wallet that holds your stake to fill this card in.')}</Text>
+          null
         )}
       </View>
     </View>

@@ -235,11 +235,16 @@ export function FlowLab({ active }: { active: boolean }) {
   }, []);
 
 
+  const generation = useRef(0);
   const pull = useCallback(async (fresh: boolean) => {
     // A phone in a pocket must not keep asking the server for news.
     if (!fresh && appState.current !== 'active') return;
+    // An answer for a filter the person has since left is thrown away, or a
+    // slow page of dust would land under a chip that promised none.
+    const ticket = generation.current;
     try {
       const items = await fetchEvents(minimum, 25, kind === 'all' ? undefined : kind);
+      if (ticket !== generation.current) return;
       setLive(true);
       if (fresh) {
         seen.current = new Set(items.map((item) => item.id));
@@ -262,26 +267,25 @@ export function FlowLab({ active }: { active: boolean }) {
       // feed feels it land without having to read.
       const stamp = Date.now();
       if (appState.current !== 'active') return;
-      const heavy = arrived.some((item) => (item.amount ?? 0) >= BIG_EVENT);
-
       // The sounds for these moves come from the app itself now (src/lab/cues.ts),
       // so they are heard on any tab. The feed keeps only its light tap.
-      if (false) {
-      } else if (haptics && stamp - lastHaptic.current > HAPTIC_GAP_MS) {
+      if (haptics && stamp - lastHaptic.current > HAPTIC_GAP_MS) {
         lastHaptic.current = stamp;
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
       }
     } catch {
       setLive(false);
     }
-  }, [haptics, kind, minimum, sound]);
+  }, [haptics, kind, minimum]);
 
   // The pinned block asks the server for large events only, so it is not
   // limited to whatever happens to be in the last page of the feed.
   const pullHeadline = useCallback(async () => {
     if (appState.current !== 'active') return;
     try {
-      const items = await fetchEvents(HEADLINE_MINIMUM, 20);
+      // Two hundred is the server's page limit; a busy day has a hundred-odd
+      // moves this size, so the whole day fits and the peak is the day's peak.
+      const items = await fetchEvents(HEADLINE_MINIMUM, 200);
       if (items.length === 0) return;
       const stamp = Math.floor(Date.now() / 1_000);
       const withinDay = items.filter((item) => stamp - item.blockTime <= DAY_SECONDS);
@@ -296,6 +300,7 @@ export function FlowLab({ active }: { active: boolean }) {
 
   useEffect(() => {
     if (!active) return;
+    generation.current += 1;
     void pull(true);
     const timer = setInterval(() => void pull(false), POLL_MS);
     return () => clearInterval(timer);

@@ -43,6 +43,8 @@ export function MyLab() {
   const [walletLabel, setWalletLabel] = useState<string | null>(null);
   const [profile, setProfile] = useState<WalletProfile | null>(null);
   const [age, setAge] = useState<PositionAge | null>(null);
+  const ageExact = useRef(false);
+  const session = useRef(0);
   const [ageError, setAgeError] = useState<string | null>(null);
   const [networkStake, setNetworkStake] = useState<number | null>(null);
   const [networkPositions, setNetworkPositions] = useState<number | null>(null);
@@ -125,20 +127,27 @@ export function MyLab() {
     if (!clean) return;
     if (!quiet) setBusy(true);
     setError(null);
-    setAge(null);
+    // A quiet re-read keeps the age it already has; only a new look-up starts
+    // the chain walk again, or the panel would blink to 'reading' every minute.
+    if (!quiet) { setAge(null); ageExact.current = false; }
+    // Disconnect moves the session on; an answer from before it is dropped, or
+    // a slow read would quietly re-save the wallet the person just erased.
+    const ticket = session.current;
     try {
       const next = await fetchWalletProfile(clean);
+      if (ticket !== session.current) return;
       setAddress(clean);
       setProfile(next);
       setReadAt(Math.floor(Date.now() / 1_000));
       void AsyncStorage.mergeItem(SESSION_KEY, JSON.stringify({ address: clean })).catch(() => AsyncStorage.setItem(SESSION_KEY, JSON.stringify({ address: clean })).catch(() => undefined));
       const accounts = next.positions.map((position) => position.stakeAccount).filter(Boolean);
+      if (quiet && ageExact.current) return;
       setAgeError(null);
-      void fetchWalletAge(accounts, (partial) => setAge((current) => current?.exact ? current : partial))
-        .then((final) => { if (final) setAge(final); else setAgeError(t('the chain returned no signatures')); })
+      void fetchWalletAge(accounts, (partial) => { if (ticket === session.current) setAge((current) => current?.exact ? current : partial); })
+        .then((final) => { if (ticket !== session.current) return; if (final) { setAge(final); ageExact.current = Boolean(final.exact); } else setAgeError(t('the chain returned no signatures')); })
         .catch((caught) => setAgeError(caught instanceof Error ? caught.message : t('age lookup failed')));
     } catch (caught) {
-      if (quiet) return;
+      if (quiet || ticket !== session.current) return;
       setProfile(null);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       if (caught instanceof ApiError && caught.status === 503) setError(t('The finalized snapshot is still warming up. Try again in a moment.'));
@@ -235,6 +244,7 @@ export function MyLab() {
   }, [inspect, profile?.wallet]);
 
   const disconnect = useCallback(async () => {
+    session.current += 1;
     const previous = profile?.wallet ?? address;
     await AsyncStorage.removeItem(SESSION_KEY).catch(() => undefined);
     await AsyncStorage.removeItem(CARD_KEY).catch(() => undefined);
@@ -272,7 +282,7 @@ export function MyLab() {
               label={t('Leaving')}
               value={compact(profile!.totals.pendingUnstake)}
               unit="SKR"
-              note={t('{count} position(s) in cooldown', { count: integer(profile!.totals.pendingPositions) })}
+              note={profile!.totals.pendingPositions === 1 ? t('1 position in cooldown') : t('{count} positions in cooldown', { count: integer(profile!.totals.pendingPositions) })}
               tone={colors.pending}
             />
             <Tile
@@ -379,7 +389,7 @@ export function MyLab() {
             onChangeText={setAddress}
             style={styles.input}
           />
-          <Button label={t('Look up')} onPress={() => void inspect(address)} disabled={busy || !address.trim()} ghost />
+          <Button label={t('Look up')} onPress={() => { setWalletLabel(null); void inspect(address); }} disabled={busy || !address.trim()} ghost />
         </>
       )}
 

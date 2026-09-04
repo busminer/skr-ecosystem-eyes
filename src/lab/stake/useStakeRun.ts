@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { t } from '../../i18n';
 import * as Haptics from 'expo-haptics';
 import { PublicKey } from '@solana/web3.js';
 import { transact } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
@@ -49,6 +50,9 @@ export type StakeRun = {
   guardianPool: string;
   createdAt: number;
   parts: StakePart[];
+  // Set the moment the wallet has the transactions. From then on the app
+  // cannot know what reached the chain until it asks, even after a restart.
+  handed?: boolean;
 };
 
 export type RunPhase = 'idle' | 'preparing' | 'signing' | 'sending' | 'done' | 'error';
@@ -96,9 +100,16 @@ export function useStakeRun(wallet: string | null) {
         const saved = JSON.parse(raw) as StakeRun;
         if (!saved?.parts?.length) return void forget();
         if (wallet && saved.wallet !== wallet) return void forget();
-        // A run without a single signature never reached the chain: there is
-        // nothing to resume and nothing to be careful about.
-        if (!saved.parts.some((part) => part.signature)) return void forget();
+        // A run without a single signature never reached the chain, unless the
+        // app died while the wallet held it: then it may have been broadcast
+        // and the person must be told before they stake the same amount twice.
+        if (!saved.parts.some((part) => part.signature)) {
+          if (!saved.handed) return void forget();
+          setUncertain(true);
+          setError(t('The app was closed while the wallet had this stake. Check your position on the Me screen before staking again.'));
+          setPhase('error');
+          return void forget();
+        }
         const unsettled = saved.parts.some((part) => part.state !== 'confirmed' && part.state !== 'failed');
         if (!unsettled) return void forget();
         runRef.current = saved;
@@ -272,6 +283,7 @@ export function useStakeRun(wallet: string | null) {
         // told plainly that nothing was sent, not warned about money that
         // never moved.
         handedToWallet = true;
+        if (runRef.current) commit({ ...runRef.current, handed: true });
         return adapter.signAndSendTransactions({ transactions: unsigned, minContextSlot: slot });
       }) as string[];
 
