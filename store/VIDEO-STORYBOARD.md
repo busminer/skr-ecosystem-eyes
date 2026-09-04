@@ -1,11 +1,39 @@
-# Store video storyboard — 25–35 seconds
+# Промо-ролик SKR Eyes 1.1.0 — раскадровка
 
-Format: portrait MP4, 1080×1920, recorded on a physical Seeker. No wallet address, notification contents from another app, or developer overlays may be visible.
+Собран 04.09.2026 из живых записей экрана Seeker (`adb shell screenrecord`,
+1200×2670, 24 Мбит/с), смонтирован ffmpeg 8.1. Формат 1080×1920, 60 к/с,
+20,15 с, звук AAC. Никаких дорисовок: каждый кадр — приложение как есть.
+Подписи и финальный кадр отрисованы безголовым Chrome шрифтами Geist в
+палитре приложения (BG #04070B, ACCENT #56E0FF, MUTED #8296A8).
 
-1. **0–5 s — Pulse:** cold launch into Pulse; show finalized ecosystem totals, freshness, and evidence labels.
-2. **5–12 s — Me / MWA:** open Me, tap connect, show the system wallet picker briefly, then return to the app. Crop or blur account identifiers in the edit.
-3. **12–18 s — Position:** show the honest `NO CURRENT POSITION` state or a designated public test wallet with an actual position. Never simulate a position.
-4. **18–25 s — Alerts:** open Alerts, show notification permission and the local test-notification control.
-5. **25–31 s — Notification:** show the SKR Eyes notification in the Android shade, with unrelated notifications hidden.
-6. **31–35 s — Close:** return to Pulse and end on `SKR EYES` with the caption `READ-ONLY STAKING INTELLIGENCE`.
+| Время | Что на экране | Подпись | Звук |
+|---|---|---|---|
+| 0.0–4.5 | «Первый камень»: телефон падает во тьму, волна открывает кучу, глаз открывается и подмигивает. Кадр во весь экран | — | whistle, stake, wake, wink из самого приложения, по таймлайну заставки |
+| 4.5–10.3 | Сцена хранилища, плавный наезд от общего плана до крупного: дождь стейков с именами .skr, кольца выходов, куча | THE LIVING VAULT / Every stake falls in. With its .skr name. | тихая подложка |
+| 10.3–13.1 | Телефон в рамке: прокрутка к карточкам дня, столбики по часам | THE DAY, HOUR BY HOUR / Every figure as 24 bars. | подложка |
+| 13.1–15.9 | Flow: закреплённый крупнейший стейк дня, фильтр 100K+ | FLOW / The biggest moves, pinned. | подложка |
+| 15.9–18.6 | Me: карточка kosa.skr растворяется в карточку «A Seeker» с закрытым глазом | YOUR CARD / Show your name, or hide it. | подложка |
+| 18.6–20.15 | Финал: иконка, SKR EYES, Version 1.1.0, SOLANA DAPP STORE, free, for Seeker; штамп X · @AlexKosa1 · Seeker Community | — | tudum, затухание |
 
+Переходы: fade → smoothup → smoothleft → smoothleft → fadeblack.
+
+## Как пересобрать
+
+Рабочие файлы: `store/promo/src` (дубли `raw/*.mp4`, подписи `cap/*.png`,
+`make-overlays.py`, `build.py`, `pad.wav`). Для новой версии:
+
+1. Записать дубли с телефона, поворот экрана заблокировать
+   (`settings put system accelerometer_rotation 0`), путь `/sdcard` писать с
+   `MSYS_NO_PATHCONV=1`, иначе Git Bash подменит его на путь Windows.
+2. Лучшее окно дождя выбрать по счётчику мятных пикселей в полосе неба
+   (в этот раз 20–26 с дубля).
+3. `python make-overlays.py`, затем `python build.py`.
+
+Наезд в сцене сделан через `zoompan` поверх увеличенной вдвое картинки: обычный
+`scale` с `eval=frame` внутри графа масштаб не менял, менял только смещение.
+
+## Что осталось на усмотрение Alex
+
+- Подписи на английском, как и надписи в самой сцене.
+- В сцене видна его собственная позиция kosa.skr · 1.2M (золотая метка на куче).
+- Подложка синтезирована, не из приложения; можно убрать (volume=0 в build.py).

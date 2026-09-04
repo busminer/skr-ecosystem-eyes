@@ -12,8 +12,8 @@ import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { fetchEcosystemState } from './src/api';
 import { langReady, t, useLang } from './src/i18n';
-import { configureNotifications } from './src/notifications';
-import { hydratePrefs } from './src/prefs';
+import { askNotificationPermissionOnce, configureNotifications, scheduleDailyNudge } from './src/notifications';
+import { hydratePrefs, prefValue, prefsReady } from './src/prefs';
 import { prepareSound } from './src/sound';
 import { useEventCues } from './src/lab/cues';
 import { colors, font, spacing, type } from './src/theme';
@@ -127,7 +127,12 @@ export default function App() {
   useEventCues();
   const appState = useRef(AppState.currentState);
   const reading = useRef(false);
-  const finishOpening = useCallback(() => setOpening(false), []);
+  // The opening ends, the person sees the vault, and only then the phone asks
+  // about notifications: once, and with the daily nudge set the moment it may be.
+  const finishOpening = useCallback(() => {
+    setOpening(false);
+    void prefsReady.then(() => askNotificationPermissionOnce()).then(() => scheduleDailyNudge(prefValue('nudge:daily', true)));
+  }, []);
   const [fontsLoaded] = useFonts({
     Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold, Geist_900Black,
     GeistMono_400Regular, GeistMono_600SemiBold, GeistMono_700Bold, GeistMono_900Black,
