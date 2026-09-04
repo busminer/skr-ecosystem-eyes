@@ -49,9 +49,9 @@ What is cooling down, what is ready, and when each position matures. Your
 phone can wake you at the exact on-chain unlock time; the alert is set on
 the device itself, and no address is sent anywhere for it.
 
-Ten languages
-English, 中文, Русский, Español, Português, Türkçe, Tiếng Việt, Indonesia,
-한국어, 日本語. The app follows your phone's language and can be switched by
+Eleven languages
+English, Deutsch, 中文, Русский, Español, Português, Türkçe, Tiếng Việt,
+Indonesia, 한국어, 日本語. The app follows your phone's language and can be switched by
 hand on the Alerts screen.
 
 Free and open source, built by one Seeker. Tips in SKR go to kosa.skr and
@@ -69,7 +69,7 @@ What people asked for: earned on staking, read from the chain, and two privacy s
 
 Sounds you can feel: a glass chime for a large stake, the vault bell for a huge one, a low boom for a large exit, each with a short buzz. Or switch them off.
 
-Sixteen: 16 parts of 1 SKR with one approval, and a gentle daily nudge you can switch off. Flow filtered by kind and size, with the day's biggest moves pinned and the day drawn hour by hour. All ten languages reviewed end to end. Tips in SKR, staked right away.
+Sixteen: 16 parts of 1 SKR with one approval, and a gentle daily nudge you can switch off. Flow filtered by kind and size, with the day's biggest moves pinned and the day drawn hour by hour. German added, as people asked, and all eleven languages reviewed end to end. Tips in SKR, staked right away.
 ```
 
 ## What actually changed since 1.0.4
@@ -116,7 +116,7 @@ silently forgotten.
 sheet: any amount in SKR to kosa.skr, SPL TransferChecked signed by the wallet,
 staked right away, marked checked only when the chain answered.
 
-**Languages.** Nine tables read end to end by native-level editors; finance terms
+**Languages.** German added on request; ten tables read end to end by native-level editors; finance terms
 set straight, 60 new strings, the Vault tab and Flow chips named everywhere.
 
 **Server (f00c26c, 20f93be).** The wallet profile and the state's recent events

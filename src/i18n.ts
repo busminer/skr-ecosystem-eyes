@@ -10,6 +10,7 @@ import { vi } from './strings/vi';
 import { id } from './strings/id';
 import { ko } from './strings/ko';
 import { ja } from './strings/ja';
+import { de } from './strings/de';
 
 // The English sentence in the code is the key. There is no table of `home.title`
 // style names to keep in step with the screens, so a string that has no
@@ -17,7 +18,7 @@ import { ja } from './strings/ja';
 // to somebody. The cost is that editing an English sentence orphans its
 // translation, which `npm run i18n:check` reports.
 
-export const LANGS = ['en', 'zh', 'ru', 'es', 'pt', 'tr', 'vi', 'id', 'ko', 'ja'] as const;
+export const LANGS = ['en', 'de', 'zh', 'ru', 'es', 'pt', 'tr', 'vi', 'id', 'ko', 'ja'] as const;
 export type Lang = typeof LANGS[number];
 
 // Each language named the way its own speakers write it. A person looking for
@@ -25,6 +26,7 @@ export type Lang = typeof LANGS[number];
 // word for it.
 export const LANG_LABEL: Record<Lang, string> = {
   en: 'English',
+  de: 'Deutsch',
   zh: '中文',
   ru: 'Русский',
   es: 'Español',
@@ -36,7 +38,7 @@ export const LANG_LABEL: Record<Lang, string> = {
   ja: '日本語',
 };
 
-const TABLES: Record<Lang, Record<string, string>> = { en: {}, zh, ru, es, pt, tr, vi, id, ko, ja };
+const TABLES: Record<Lang, Record<string, string>> = { en: {}, de, zh, ru, es, pt, tr, vi, id, ko, ja };
 const STORE_KEY = 'skr-eyes:lang';
 
 function isLang(value: unknown): value is Lang {

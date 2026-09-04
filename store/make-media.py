@@ -177,7 +177,7 @@ SHOTS = [
      "Stakes, exits and withdrawals as they land, by kind and by size, the day's biggest pinned on top."),
     ("cap-me.png", "Stake from the same screen",
      "Sixteen: 16 parts of 1 SKR with one approval. Earned on staking, read from the chain. Two privacy switches for the card."),
-    ("cap-alerts.png", "Ten languages, sounds you can feel",
+    ("cap-alerts.png", "Eleven languages, sounds you can feel",
      "A glass chime for a stake, the vault bell for a large one, a low boom for a large exit. Unlock alerts set on the phone itself."),
 ]
 
