@@ -97,7 +97,7 @@ function QueueList({ queue, shown, allQueue, onToggle }: { queue: QueueRow[]; sh
   );
 }
 
-export function PulseLab({ frozen }: { frozen: boolean }) {
+export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; topInset?: number; onAtTop?: (atTop: boolean) => void }) {
   const { width, height } = useWindowDimensions();
   const [state, setState] = useState<EcosystemState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -194,6 +194,7 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
   }, []);
 
   useEffect(() => { scene.current?.push({ type: 'freeze', on: frozen }); }, [frozen]);
+  useEffect(() => { scene.current?.push({ type: 'inset', top: topInset }); }, [topInset]);
   useEffect(() => { scene.current?.push({ type: 'motion', mode: reducedMotion ? 'off' : motion }); }, [motion, reducedMotion]);
 
   // The first time this phone opens the vault, it watches it being built:
@@ -245,7 +246,9 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
   const note = t(RANGE_NOTE[range]);
   const inner = width - spacing.lg * 2;
   const hero = metrics ? splitCompact(metrics.activeStaked) : null;
-  const sceneHeight = Math.round(Math.min(420, Math.max(300, height * 0.4)));
+  // The sky runs up behind the header, so the header floats over the scene
+  // instead of sitting on a black band above it.
+  const sceneHeight = Math.round(Math.min(420, Math.max(300, height * 0.4))) + topInset;
   const queue = [...(metrics?.queue ?? [])].sort((left, right) => left.unlockAt - right.unlockAt);
   const shownQueue = allQueue ? queue : queue.slice(0, QUEUE_SHORT);
 
@@ -254,9 +257,12 @@ export function PulseLab({ frozen }: { frozen: boolean }) {
       ref={page}
       style={styles.screen}
       contentContainerStyle={styles.content}
+      onScroll={(event) => onAtTop?.(event.nativeEvent.contentOffset.y < 6)}
+      scrollEventThrottle={48}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={colors.accent} />}
     >
       <View style={[styles.sceneWrap, { height: sceneHeight, marginHorizontal: -spacing.lg }]}>
+        {/* the header's own height is the scene's top inset: nothing is drawn under the wordmark */}
         <VaultScene ref={scene} height={sceneHeight} onTap={setReceipt} />
       </View>
 

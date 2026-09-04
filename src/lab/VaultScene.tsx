@@ -21,7 +21,8 @@ export type SceneMessage =
   | { type: 'story' }
   | { type: 'landmarks'; items: Array<{ amount: number; who: string | null; sig: string }> }
   | { type: 'night'; on: boolean; lit?: number }
-  | { type: 'demo'; what: 'whalein' | 'whaleout' };
+  | { type: 'demo'; what: 'whalein' | 'whaleout' }
+  | { type: 'inset'; top: number };
 
 export type SceneTap = { kind: 'stake' | 'exit'; amount: number; who: string; sig: string; unlockAt?: number; ready?: boolean };
 
@@ -29,7 +30,7 @@ export type SceneHandle = { push: (message: SceneMessage) => void };
 
 // The last of each of these is enough to rebuild the picture after a restart;
 // events and pauses are moments, not state, and are not replayed.
-const REMEMBERED: ReadonlySet<SceneMessage['type']> = new Set<SceneMessage['type']>(['motion', 'state', 'me', 'landmarks', 'night', 'freeze']);
+const REMEMBERED: ReadonlySet<SceneMessage['type']> = new Set<SceneMessage['type']>(['inset', 'motion', 'state', 'me', 'landmarks', 'night', 'freeze']);
 
 export const VaultScene = forwardRef<SceneHandle, { height: number; onTap?: (hit: SceneTap) => void }>(function VaultScene({ height, onTap }, ref) {
   const web = useRef<WebView>(null);

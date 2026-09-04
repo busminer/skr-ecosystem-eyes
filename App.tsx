@@ -44,6 +44,9 @@ const freshnessOpen = { fresh: 1, aging: 0.62, stale: 0.22, unavailable: 0 } as 
 // their own clock, and the queue is by far the slowest: reading its word over
 // the whole app made every screen look stale while the numbers on it were
 // seconds old.
+// The header's height is also the scene's top inset on Vault, so nothing is drawn under the wordmark.
+const TOP_BAR = 46;
+
 const TAB_SOURCE: Record<Tab, keyof Pick<FreshnessDetail, 'metrics' | 'events' | 'queue' | 'overall'>> = {
   pulse: 'metrics',
   flow: 'events',
@@ -111,6 +114,8 @@ function TabBar({ tab, onSelect }: { tab: Tab; onSelect: (next: Tab) => void }) 
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('pulse');
+  // On Vault the header floats over the sky; once the page scrolls it gets its ground back.
+  const [vaultAtTop, setVaultAtTop] = useState(true);
   const [detail, setDetail] = useState<FreshnessDetail | null>(null);
   const [stamps, setStamps] = useState<{ metrics: number | null; events: number | null; queue: number | null }>({ metrics: null, events: null, queue: null });
   const [opening, setOpening] = useState(true);
@@ -189,7 +194,7 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <View style={styles.topBar}>
+        <View style={[styles.topBar, tab === 'pulse' && { zIndex: 3, backgroundColor: vaultAtTop ? 'transparent' : colors.bg }]}>
           <Mark size={22} open={freshness ? freshnessOpen[freshness] : 1} />
           <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.wordmark}>SKR EYES</Text>
           <View style={styles.status}>
@@ -199,8 +204,8 @@ export default function App() {
           </View>
         </View>
 
-        <Animated.View key={tab} entering={FadeIn.duration(180)} style={styles.body}>
-          {tab === 'pulse' ? <PulseLab frozen={freshness === 'stale' || freshness === 'unavailable'} /> : null}
+        <Animated.View key={tab} entering={FadeIn.duration(180)} style={[styles.body, tab === 'pulse' && { marginTop: -TOP_BAR }]}>
+          {tab === 'pulse' ? <PulseLab frozen={freshness === 'stale' || freshness === 'unavailable'} topInset={TOP_BAR} onAtTop={setVaultAtTop} /> : null}
           {tab === 'flow' ? <FlowLab active={tab === 'flow'} /> : null}
           {tab === 'me' ? <MyLab /> : null}
           {tab === 'alerts' ? <AlertsLab /> : null}
@@ -217,7 +222,7 @@ export default function App() {
 const styles = StyleSheet.create({
   boot: { flex: 1, backgroundColor: colors.bg },
   safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { height: 46, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg },
+  topBar: { height: TOP_BAR, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg },
   wordmark: { color: colors.text, fontFamily: font.black, fontSize: 12, letterSpacing: 1.6, flexShrink: 1 },
   status: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
