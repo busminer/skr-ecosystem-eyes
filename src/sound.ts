@@ -7,7 +7,14 @@ import { prefValue } from './prefs';
 //
 // Three voices for three moves, all from a hundred thousand SKR: a large stake
 // is an old phone ringing twice, a large exit is the tudum, a large withdrawal
-// is a door closing. The rest of the set serves the opening and the tip sheet. The audio mode is set to mix: none of this may pause the
+// is a door closing. The rest of the set serves the opening and the tip sheet.
+//
+// The door was rebuilt on 06.09: the old one had a hiss above five kilohertz
+// that read as cheap. The new one is the leaf meeting the frame and the weight
+// of it settling, nothing above two kilohertz, and a third of a second rather
+// than two thirds. Alex picked it by ear from two candidates.
+//
+// The audio mode is set to mix: none of this may pause the
 // music the person is already listening to.
 
 const sources = {
