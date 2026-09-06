@@ -68,9 +68,10 @@ of an address or a full address wherever it stands. The treasury list is
 replaceable through `SKR_TREASURY_WALLETS`. 164 tests, among them the board
 on the top 400 of that scan and the route over a live HTTP server.
 
-**Languages.** 54 new strings in ten tables, translated through Hermes with
-Alex's ChatGPT subscription, one request per language, checked by machine for
-lost placeholders, lost names and length.
+**Languages.** 56 new strings in ten tables, translated by Claude on Alex's
+order of 06.09 — the batch that had gone through other models was thrown away —
+and checked by machine for lost placeholders, lost names and length. Each of the
+ten tables carries all 300 keys, with nothing missing and nothing orphaned.
 
 ## Not in this release
 
