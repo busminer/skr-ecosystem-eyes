@@ -22,14 +22,18 @@ import { AlertsLab } from './src/lab/AlertsLab';
 import { FlowLab } from './src/lab/FlowLab';
 import { Mark } from './src/lab/kit';
 import { Splash } from './src/lab/Splash';
+import { SplashTurn } from './src/lab/SplashTurn';
 import { MyLab } from './src/lab/MyLab';
+import { TopLab } from './src/lab/TopLab';
+import { useTabRequests } from './src/nav';
 import { PulseLab } from './src/lab/PulseLab';
 
-type Tab = 'pulse' | 'flow' | 'me' | 'alerts';
+type Tab = 'pulse' | 'flow' | 'top' | 'me' | 'alerts';
 
 const tabs: Array<{ key: Tab; label: string }> = [
   { key: 'pulse', label: 'Vault' },
   { key: 'flow', label: 'Flow' },
+  { key: 'top', label: 'Top' },
   { key: 'me', label: 'Me' },
   { key: 'alerts', label: 'Alerts' },
 ];
@@ -50,6 +54,8 @@ const TOP_BAR = 46;
 const TAB_SOURCE: Record<Tab, keyof Pick<FreshnessDetail, 'metrics' | 'events' | 'queue' | 'overall'>> = {
   pulse: 'metrics',
   flow: 'events',
+  // The board is rebuilt from the position scan, so its age is the scan's.
+  top: 'queue',
   me: 'metrics',
   alerts: 'overall',
 };
@@ -120,6 +126,10 @@ export default function App() {
   const [stamps, setStamps] = useState<{ metrics: number | null; events: number | null; queue: number | null }>({ metrics: null, events: null, queue: null });
   const [opening, setOpening] = useState(true);
   const [langLoaded, setLangLoaded] = useState(false);
+  // Which opening this phone chose is read before the first frame, like the
+  // language: an opening that starts as one thing and becomes another is
+  // worse than a moment's delay.
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
   // Nothing on screen may be drawn in the wrong language and then swapped, so
   // the saved choice is read before the first frame, beside the fonts.
   useLang();
@@ -141,6 +151,7 @@ export default function App() {
 
   useEffect(() => { void hydratePrefs(); void configureNotifications(); void prepareSound(); }, []);
   useEffect(() => { void langReady.then(() => setLangLoaded(true)); }, []);
+  useEffect(() => { void prefsReady.then(() => setPrefsLoaded(true)); }, []);
   // Nothing else hides the native splash, so the first painted frame does it.
   useEffect(() => { if (fontsLoaded) void SplashScreen.hideAsync().catch(() => undefined); }, [fontsLoaded]);
   useEffect(() => {
@@ -188,8 +199,11 @@ export default function App() {
       return next;
     });
   }, []);
+  // One screen asking for another: Me for the Top tab on its own row, Top for
+  // Me with the card.
+  useTabRequests(useCallback((request) => setTab(request.tab), []));
 
-  if (!fontsLoaded || !langLoaded) return <View style={styles.boot} />;
+  if (!fontsLoaded || !langLoaded || !prefsLoaded) return <View style={styles.boot} />;
 
   const source = TAB_SOURCE[tab];
   const freshness: Freshness | null = detail ? detail[source] : null;
@@ -212,11 +226,15 @@ export default function App() {
         <Animated.View key={tab} entering={FadeIn.duration(180)} style={[styles.body, tab === 'pulse' && { marginTop: -TOP_BAR }]}>
           {tab === 'pulse' ? <PulseLab frozen={freshness === 'stale' || freshness === 'unavailable'} topInset={TOP_BAR} onAtTop={setVaultAtTop} /> : null}
           {tab === 'flow' ? <FlowLab active={tab === 'flow'} /> : null}
+          {tab === 'top' ? <TopLab /> : null}
           {tab === 'me' ? <MyLab /> : null}
           {tab === 'alerts' ? <AlertsLab /> : null}
         </Animated.View>
 
-        {opening ? <Splash onDone={finishOpening} /> : null}
+        {/* Two openings. The turn is the one from 1.0, back because people
+            asked for it; the first stone is the one from 1.1. Chosen on
+            Alerts, and the turn is the default. */}
+        {opening ? (prefValue('splash:turn', true) ? <SplashTurn onDone={finishOpening} /> : <Splash onDone={finishOpening} />) : null}
 
         <TabBar tab={tab} onSelect={select} />
       </SafeAreaView>

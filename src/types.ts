@@ -109,3 +109,42 @@ export type WalletProfile = {
     caveat: string | null;
   };
 };
+
+// The leaderboard, as /api/top serves it. Places are counted among people:
+// the treasury-size wallets are set aside and reported as one line.
+export type TopList = 'stake' | 'earned' | 'movers';
+
+export type TopRow = {
+  rank: number;
+  prevRank: number | null;
+  delta: number | null;
+  earnedRank: number;
+  tier: string;
+  wallet: string;
+  name: string | null;
+  staked: number;
+  earned: number;
+};
+
+export type TopMe =
+  | (TopRow & { found: true; holdLess: number })
+  | { found: false; treasury?: boolean };
+
+export type TopTier = { label: string; p: number; cut: number; count: number };
+
+export type TopPage = {
+  list: TopList;
+  updatedAt: number;
+  people: number;
+  peopleTotal: number;
+  total: number;
+  offset: number;
+  limit: number;
+  rows: TopRow[];
+  me: TopMe | null;
+  tiers: TopTier[];
+  treasury: { count: number; total: number };
+  movers: { since: string | null; available: boolean };
+};
+
+export type TopFind = { query: string; rows: TopRow[]; treasury?: boolean };

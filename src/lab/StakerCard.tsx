@@ -24,7 +24,8 @@ export function cardFacts(
   age: PositionAge | null,
   label: string | null,
   networkPositions: number | null,
-  privacy?: { hideName: boolean; hideAmount: boolean },
+  privacy?: { hideName: boolean; hideAmount: boolean; showPlace?: boolean },
+  place?: CardFacts['place'],
 ): CardFacts {
   return {
     name: label || (profile ? shortAddress(profile.wallet) : 'not connected'),
@@ -35,10 +36,12 @@ export function cardFacts(
     networkPositions,
     hideName: privacy?.hideName ?? false,
     hideAmount: privacy?.hideAmount ?? false,
+    place: place ?? null,
+    showPlace: privacy?.showPlace ?? true,
   };
 }
 
-export function StakerCard({ profile, age, share, claimed, name, networkPositions, fallback, width, privacy }: {
+export function StakerCard({ profile, age, share, claimed, name, networkPositions, fallback, width, privacy, place }: {
   profile: WalletProfile | null;
   age: PositionAge | null;
   share: number | null;
@@ -49,14 +52,15 @@ export function StakerCard({ profile, age, share, claimed, name, networkPosition
   // way, so a cold start never has a hole where the card belongs.
   fallback?: CardFacts | null;
   width: number;
-  privacy?: { hideName: boolean; hideAmount: boolean };
+  privacy?: { hideName: boolean; hideAmount: boolean; showPlace?: boolean };
+  place?: CardFacts['place'];
 }) {
   // Merged field by field rather than card-or-card. The profile comes back in
   // under a second and the age takes several, so an all-or-nothing swap makes
   // the day count appear, vanish, and appear again — which looks like a fault
   // in the number itself. Anything the live read has not answered yet keeps
   // showing what it said last time.
-  const live = cardFacts(profile, age, name ?? null, networkPositions, privacy);
+  const live = cardFacts(profile, age, name ?? null, networkPositions, privacy, place);
   const facts: CardFacts = fallback
     ? {
         name: profile ? live.name : fallback.name,
@@ -67,6 +71,8 @@ export function StakerCard({ profile, age, share, claimed, name, networkPosition
         networkPositions: live.networkPositions ?? fallback.networkPositions,
         hideName: live.hideName,
         hideAmount: live.hideAmount,
+        place: live.place ?? fallback.place ?? null,
+        showPlace: live.showPlace,
       }
     : live;
 

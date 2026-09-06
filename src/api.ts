@@ -1,5 +1,5 @@
 import { lang, t } from './i18n';
-import type { EcosystemState, WalletProfile } from './types';
+import type { EcosystemState, TopFind, TopList, TopPage, WalletProfile } from './types';
 
 // Store builds are intentionally pinned to the reviewed HTTPS backend.
 // This prevents build-time environment overrides from redirecting wallet lookups.
@@ -44,3 +44,9 @@ async function getJson<T>(path: string): Promise<T> {
 
 export const fetchEcosystemState = () => getJson<EcosystemState>('/api/state');
 export const fetchWalletProfile = (wallet: string) => getJson<WalletProfile>(`/api/wallet/${encodeURIComponent(wallet)}`);
+
+// The leaderboard, one page at a time. The wallet rides along so the answer
+// carries this person's own place without a second request.
+export const fetchTop = ({ list, offset = 0, limit = 100, wallet }: { list: TopList; offset?: number; limit?: number; wallet?: string | null }) =>
+  getJson<TopPage>(`/api/top?list=${list}&offset=${offset}&limit=${limit}${wallet ? `&wallet=${encodeURIComponent(wallet)}` : ''}`);
+export const findTop = (query: string) => getJson<TopFind>(`/api/top/find?q=${encodeURIComponent(query)}`);

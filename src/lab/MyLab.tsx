@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ApiError, fetchEcosystemState, fetchWalletProfile } from '../api';
+import { ApiError, fetchEcosystemState, fetchTop, fetchWalletProfile } from '../api';
+import { requestTab, takeTabRequest } from '../nav';
 import { t } from '../i18n';
 import { compact, integer, shortAddress } from '../format';
 import { connectReadOnlyWallet } from '../mwa';
@@ -11,7 +12,7 @@ import { SESSION_KEY } from '../session';
 import { usePref } from '../prefs';
 import { Switch } from 'react-native';
 import { colors, font, radius, spacing, type } from '../theme';
-import type { WalletProfile } from '../types';
+import type { TopMe, WalletProfile } from '../types';
 import { fetchWalletAge, type PositionAge } from './age';
 import { forgetStakeRun } from './stake/useStakeRun';
 import { Button, Evidence, Eyebrow, Meter, Panel, Tile } from './kit';
@@ -79,7 +80,13 @@ export function MyLab() {
   // applied to the card on this screen too, so what is seen is what is sent.
   const [hideName, setHideName] = usePref('card:hideName', false);
   const [hideAmount, setHideAmount] = usePref('card:hideAmount', false);
-  const privacy = { hideName, hideAmount };
+  // The place on the card is on by default: it is what people asked for.
+  const [showPlace, setShowPlace] = usePref('card:showPlace', true);
+  const privacy = { hideName, hideAmount, showPlace };
+  // Where this wallet stands among people, from the leaderboard.
+  const [standing, setStanding] = useState<{ me: TopMe; people: number } | null>(null);
+  // Top's "Share my place" lands here wanting the card shared once it is drawn.
+  const wantShare = useRef(Boolean(takeTabRequest('me')?.share));
 
   useEffect(() => {
     fetchEcosystemState().then((state) => {
@@ -144,6 +151,11 @@ export function MyLab() {
       setAddress(clean);
       setProfile(next);
       setReadAt(Math.floor(Date.now() / 1_000));
+      // The place is a nicety beside the profile: asked for separately so a
+      // leaderboard still being counted never delays the card.
+      void fetchTop({ list: 'stake', limit: 1, wallet: clean })
+        .then((top) => { if (ticket === session.current && top.me) setStanding({ me: top.me, people: top.people }); })
+        .catch(() => undefined);
       void AsyncStorage.mergeItem(SESSION_KEY, JSON.stringify({ address: clean })).catch(() => AsyncStorage.setItem(SESSION_KEY, JSON.stringify({ address: clean })).catch(() => undefined));
       const accounts = next.positions.map((position) => position.stakeAccount).filter(Boolean);
       if (quiet && ageExact.current) return;
@@ -205,7 +217,7 @@ export function MyLab() {
       void Haptics.selectionAsync();
       const png = await cardArt.current?.toPng();
       if (!png) throw new Error(t('The card is not ready yet'));
-      const shared = await shareCardPng(png, cardFacts(profile, age, shownName, networkPositions, privacy));
+      const shared = await shareCardPng(png, cardFacts(profile, age, shownName, networkPositions, privacy, place));
       setShareNote(shared.carried
         ? null
         : shared.copied
@@ -216,12 +228,15 @@ export function MyLab() {
     } finally {
       setSharing(false);
     }
-  }, [age, networkPositions, profile, walletLabel, hideName, hideAmount]);
+  }, [age, networkPositions, profile, walletLabel, hideName, hideAmount, showPlace, standing]);
 
   // What the card calls the person: the .skr name the server knows, else
   // whatever label the wallet app gave when it connected, else nothing.
   const shownName = profile?.name ? `${profile.name}.skr` : walletLabel;
-  const live = profile ? cardFacts(profile, age, shownName, networkPositions, privacy) : null;
+  const place: CardFacts['place'] = standing?.me.found
+    ? { rank: standing.me.rank, people: standing.people, holdLess: standing.me.holdLess, tier: standing.me.tier }
+    : null;
+  const live = profile ? cardFacts(profile, age, shownName, networkPositions, privacy, place) : null;
 
   // Written down only when the card is worth remembering: a profile that was
   // read and an age that finished walking. Half a card saved now is half a card
@@ -233,7 +248,17 @@ export function MyLab() {
     // The facts are a fresh object each render; the values inside it are what
     // matter, so the write is keyed on those.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [live?.name, live?.days, live?.exactDays, live?.firstSeenAt, live?.positionSkr, live?.networkPositions]);
+  }, [live?.name, live?.days, live?.exactDays, live?.firstSeenAt, live?.positionSkr, live?.networkPositions, live?.place?.rank]);
+
+  // Opened from Top with "Share my place": share once the card has its facts.
+  useEffect(() => {
+    if (!wantShare.current || !profile?.found || !place || sharing) return;
+    wantShare.current = false;
+    const timer = setTimeout(() => { void shareCard(); }, 400);
+    return () => clearTimeout(timer);
+    // shareCard is recreated per render; the trigger is the card being ready.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.found, place?.rank, sharing]);
 
   const claimed = Boolean(profile?.found);
   const share = profile && networkStake ? (profile.totals.activeStaked / networkStake) * 100 : null;
@@ -262,6 +287,7 @@ export function MyLab() {
     if (previous) await clearStoredSchedule(previous).catch(() => undefined);
     setProfile(null);
     setAge(null);
+    setStanding(null);
     setWalletLabel(null);
     setConnected(false);
     setAddress('');
@@ -281,9 +307,10 @@ export function MyLab() {
         fallback={remembered}
         width={width - spacing.lg * 2}
         privacy={privacy}
+        place={place}
       />
 
-      {profile ? <CardExporter ref={cardArt} facts={cardFacts(profile, age, shownName, networkPositions, privacy)} /> : null}
+      {profile ? <CardExporter ref={cardArt} facts={cardFacts(profile, age, shownName, networkPositions, privacy, place)} /> : null}
 
       {claimed ? (
         <>
@@ -312,6 +339,20 @@ export function MyLab() {
             <View style={styles.shareMeter}>
               <Meter percent={share != null ? Math.max(share > 0 ? 1 : 0, Math.min(100, share)) : 0} tone={colors.metal} height={4} />
             </View>
+            {/* The place among people, asked for by @Timelearnlife: beside the
+                weight, and one tap from the whole list. */}
+            {standing?.me.found ? (
+              <Pressable accessibilityRole="button" onPress={() => { void Haptics.selectionAsync(); requestTab({ tab: 'top', wallet: profile!.wallet }); }} style={({ pressed }) => [styles.placeRow, pressed && { opacity: 0.7 }]}>
+                <View style={styles.shareLabel}>
+                  <Eyebrow>{t('Your place')}</Eyebrow>
+                  <Text style={styles.placeNote}>{t('{count} people hold less than you', { count: integer(standing.me.holdLess) })}</Text>
+                </View>
+                <View style={styles.placeValue}>
+                  <Text style={styles.placeRank}>{`#${integer(standing.me.rank)}`}<Text style={styles.placeOf}>{` ${t('of {people}', { people: integer(standing.people) })}`}</Text></Text>
+                  <Text style={styles.placeTier}>{`${standing.me.tier.toUpperCase()} ›`}</Text>
+                </View>
+              </Pressable>
+            ) : null}
             {profile!.totals.earned != null ? (
               <View style={styles.earnedRow}>
                 <View style={styles.shareLabel}><Eyebrow>{t('Earned on staking')}</Eyebrow></View>
@@ -367,7 +408,15 @@ export function MyLab() {
               </View>
               <Switch value={hideAmount} onValueChange={(value) => { void Haptics.selectionAsync(); setHideAmount(value); }} trackColor={{ true: colors.accentDim, false: colors.line }} thumbColor={hideAmount ? colors.accent : colors.faint} />
             </View>
+            <View style={[styles.privacyRow, styles.privacyDivided]}>
+              <View style={styles.privacyCopy}>
+                <Text style={styles.privacyLabel}>{t('Show my place on the card')}</Text>
+                <Text style={styles.privacyNote}>{t('Your place among people, the top share and how many hold less.')}</Text>
+              </View>
+              <Switch value={showPlace} onValueChange={(value) => { void Haptics.selectionAsync(); setShowPlace(value); }} trackColor={{ true: colors.accentDim, false: colors.line }} thumbColor={showPlace ? colors.accent : colors.faint} />
+            </View>
             {hideName && !hideAmount ? <Text style={styles.privacyWarn}>{t('An exact amount next to a start date is close to a fingerprint. Your choice, said plainly.')}</Text> : null}
+            {hideAmount && showPlace ? <Text style={styles.privacyWarn}>{t('A place gives away a rough amount even with the amount hidden. Your choice, said plainly.')}</Text> : null}
           </Panel>
 
           <Button
@@ -475,6 +524,12 @@ const styles = StyleSheet.create({
   earnedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.md },
   earnedValue: { color: colors.positive, fontFamily: font.bold, fontSize: 18, fontVariant: ['tabular-nums'] },
   shareMeter: { marginTop: spacing.md },
+  placeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.line },
+  placeNote: { color: colors.muted, fontFamily: font.regular, ...type.small, marginTop: 3 },
+  placeValue: { alignItems: 'flex-end', gap: 2 },
+  placeRank: { color: colors.text, fontFamily: font.black, fontSize: 20, letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
+  placeOf: { color: colors.muted, fontFamily: font.regular, fontSize: 12, letterSpacing: 0 },
+  placeTier: { color: colors.metal, fontFamily: font.monoBold, fontSize: 10, letterSpacing: 0.8 },
   shareNote: { color: colors.muted, fontFamily: font.regular, ...type.small, marginTop: spacing.md },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   status: { color: colors.positive, fontFamily: font.medium, ...type.small },

@@ -26,7 +26,11 @@ type Range = typeof RANGES[number];
 const RANGE_DAYS: Record<Range, number> = { '24h': 1, '7d': 7, '30d': 30 };
 const RANGE_TITLE: Record<Range, string> = { '24h': 'Last 24 hours', '7d': 'Last 7 days', '30d': 'Last 30 days' };
 const RANGE_NOTE: Record<Range, string> = { '24h': 'over the last 24 hours', '7d': 'over the last 7 days', '30d': 'over the last 30 days' };
-const MOTIONS = ['live', 'calm', 'off'] as const;
+// Classic is the fourth position: no scene at all, the main screen the way
+// 1.0.4 drew it, with the day as a heat strip and the figure on its board.
+// Asked for by people who wanted the old screen back; the switch is where the
+// other three already were.
+const MOTIONS = ['live', 'calm', 'off', 'classic'] as const;
 const QUEUE_SHORT = 8;
 
 
@@ -133,6 +137,7 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
   const [allQueue, setAllQueue] = useState(false);
   const [motionCalm, setMotionCalm] = usePref('motion:calm', false);
   const [motionOff, setMotionOff] = usePref('motion:off', false);
+  const [motionClassic, setMotionClassic] = usePref('motion:classic', false);
   const scene = useRef<SceneHandle>(null);
   const seen = useRef<Set<string>>(new Set());
   const page = useRef<ScrollView>(null);
@@ -143,7 +148,10 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
     setTimeout(() => page.current?.scrollTo({ y: Math.max(0, queueY.current - spacing.md), animated: true }), 60);
   }, []);
   const reducedMotion = useReducedMotion();
-  const motion = motionOff ? 'off' : motionCalm ? 'calm' : 'live';
+  const motion = motionClassic ? 'classic' : motionOff ? 'off' : motionCalm ? 'calm' : 'live';
+  const classic = motion === 'classic';
+  // With no scene the header has nothing to float over, so it keeps its ground.
+  useEffect(() => { if (classic) onAtTop?.(false); }, [classic, onAtTop]);
 
   const load = useCallback(async (visible = false) => {
     if (visible) setRefreshing(true);
@@ -221,7 +229,7 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
 
   useEffect(() => { scene.current?.push({ type: 'freeze', on: frozen }); }, [frozen]);
   useEffect(() => { scene.current?.push({ type: 'inset', top: topInset }); }, [topInset]);
-  useEffect(() => { scene.current?.push({ type: 'motion', mode: reducedMotion ? 'off' : motion }); }, [motion, reducedMotion]);
+  useEffect(() => { scene.current?.push({ type: 'motion', mode: reducedMotion || motion === 'classic' ? 'off' : motion }); }, [motion, reducedMotion]);
 
   // The first time this phone opens the vault, it watches it being built:
   // the pile grows from nothing to today over six seconds. Once.
@@ -284,20 +292,31 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
     <ScrollView
       ref={page}
       style={styles.screen}
-      contentContainerStyle={styles.content}
-      onScroll={(event) => onAtTop?.(event.nativeEvent.contentOffset.y < 6)}
+      contentContainerStyle={[styles.content, classic && { paddingTop: topInset + spacing.md }]}
+      onScroll={(event) => { if (!classic) onAtTop?.(event.nativeEvent.contentOffset.y < 6); }}
       scrollEventThrottle={48}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={colors.accent} />}
     >
-      <View style={[styles.sceneWrap, { height: sceneHeight, marginHorizontal: -spacing.lg }]}>
-        {/* the header's own height is the scene's top inset: nothing is drawn under the wordmark */}
-        <VaultScene ref={scene} height={sceneHeight} onTap={setReceipt} />
-      </View>
+      {classic ? (
+        /* Classic: the board that flips, large, where the scene would be. */
+        <View style={styles.classicHero}>
+          <Eyebrow>{t('Active stake')}</Eyebrow>
+          <View style={styles.classicRow}>
+            <FlipNumber value={hero ? hero.figure : '—'} size={64} />
+            <Text style={styles.classicUnit}>{hero ? hero.unit : 'SKR'}</Text>
+          </View>
+        </View>
+      ) : (
+        <View style={[styles.sceneWrap, { height: sceneHeight, marginHorizontal: -spacing.lg }]}>
+          {/* the header's own height is the scene's top inset: nothing is drawn under the wordmark */}
+          <VaultScene ref={scene} height={sceneHeight} onTap={setReceipt} />
+        </View>
+      )}
 
       {/* The figure and the two lines share one row under the scene: the
           lines on the left, the flip board on the right, in the space the
           board left empty when it lived over the pile. */}
-      <View style={styles.under}>
+      <View style={[styles.under, classic && styles.underClassic]}>
         <View style={styles.underLines}>
           <Text numberOfLines={1} style={styles.hudNote}>
             {metrics ? t('{percent}% of all SKR is staked', { percent: metrics.stakedPercent.toFixed(2) }) : error ? t('Waiting for a finalized answer') : t('Reading the vault')}
@@ -308,10 +327,12 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
             </Text>
           ) : null}
         </View>
-        <View style={styles.underFigure}>
-          <FlipNumber value={hero ? hero.figure : '—'} size={40} />
-          <Text style={styles.unit}>{hero ? hero.unit : 'SKR'}</Text>
-        </View>
+        {classic ? null : (
+          <View style={styles.underFigure}>
+            <FlipNumber value={hero ? hero.figure : '—'} size={40} />
+            <Text style={styles.unit}>{hero ? hero.unit : 'SKR'}</Text>
+          </View>
+        )}
       </View>
 
       {receipt ? (
@@ -334,7 +355,7 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
 
       {/* The heat strip is what the scene replaced. It comes back only when the
           person has switched the scene off. */}
-      {motion === 'off' || reducedMotion ? <DayHeat width={inner} hours={hours} percent={metrics?.stakedPercent ?? null} /> : null}
+      {motion === 'off' || classic || reducedMotion ? <DayHeat width={inner} hours={hours} percent={metrics?.stakedPercent ?? null} /> : null}
 
       <View style={styles.periodHead}>
         <Eyebrow>{t(RANGE_TITLE[range])}</Eyebrow>
@@ -390,9 +411,9 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
         <View style={styles.motionRow}>
           <View style={styles.motionCopy}>
             <Eyebrow>{t('Motion')}</Eyebrow>
-            <Text style={styles.motionNote}>{motion === 'off' ? t('The vault stands still.') : motion === 'calm' ? t('One gentle frame a second.') : t('Live while you watch. Calm after 90 seconds without a touch.')}</Text>
+            <Text style={styles.motionNote}>{motion === 'classic' ? t('The old main screen: no scene, the day as a heat strip, the figure on its board.') : motion === 'off' ? t('The vault stands still.') : motion === 'calm' ? t('One gentle frame a second.') : t('Live while you watch. Calm after 90 seconds without a touch.')}</Text>
           </View>
-          <RangeSwitch value={motion} options={[...MOTIONS]} onChange={(next) => { setMotionOff(next === 'off'); setMotionCalm(next === 'calm'); }} />
+          <RangeSwitch value={motion} options={[...MOTIONS]} onChange={(next) => { setMotionClassic(next === 'classic'); setMotionOff(next === 'off'); setMotionCalm(next === 'calm'); }} />
         </View>
       </Panel>
 
@@ -413,6 +434,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.lg, paddingTop: 0, paddingBottom: 120, gap: spacing.lg },
   sceneWrap: { backgroundColor: colors.bg, overflow: 'hidden' },
+  classicHero: { gap: spacing.sm, paddingTop: spacing.sm },
+  classicRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
+  classicUnit: { color: colors.muted, fontFamily: font.semibold, fontSize: 14, letterSpacing: 1 },
+  underClassic: { marginTop: 0 },
   under: { marginTop: -spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   underLines: { flex: 1, gap: 2 },
   underFigure: { alignItems: 'flex-end', gap: 3 },

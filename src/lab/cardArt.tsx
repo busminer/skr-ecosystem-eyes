@@ -109,7 +109,25 @@ export type CardFacts = {
   // way of saying "not showing", rather than an empty gap where a name was.
   hideName?: boolean;
   hideAmount?: boolean;
+  // Where this person stands among people, from the leaderboard. Shown by
+  // default and switched off with the third privacy switch: a place gives away
+  // a rough amount even with the amount hidden, and the switch says so.
+  place?: { rank: number; people: number; holdLess: number; tier: string } | null;
+  showPlace?: boolean;
 };
+
+// The place line under the positions line, kept clear of the ring.
+//
+// The calm zone runs from TEXT_LEFT to the ring at x=959, about 41 % of the
+// canvas. SVG cannot be asked how wide a string came out, so the split is
+// decided by length: past fifty characters the last clause drops to a second
+// line rather than reaching under the ring.
+export function placeLines(place: NonNullable<CardFacts['place']>): string[] {
+  const tier = place.tier.toLowerCase();
+  const parts = [`#${grouped(place.rank)} of ${grouped(place.people)} stakers`, tier, `${grouped(place.holdLess)} hold less`];
+  const joined = parts.join(' · ');
+  return joined.length > 50 ? [`${parts[0]} · ${parts[1]}`, parts[2]!] : [joined];
+}
 
 export type CardHandle = { toPng: () => Promise<string> };
 
@@ -355,6 +373,14 @@ export const CardArt = forwardRef<CardHandle, { facts: CardFacts; width: number;
             {line.join(' · ')}
           </Embossed>
         ) : null}
+
+        {/* The place among people, asked for by @Timelearnlife. Under the
+            positions line, in the same calm zone, never under the ring. */}
+        {facts.place && facts.showPlace !== false ? placeLines(facts.place).map((text, index) => (
+          <Embossed key={text} x={TEXT_LEFT} y={(line.length > 0 ? 456 : 412) + index * 30} size={22} family={SORA.regular} fill="#FBFAF5" opacity={0.86} halo={4}>
+            {text}
+          </Embossed>
+        )) : null}
 
         {facts.positionSkr != null && !facts.hideAmount ? (
           <Embossed x={545} y={668} size={20} family={SORA.regular} fill="#FBFAF5" opacity={0.9} halo={5}>

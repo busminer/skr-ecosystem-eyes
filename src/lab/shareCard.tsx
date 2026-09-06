@@ -43,8 +43,13 @@ export function captionFor(facts: CardFacts) {
     ? null
     : `${facts.days}${facts.exactDays ? '' : '+'} days`;
 
+  const place = facts.place && facts.showPlace !== false
+    ? `#${facts.place.rank.toLocaleString('en-US').replace(/,/g, ' ')} of ${facts.place.people.toLocaleString('en-US').replace(/,/g, ' ')} stakers`
+    : null;
+
   return [
     days ? `I'm staking $SKR for ${days}` : `I'm staking $SKR`,
+    ...(place ? [place] : []),
     '',
     'my card from SKR Eyes',
     '#SKR #SolanaMobile',

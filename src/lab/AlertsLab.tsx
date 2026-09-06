@@ -11,7 +11,7 @@ import { usePref } from '../prefs';
 import { readSessionAddress } from '../session';
 import { colors, font, radius, spacing, type } from '../theme';
 import type { EcosystemState, WalletProfile } from '../types';
-import { Button, Evidence, Eyebrow, Hairline, Panel } from './kit';
+import { Button, Evidence, Eyebrow, Hairline, Panel, RangeSwitch } from './kit';
 import { TipSheet } from './TipSheet';
 
 export function AlertsLab() {
@@ -31,6 +31,8 @@ export function AlertsLab() {
   const [arming, setArming] = useState(false);
   const [largeAlerts, setLargeAlerts] = usePref('alert:large', true);
   const [nudge, setNudge] = usePref('nudge:daily', true);
+  // The opening: the turn from 1.0, back by request, or the first stone from 1.1.
+  const [splashTurn, setSplashTurn] = usePref('splash:turn', true);
   const [tipping, setTipping] = useState(false);
 
   useEffect(() => {
@@ -177,6 +179,14 @@ export function AlertsLab() {
             trackColor={{ true: colors.accentDim, false: colors.line }}
             thumbColor={nudge ? colors.accent : colors.faint}
           />
+        </View>
+        <Hairline />
+        <View style={styles.toggleRow}>
+          <View style={styles.toggleCopy}>
+            <Text style={styles.toggleLabel}>{t('Opening')}</Text>
+            <Text style={styles.toggleNote}>{splashTurn ? t('The phone turns and the eye blinks, the opening from 1.0.') : t('One phone falls into the dark and the eye opens over the pile, the opening from 1.1.')}</Text>
+          </View>
+          <RangeSwitch value={splashTurn ? 'turn' : 'stone'} options={['turn', 'stone']} label={(option) => option === 'turn' ? t('Turn') : t('First stone')} onChange={(next) => { void Haptics.selectionAsync(); setSplashTurn(next === 'turn'); }} />
         </View>
         <Hairline />
         <Text style={[styles.toggleNote, styles.spaced]}>
