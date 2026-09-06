@@ -277,6 +277,7 @@ export const id: Record<string, string> = {
   'BY EARNED': 'MENURUT HASIL',
   'BY STAKE': 'MENURUT STAKE',
   'Back to top': 'Kembali ke Top',
+  'Open radar': 'Buka radar',
   'Bottom half': 'Separuh bawah',
   'Connect on Me to see your place.': 'Sambungkan di Saya untuk melihat peringkatmu.',
   'EARNED': 'HASIL',

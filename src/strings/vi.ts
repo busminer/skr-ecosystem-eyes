@@ -283,6 +283,7 @@ export const vi: Record<string, string> = {
   'BY EARNED': 'THEO LÃI',
   'BY STAKE': 'THEO STAKE',
   'Back to top': 'Về Top',
+  'Open radar': 'Mở radar',
   'Bottom half': 'Nửa dưới',
   'Connect on Me to see your place.': 'Kết nối ở mục Tôi để xem thứ hạng của bạn.',
   'EARNED': 'LÃI',

@@ -288,6 +288,7 @@ export const de: Record<string, string> = {
   'BY EARNED': 'NACH VERDIENST',
   'BY STAKE': 'NACH STAKE',
   'Back to top': 'Zurück zu Top',
+  'Open radar': 'Radar öffnen',
   'Bottom half': 'Untere Hälfte',
   'Connect on Me to see your place.': 'Verbinden Sie unter Ich, um Ihren Platz zu sehen.',
   'EARNED': 'VERDIENT',

@@ -285,6 +285,7 @@ export const pt: Record<string, string> = {
   'BY EARNED': 'POR GANHO',
   'BY STAKE': 'POR STAKE',
   'Back to top': 'Voltar ao Top',
+  'Open radar': 'Abrir o radar',
   'Bottom half': 'Metade de baixo',
   'Connect on Me to see your place.': 'Conecte em Eu para ver a sua posição.',
   'EARNED': 'GANHO',

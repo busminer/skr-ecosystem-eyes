@@ -281,6 +281,7 @@ export const zh: Record<string, string> = {
   'BY EARNED': '按收益',
   'BY STAKE': '按质押',
   'Back to top': '返回 Top',
+  'Open radar': '打开雷达',
   'Bottom half': '后半段',
   'Connect on Me to see your place.': '在“我的”里连接钱包，即可看到你的名次。',
   'EARNED': '收益',

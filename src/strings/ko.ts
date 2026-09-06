@@ -280,6 +280,7 @@ export const ko: Record<string, string> = {
   'BY EARNED': '수익순',
   'BY STAKE': '스테이킹순',
   'Back to top': 'Top으로 돌아가기',
+  'Open radar': '레이더 열기',
   'Bottom half': '하위 절반',
   'Connect on Me to see your place.': '내 정보에서 연결하면 내 순위를 볼 수 있습니다.',
   'EARNED': '수익',

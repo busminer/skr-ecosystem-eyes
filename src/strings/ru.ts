@@ -284,6 +284,7 @@ export const ru: Record<string, string> = {
   'BY EARNED': 'ПО ЗАРАБОТКУ',
   'BY STAKE': 'ПО СТЕЙКУ',
   'Back to top': 'Назад в Top',
+  'Open radar': 'Открыть радар',
   'Bottom half': 'Нижняя половина',
   'Connect on Me to see your place.': 'Подключите кошелёк на вкладке «Я», чтобы увидеть своё место.',
   'EARNED': 'ЗАРАБОТАНО',

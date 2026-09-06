@@ -279,6 +279,7 @@ export const ja: Record<string, string> = {
   'BY EARNED': '収益順',
   'BY STAKE': 'ステーク順',
   'Back to top': 'Top に戻る',
+  'Open radar': 'レーダーを開く',
   'Bottom half': '下半分',
   'Connect on Me to see your place.': '自分の順位を見るには、自分タブで接続してください。',
   'EARNED': '収益',

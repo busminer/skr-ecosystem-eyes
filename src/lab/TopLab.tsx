@@ -358,9 +358,14 @@ export function TopLab() {
               <Text style={[styles.youFact, { color: colors.positive }]}>{`+${compact(meFound.earned)} ${t('EARNED')} · #${integer(meFound.earnedRank)}`}</Text>
             </View>
           </View>
-          <View style={styles.youDial}>
-            <MiniRadar tiers={page?.tiers ?? []} rank={meFound.rank} people={page?.people ?? 0} />
-          </View>
+          {/* The dial is the door to the radar, so it says so: a bare circle
+              reads as decoration and nobody presses it. */}
+          <Pressable accessibilityRole="button" accessibilityLabel={t('Open radar')} onPress={() => { void Haptics.selectionAsync(); setRadar(true); }} style={({ pressed }) => [styles.youDial, pressed && styles.youDialOn]}>
+            <View style={styles.youDialFace}>
+              <MiniRadar tiers={page?.tiers ?? []} rank={meFound.rank} people={page?.people ?? 0} size={56} />
+            </View>
+            <Text numberOfLines={1} style={styles.youDialLabel}>{`${t('Open radar')} ↗`}</Text>
+          </Pressable>
           <View style={styles.youShare}>
             <Button label={`${t('Share my place')} ↗`} tone={colors.metal} onPress={() => { void Haptics.selectionAsync(); requestTab({ tab: 'me', share: true }); }} />
           </View>
@@ -502,7 +507,10 @@ const styles = StyleSheet.create({
   youFacts: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: 2 },
   youFact: { color: colors.muted, fontFamily: font.monoBold, fontSize: 9.5, letterSpacing: 0.6 },
   youFactGold: { color: colors.metal },
-  youDial: { width: 64, height: 64, borderRadius: 32, overflow: 'hidden' },
+  youDial: { alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 10, borderRadius: radius.card, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: 'rgba(4,7,11,0.5)' },
+  youDialOn: { borderColor: colors.accentDim, backgroundColor: colors.panelHi },
+  youDialFace: { width: 56, height: 56, borderRadius: 28, overflow: 'hidden' },
+  youDialLabel: { color: colors.accent, fontFamily: font.monoBold, fontSize: 9.5, letterSpacing: 0.4 },
   youShare: { width: '100%' },
   connect: { marginTop: spacing.md, padding: spacing.md, borderRadius: radius.card, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, gap: spacing.md },
   connectText: { color: colors.muted, fontFamily: font.regular, ...type.body },

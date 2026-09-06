@@ -283,6 +283,7 @@ export const es: Record<string, string> = {
   'BY EARNED': 'POR GANADO',
   'BY STAKE': 'POR STAKE',
   'Back to top': 'Volver a Top',
+  'Open radar': 'Abrir el radar',
   'Bottom half': 'Mitad inferior',
   'Connect on Me to see your place.': 'Conecta en Yo para ver tu puesto.',
   'EARNED': 'GANADO',

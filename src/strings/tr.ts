@@ -284,6 +284,7 @@ export const tr: Record<string, string> = {
   'BY EARNED': 'KAZANCA GÖRE',
   'BY STAKE': 'STAKE\'E GÖRE',
   'Back to top': 'Top\'a dön',
+  'Open radar': 'Radarı aç',
   'Bottom half': 'Alt yarı',
   'Connect on Me to see your place.': 'Sıranı görmek için Ben sekmesinde bağlan.',
   'EARNED': 'KAZANÇ',
