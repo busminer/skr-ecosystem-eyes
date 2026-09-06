@@ -122,11 +122,23 @@ export type CardFacts = {
 // canvas. SVG cannot be asked how wide a string came out, so the split is
 // decided by length: past fifty characters the last clause drops to a second
 // line rather than reaching under the ring.
-export function placeLines(place: NonNullable<CardFacts['place']>): string[] {
+// A rank is a key, not a boast: anybody holding the picture can open Top, walk
+// to that row and read the name and the exact amount off it. So a card with the
+// name hidden never carries the number — only the tier, which is a range and
+// points at nobody. Alex chose this on 06.09.
+export function placeLines(place: NonNullable<CardFacts['place']>, anonymous = false): string[] {
+  if (anonymous) return [`${widerTier(place.tier)} of stakers`];
   const tier = place.tier.toLowerCase();
   const parts = [`#${grouped(place.rank)} of ${grouped(place.people)} stakers`, tier, `${grouped(place.holdLess)} hold less`];
   const joined = parts.join(' · ');
   return joined.length > 50 ? [`${parts[0]} · ${parts[1]}`, parts[2]!] : [joined];
+}
+
+// The top tier is a narrow enough room to be a key of its own — forty six
+// people in the top tenth of a percent — so an anonymous card is told one step
+// down, where thousands stand together.
+function widerTier(tier: string): string {
+  return tier === 'Top 0.1%' ? 'Top 1%' : tier;
 }
 
 export type CardHandle = { toPng: () => Promise<string> };
@@ -376,7 +388,7 @@ export const CardArt = forwardRef<CardHandle, { facts: CardFacts; width: number;
 
         {/* The place among people, asked for by @Timelearnlife. Under the
             positions line, in the same calm zone, never under the ring. */}
-        {facts.place && facts.showPlace !== false ? placeLines(facts.place).map((text, index) => (
+        {facts.place && facts.showPlace !== false ? placeLines(facts.place, facts.hideName === true).map((text, index) => (
           <Embossed key={text} x={TEXT_LEFT} y={(line.length > 0 ? 456 : 412) + index * 30} size={22} family={SORA.regular} fill="#FBFAF5" opacity={0.86} halo={4}>
             {text}
           </Embossed>

@@ -280,6 +280,7 @@ export const pt: Record<string, string> = {
   '.skr name or address': 'Nome .skr ou endereço',
   '1 match': '1 resultado',
   'A place gives away a rough amount even with the amount hidden. Your choice, said plainly.': 'A posição revela um valor aproximado mesmo com o valor escondido. A escolha é sua, dito sem rodeios.',
+  'With your name hidden the card shows the tier only. An exact place would lead anyone straight to your row on Top.': 'Com o nome oculto, o cartão mostra apenas a faixa. Uma posição exata levaria qualquer um direto à sua linha no Top.',
   'Active stake': 'Stake ativo',
   'Active stake in the vault. Treasury-size wallets are set aside.': 'Stake ativo no cofre. As carteiras de tamanho tesouraria ficam de fora.',
   'BY EARNED': 'POR GANHO',

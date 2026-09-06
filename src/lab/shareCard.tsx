@@ -5,7 +5,7 @@ import * as Sharing from 'expo-sharing';
 import * as Clipboard from 'expo-clipboard';
 import { t } from '../i18n';
 import { getSkrShare } from '../../modules/skr-share';
-import { CardArt, EXPORT_HEIGHT, EXPORT_WIDTH, type CardFacts, type CardHandle } from './cardArt';
+import { CardArt, EXPORT_HEIGHT, EXPORT_WIDTH, placeLines, type CardFacts, type CardHandle } from './cardArt';
 
 // Exporting the card is a second, full-size copy of the same drawing.
 //
@@ -43,8 +43,10 @@ export function captionFor(facts: CardFacts) {
     ? null
     : `${facts.days}${facts.exactDays ? '' : '+'} days`;
 
+  // The caption follows the card: a hidden name means the tier goes out, never
+  // the number, or the words would hand over what the picture withheld.
   const place = facts.place && facts.showPlace !== false
-    ? `#${facts.place.rank.toLocaleString('en-US').replace(/,/g, ' ')} of ${facts.place.people.toLocaleString('en-US').replace(/,/g, ' ')} stakers`
+    ? placeLines(facts.place, facts.hideName === true)[0]!
     : null;
 
   return [

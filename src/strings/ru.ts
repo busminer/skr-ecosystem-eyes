@@ -279,6 +279,7 @@ export const ru: Record<string, string> = {
   '.skr name or address': 'Имя .skr или адрес',
   '1 match': '1 совпадение',
   'A place gives away a rough amount even with the amount hidden. Your choice, said plainly.': 'Место выдаёт примерную сумму, даже когда сумма скрыта. Это личный выбор, говорим как есть.',
+  'With your name hidden the card shows the tier only. An exact place would lead anyone straight to your row on Top.': 'Когда имя скрыто, на карточке остаётся только ступень. Точное место привело бы любого прямо к твоей строке в Top.',
   'Active stake': 'Активный стейк',
   'Active stake in the vault. Treasury-size wallets are set aside.': 'Активный стейк в хранилище. Казначейские кошельки вынесены за скобки.',
   'BY EARNED': 'ПО ЗАРАБОТКУ',

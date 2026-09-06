@@ -274,6 +274,7 @@ export const ja: Record<string, string> = {
   '.skr name or address': '.skr の名前またはアドレス',
   '1 match': '1 件一致',
   'A place gives away a rough amount even with the amount hidden. Your choice, said plainly.': '金額を隠していても、順位からおおよその金額は分かります。はっきり言えば、決めるのはあなたです。',
+  'With your name hidden the card shows the tier only. An exact place would lead anyone straight to your row on Top.': '名前を隠すと、カードには段階だけが表示されます。正確な順位は、Top のあなたの行へ誰でも直行させてしまいます。',
   'Active stake': '有効なステーク',
   'Active stake in the vault. Treasury-size wallets are set aside.': '金庫の中の有効なステークです。トレジャリー規模のウォレットは別枠にしています。',
   'BY EARNED': '収益順',

@@ -272,6 +272,7 @@ export const id: Record<string, string> = {
   '.skr name or address': 'Nama .skr atau alamat',
   '1 match': '1 cocok',
   'A place gives away a rough amount even with the amount hidden. Your choice, said plainly.': 'Peringkat tetap membocorkan jumlah kasar walau jumlahnya disembunyikan. Pilihan ada di tanganmu, ini disampaikan apa adanya.',
+  'With your name hidden the card shows the tier only. An exact place would lead anyone straight to your row on Top.': 'Dengan nama disembunyikan, kartu hanya menampilkan tingkatannya. Peringkat persis akan menuntun siapa pun langsung ke barismu di Top.',
   'Active stake': 'Stake aktif',
   'Active stake in the vault. Treasury-size wallets are set aside.': 'Stake aktif di brankas. Dompet sebesar kas dikesampingkan.',
   'BY EARNED': 'MENURUT HASIL',

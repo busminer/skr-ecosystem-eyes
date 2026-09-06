@@ -417,6 +417,10 @@ export function MyLab() {
             </View>
             {hideName && !hideAmount ? <Text style={styles.privacyWarn}>{t('An exact amount next to a start date is close to a fingerprint. Your choice, said plainly.')}</Text> : null}
             {hideAmount && showPlace ? <Text style={styles.privacyWarn}>{t('A place gives away a rough amount even with the amount hidden. Your choice, said plainly.')}</Text> : null}
+            {/* An exact place would send anybody straight to that row on Top,
+                where the name and the amount are printed, which is exactly what
+                the hidden name was for. So the card drops to the tier itself. */}
+            {hideName && showPlace ? <Text style={styles.privacyTell}>{t('With your name hidden the card shows the tier only. An exact place would lead anyone straight to your row on Top.')}</Text> : null}
           </Panel>
 
           <Button
@@ -517,6 +521,7 @@ const styles = StyleSheet.create({
   privacyLabel: { color: colors.text, fontFamily: font.semibold, fontSize: 14 },
   privacyNote: { color: colors.muted, fontFamily: font.regular, ...type.small },
   privacyWarn: { color: colors.pending, fontFamily: font.regular, ...type.small, paddingBottom: spacing.md },
+  privacyTell: { color: colors.muted, fontFamily: font.regular, ...type.small, paddingBottom: spacing.md },
   sharePanel: { padding: spacing.md },
   shareHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
   shareLabel: { flexShrink: 1 },

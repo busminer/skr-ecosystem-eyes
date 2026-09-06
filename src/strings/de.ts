@@ -283,6 +283,7 @@ export const de: Record<string, string> = {
   '.skr name or address': '.skr-Name oder Adresse',
   '1 match': '1 Treffer',
   'A place gives away a rough amount even with the amount hidden. Your choice, said plainly.': 'Ein Platz verrät auch bei verborgenem Betrag ungefähr, wie viel es ist. Ihre Entscheidung, offen gesagt.',
+  'With your name hidden the card shows the tier only. An exact place would lead anyone straight to your row on Top.': 'Bei verborgenem Namen zeigt die Karte nur die Stufe. Ein genauer Platz würde jeden direkt zu deiner Zeile in Top führen.',
   'Active stake': 'Aktiver Stake',
   'Active stake in the vault. Treasury-size wallets are set aside.': 'Aktiver Stake im Tresor. Wallets in Treasury-Größe bleiben außen vor.',
   'BY EARNED': 'NACH VERDIENST',

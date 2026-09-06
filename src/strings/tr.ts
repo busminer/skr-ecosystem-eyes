@@ -279,6 +279,7 @@ export const tr: Record<string, string> = {
   '.skr name or address': '.skr adı veya adres',
   '1 match': '1 eşleşme',
   'A place gives away a rough amount even with the amount hidden. Your choice, said plainly.': 'Tutar gizli olsa bile sıra, kabaca ne kadar olduğunu ele verir. Seçim senin, açıkça söylüyoruz.',
+  'With your name hidden the card shows the tier only. An exact place would lead anyone straight to your row on Top.': 'Ad gizliyken kart yalnızca basamağı gösterir. Kesin sıra, herkesi doğrudan Top’taki satırına götürürdü.',
   'Active stake': 'Aktif stake',
   'Active stake in the vault. Treasury-size wallets are set aside.': 'Kasadaki aktif stake. Hazine boyutundaki cüzdanlar ayrı tutulur.',
   'BY EARNED': 'KAZANCA GÖRE',

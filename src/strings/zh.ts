@@ -276,6 +276,7 @@ export const zh: Record<string, string> = {
   '.skr name or address': '.skr 名字或地址',
   '1 match': '1 个匹配',
   'A place gives away a rough amount even with the amount hidden. Your choice, said plainly.': '即使隐藏了金额，名次也会透露大致的数目。直说了，怎么选由你。',
+  'With your name hidden the card shows the tier only. An exact place would lead anyone straight to your row on Top.': '隐藏名字后，卡片只显示层级。确切名次会让任何人直接找到你在 Top 里的那一行。',
   'Active stake': '有效质押',
   'Active stake in the vault. Treasury-size wallets are set aside.': '金库中的有效质押。金库级钱包不计入排名。',
   'BY EARNED': '按收益',

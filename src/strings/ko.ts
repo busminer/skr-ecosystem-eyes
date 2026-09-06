@@ -275,6 +275,7 @@ export const ko: Record<string, string> = {
   '.skr name or address': '.skr 이름 또는 주소',
   '1 match': '1건 일치',
   'A place gives away a rough amount even with the amount hidden. Your choice, said plainly.': '금액을 숨겨도 순위가 대략의 금액을 드러냅니다. 어떻게 할지는 직접 정하세요. 있는 그대로 말씀드립니다.',
+  'With your name hidden the card shows the tier only. An exact place would lead anyone straight to your row on Top.': '이름을 숨기면 카드에는 구간만 표시됩니다. 정확한 순위는 누구든 Top의 내 줄로 곧장 데려갑니다.',
   'Active stake': '활성 스테이킹',
   'Active stake in the vault. Treasury-size wallets are set aside.': '금고의 활성 스테이킹입니다. 재무 규모 지갑은 따로 둡니다.',
   'BY EARNED': '수익순',

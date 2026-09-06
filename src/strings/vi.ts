@@ -278,6 +278,7 @@ export const vi: Record<string, string> = {
   '.skr name or address': 'Tên .skr hoặc địa chỉ',
   '1 match': '1 kết quả',
   'A place gives away a rough amount even with the amount hidden. Your choice, said plainly.': 'Thứ hạng vẫn để lộ số lượng đại khái dù đã ẩn số lượng. Nói thẳng, quyền chọn là của bạn.',
+  'With your name hidden the card shows the tier only. An exact place would lead anyone straight to your row on Top.': 'Khi ẩn tên, thẻ chỉ hiện bậc. Thứ hạng chính xác sẽ dẫn bất kỳ ai thẳng tới dòng của bạn trong Top.',
   'Active stake': 'Stake đang hoạt động',
   'Active stake in the vault. Treasury-size wallets are set aside.': 'Stake đang hoạt động trong kho. Các ví cỡ ngân khố được tách riêng.',
   'BY EARNED': 'THEO LÃI',
