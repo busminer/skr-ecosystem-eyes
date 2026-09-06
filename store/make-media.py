@@ -169,16 +169,18 @@ def feature():
 
 
 SHOTS = [
-    ("cap-card.png", "Your staker card",
-     "Days in stake, weight in the vault, what you earned. Hide your name or your amount before you share it."),
-    ("cap-vault.png", "The vault, alive",
+    ("new-top.png", "Find yourself among 46 000",
+     "Everybody who stakes, in order: by stake, by what their position earned, and by places moved since yesterday. Your own place sits at the top."),
+    ("new-radar.png", "The whole vault on one dial",
+     "Six rings, one per tier, the beam going round, your phone gold among them. Pinch, drag, tap anybody to read their name."),
+    ("new-vault.png", "The vault, alive",
      "Every stake falls in with its .skr name; every exit hangs and cools above the pile of what stays. Tap any move for its receipt."),
-    ("cap-flow.png", "Every finalized move, live",
+    ("new-flow.png", "Every finalized move, live",
      "Stakes, exits and withdrawals as they land, by kind and by size, the day's biggest pinned on top."),
-    ("cap-me.png", "Stake from the same screen",
-     "Sixteen: 16 parts of 1 SKR with one approval. Earned on staking, read from the chain. Two privacy switches for the card."),
-    ("cap-alerts.png", "Eleven languages, sounds you can feel",
-     "A glass chime for a stake, the vault bell for a large one, a low boom for a large exit. Unlock alerts set on the phone itself."),
+    ("new-me.png", "Your staker card",
+     "Days in stake, your place among people, what your position earned. Hide your name or your amount before you share it."),
+    ("new-alerts.png", "Alerts your phone sets itself",
+     "A sound and a short buzz for the large moves, or neither. Your unlock time is scheduled on the device, no address is sent for it, and the app speaks eleven languages."),
 ]
 
 

@@ -43,7 +43,10 @@ function tierLabel(tier: string): string {
 }
 
 // ▲74 / ▼1 / — / new: how a place moved since yesterday.
-function Delta({ row, size = 10 }: { row: { prevRank: number | null; rank: number }; size?: number }) {
+function Delta({ row, size = 10, known = true }: { row: { prevRank: number | null; rank: number }; size?: number; known?: boolean }) {
+  // Before the first daily snapshot there is nothing to compare against, so the
+  // column stays empty instead of calling forty six thousand people new.
+  if (!known) return null;
   if (row.prevRank == null) return <Text style={[styles.delta, { fontSize: size }]}>{t('new')}</Text>;
   const move = row.prevRank - row.rank;
   if (move === 0) return <Text style={[styles.delta, { fontSize: size }]}>—</Text>;
@@ -115,6 +118,10 @@ function RadarSheet({ page, onClose }: { page: TopPage; onClose: () => void }) {
   const web = useRef<WebView>(null);
   const ready = useRef(false);
   const [hit, setHit] = useState<TopRow | null>(null);
+  // The hint has one job, and it is done in a few seconds. After that it is
+  // just print over the board, and it was over the board in every screenshot.
+  const [hint, setHint] = useState(true);
+  useEffect(() => { const timer = setTimeout(() => setHint(false), 5_000); return () => clearTimeout(timer); }, []);
   const push = useCallback((message: object) => { web.current?.injectJavaScript(`window.__push(${JSON.stringify(message)});true;`); }, []);
   const feed = useCallback(() => {
     push({ type: 'data', people: page.people, tiers: page.tiers, rows: page.rows.slice(0, PAGE), me: page.me });
@@ -155,9 +162,11 @@ function RadarSheet({ page, onClose }: { page: TopPage; onClose: () => void }) {
       <Pressable accessibilityRole="button" onPress={() => { void Haptics.selectionAsync(); onClose(); }} style={({ pressed }) => [styles.radarBack, pressed && { opacity: 0.7 }]}>
         <Text style={styles.radarBackText}>{`‹ ${t('Back to top')}`}</Text>
       </Pressable>
-      <View style={styles.radarHint} pointerEvents="none">
-        <Text style={styles.radarHintText}>{hit ? `${who(hit)} · ${tierLabel(hit.tier)}` : t('Pinch to zoom, drag to look around, tap a phone or a ring.')}</Text>
-      </View>
+      {hit || hint ? (
+        <View style={styles.radarHint} pointerEvents="none">
+          <Text style={styles.radarHintText}>{hit ? `${who(hit)} · ${tierLabel(hit.tier)}` : t('Pinch to zoom, drag to look around, tap a phone or a ring.')}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -303,6 +312,8 @@ export function TopLab() {
   }, [list]);
 
   const note = LISTS.find((item) => item.key === list)?.note ?? '';
+  // Whether yesterday's snapshot exists at all; the server says so.
+  const moversKnown = page?.movers.available === true;
   const total = loaded[list]?.total ?? 0;
 
   const header = (
@@ -353,7 +364,7 @@ export function TopLab() {
             </View>
             <View style={styles.youFacts}>
               <Text style={[styles.youFact, styles.youFactGold]}>{tierLabel(meFound.tier).toUpperCase()}</Text>
-              <Text style={styles.youFact}>{meFound.prevRank == null ? t('NEW') : meFound.prevRank === meFound.rank ? '— 24H' : `${meFound.prevRank > meFound.rank ? '▲' : '▼'}${Math.abs(meFound.prevRank - meFound.rank)} 24H`}</Text>
+              {moversKnown ? <Text style={styles.youFact}>{meFound.prevRank == null ? t('NEW') : meFound.prevRank === meFound.rank ? '— 24H' : `${meFound.prevRank > meFound.rank ? '▲' : '▼'}${Math.abs(meFound.prevRank - meFound.rank)} 24H`}</Text> : null}
               <Text style={styles.youFact}>{`${compact(meFound.staked)} SKR`}</Text>
               <Text style={[styles.youFact, { color: colors.positive }]}>{`+${compact(meFound.earned)} ${t('EARNED')} · #${integer(meFound.earnedRank)}`}</Text>
             </View>
@@ -413,7 +424,7 @@ export function TopLab() {
             ? <Text style={styles.delta}>{t('was #{rank}', { rank: integer(item.prevRank ?? item.rank) })}</Text>
             : list === 'earned'
               ? <Text style={styles.delta}>{t('by earned')}</Text>
-              : <Delta row={item} />}
+              : <Delta row={item} known={moversKnown} />}
         </View>
         <PhoneMark me={mine} />
         <View style={styles.nameCell}>
@@ -446,7 +457,7 @@ export function TopLab() {
         </View>
       </View>
     );
-  }, [flash, list, meFound?.wallet]);
+  }, [flash, list, meFound?.wallet, moversKnown]);
 
   return (
     <View style={styles.screen}>
