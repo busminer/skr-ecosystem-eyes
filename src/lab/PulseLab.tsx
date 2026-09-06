@@ -411,7 +411,7 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
         <View style={styles.motionRow}>
           <View style={styles.motionCopy}>
             <Eyebrow>{t('Motion')}</Eyebrow>
-            <Text style={styles.motionNote}>{motion === 'classic' ? t('The old main screen: no scene, the day as a heat strip, the figure on its board.') : motion === 'off' ? t('The vault stands still.') : motion === 'calm' ? t('One gentle frame a second.') : t('Live while you watch. Calm after 90 seconds without a touch.')}</Text>
+            <Text style={styles.motionNote}>{motion === 'classic' ? t('The old main screen: no scene, the day as a heat strip, the number on its flip board.') : motion === 'off' ? t('The vault stands still.') : motion === 'calm' ? t('One gentle frame a second.') : t('Live while you watch. Calm after 90 seconds without a touch.')}</Text>
           </View>
           <RangeSwitch value={motion} options={[...MOTIONS]} onChange={(next) => { setMotionClassic(next === 'classic'); setMotionOff(next === 'off'); setMotionCalm(next === 'calm'); }} />
         </View>
