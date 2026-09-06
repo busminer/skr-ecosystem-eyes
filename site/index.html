@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SKR Eyes — see the whole picture, know your position</title>
-<meta name="description" content="An independent Android app for SKR stakers on Solana Mobile Seeker: your position with its real age, the whole vault's pulse, the live event floor, the 48 hour exit queue, unlock alerts, and staking through your own wallet.">
+<meta name="description" content="An independent Android app for SKR stakers on Solana Mobile Seeker: the living vault where every stake falls in with its .skr name, the live event floor, your own card with its real age and what it has earned, unlock alerts, and staking through your own wallet.">
 <link rel="icon" href="/img/mark.png">
 <link rel="stylesheet" href="/styles.css?v=51c1c78a">
 <link rel="stylesheet" href="/wink.css?v=c13ed2e2">
@@ -37,7 +37,7 @@
       <a class="button" href="#screens">See the screens</a>
       <a class="button ghost" href="#how">How it works</a>
     </div>
-    <p class="note">Coming to the Solana dApp Store.</p>
+    <p class="note">In the Solana dApp Store, version 1.1.0. On a Seeker, open <a href="solanadappstore://details?id=dev.alexkosa.skreyes">SKR Eyes in the store</a>.</p>
     </div>
 
     <div class="wink" aria-hidden="true">
@@ -81,8 +81,8 @@
   <section class="wrap">
     <div class="slices">
       <figure class="slice">
-        <img src="/img/slice-pulse.jpg" alt="The headline number on a split-flap board: 5.09 billion SKR staked" width="752" height="1000" loading="lazy">
-        <figcaption><b>The number that flips</b>How much of the supply is staked, on a board that rolls over when it moves.</figcaption>
+        <img src="/img/slice-vault.jpg" alt="The living vault: exits hanging above the pile with their cooling rings, the day's largest stakes lit on top, the staked total on a split-flap board" width="752" height="1000" loading="lazy">
+        <figcaption><b>The vault, alive</b>Every stake falls in as a phone with its .skr name. Every exit hangs above the pile and cools for 48 hours.</figcaption>
       </figure>
       <figure class="slice">
         <img src="/img/slice-flow.jpg" alt="The live event floor with the day's biggest move pinned above the stream" width="752" height="1000" loading="lazy">
@@ -90,45 +90,45 @@
       </figure>
       <figure class="slice">
         <img src="/img/slice-card.jpg" alt="The personal card: wallet name, amount staked, days held, share of the vault" width="752" height="1000" loading="lazy">
-        <figcaption><b>Your card, and its age</b>What you hold and how long you have held it, read from your position account.</figcaption>
+        <figcaption><b>Your card, and its age</b>What you hold and how long you have held it, read from your position account. Hide your name or your amount before you share it.</figcaption>
       </figure>
     </div>
     <p class="note slices-note">Cut from the app running on a Seeker. Not mockups.</p>
   </section>
 
   <section class="wrap section" id="screens">
-    <h2>Five screens, one idea</h2>
-    <p class="sub">Every number on every screen comes from the chain and carries its source. Nothing is decorative, nothing is invented to fill a gap.</p>
+    <h2>Four tabs, one idea</h2>
+    <p class="sub">Every number on every screen comes from the chain and carries its source. Nothing is decorative, nothing is invented to fill a gap. Every phone in the vault is a finalized move you can tap for its receipt.</p>
 
     <div class="screens">
       <article class="screen">
-        <img src="/img/card.jpg" alt="The personal card: wallet name, amount staked, days held, share of the vault">
-        <h3>Your card</h3>
-        <p>Your name from the wallet, what you hold, how long you have held it, and your weight in the vault. The age is read from the oldest signature on your position account, not estimated.</p>
+        <img src="/img/vault.jpg" alt="Vault: the animated scene of the staking vault, the staked total on a split-flap board, the last 24 hours drawn hour by hour">
+        <h3>Vault</h3>
+        <p>The home screen. Stakes fall into the pile of what stays, larger ones larger and slower, a 100K stake as a shower. Exits hang above it with a ring that closes over their 48 hours. Under the scene: how much is staked, the day drawn hour by hour, and the exit queue. Motion can be Live, Calm or Off.</p>
       </article>
 
       <article class="screen">
-        <img src="/img/pulse.jpg" alt="Pulse: active stake, 24 hour flow chart, cooldown and withdrawable tiles, maturity rail">
-        <h3>Pulse</h3>
-        <p>The whole vault at a glance: how much is staked, what flowed in and out over 24 hours, 7 days or 30 days, and how the exit queue matures over the next two days.</p>
-      </article>
-
-      <article class="screen">
-        <img src="/img/flow.jpg" alt="Flow: live finalized events with the largest move of the day pinned on top">
+        <img src="/img/flow.jpg" alt="Flow: the day's biggest stake pinned above a stream of finalized events, filters by kind and size">
         <h3>Flow</h3>
-        <p>The live floor. Every finalized stake, unstake and withdrawal as it lands, with the day's biggest move pinned above the stream and a gentle buzz when something arrives.</p>
+        <p>The live floor. Every finalized stake, exit and withdrawal as it lands, filtered by kind and by size, with the day's biggest moves pinned on top. A large stake rings an old phone, a large exit lands with a low boom, on any screen, each with a short buzz. Or switch both off.</p>
       </article>
 
       <article class="screen">
-        <img src="/img/queue.jpg" alt="Queue: amount ready to withdraw and the maturity of the exit queue">
-        <h3>Queue</h3>
-        <p>What is waiting to leave and when it frees. An unstake request is not money out — this screen keeps the difference visible.</p>
+        <img src="/img/me.jpg" alt="Me: earned on staking, the Stake button, the daily Sixteen, two privacy switches for the card">
+        <h3>Me</h3>
+        <p>Your position, what it has earned, read from the chain, and staking without leaving the app: one approval covers up to sixteen parts, or tap Sixteen for 16 parts of 1 SKR as a small daily habit. The app checks your balance first and says plainly what you can afford.</p>
       </article>
 
       <article class="screen">
-        <img src="/img/stake.jpg" alt="The staking screen: amount per transaction, number of transactions, total">
-        <h3>Staking</h3>
-        <p>Choose what goes into one transaction and how many transactions to send. One wallet approval covers up to sixteen, and a progress bar follows each one until the chain confirms it.</p>
+        <img src="/img/card.jpg" alt="The staker card: .skr name, days in stake, position size, weight in the vault">
+        <h3>Your card</h3>
+        <p>Your .skr name from the registry, your days in stake read from the oldest signature on your position account, your weight in the vault. Share it as a picture, with your name or your amount hidden if you prefer.</p>
+      </article>
+
+      <article class="screen">
+        <img src="/img/alerts.jpg" alt="Alerts: the thresholds behind the sounds, eleven languages, a test notification, tips in SKR">
+        <h3>Alerts</h3>
+        <p>An alarm at the exact on-chain unlock time, set on the phone itself. Sound and buzz switches, the language of the app, and a tip in SKR to kosa.skr that is staked right away, all of it.</p>
       </article>
     </div>
   </section>
@@ -172,7 +172,7 @@
     <dl class="rows">
       <div class="row">
         <dt>do I need SKR?</dt>
-        <dd>No. Pulse, Flow and Queue work with no wallet at all, and you can inspect any public address on the card screen. SKR is needed only to stake.</dd>
+        <dd>No. Vault, Flow and Alerts work with no wallet at all, and you can look up any public address on Me. SKR is needed only to stake.</dd>
       </div>
       <div class="row">
         <dt>what does staking cost?</dt>
@@ -181,6 +181,10 @@
       <div class="row">
         <dt>why several transactions?</dt>
         <dd>Because each one is a separate on-chain stake. The app can send up to sixteen from a single approval, and each needs at least 1 SKR.</dd>
+      </div>
+      <div class="row">
+        <dt>which languages?</dt>
+        <dd>English, Deutsch, 中文, Русский, Español, Português, Türkçe, Tiếng Việt, Indonesia, 한국어, 日本語. The app follows the phone's language and can be switched by hand on Alerts.</dd>
       </div>
       <div class="row">
         <dt>who made it?</dt>
