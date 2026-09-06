@@ -6,10 +6,6 @@
 // 変えません。
 
 export const ja: Record<string, string> = {
-  'Sixteen today?': '今日の 16 分割は？',
-  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '1 SKR を 16 分割、承認は一回。ステークを動かし続ける小さな習慣です。',
-  'A daily nudge for the Sixteen': '16 分割の毎日のひと押し',
-  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': '一日一回、夕方六時ごろ、ステークを動かし続けるためのやさしいリマインダーです。端末内で設定され、どこにも送信されません。',
   'Earned on staking': 'ステークで得た分',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': '最後にステークまたは解除した時点のシェア価格からの推定です。それ以前に積み上がった報酬はポジションに含まれており、ここでは数えません。',
   'All': 'すべて',
@@ -280,6 +276,15 @@ export const ja: Record<string, string> = {
   'BY EARNED': '収益順',
   'BY STAKE': 'ステーク順',
   'Back to top': 'Top に戻る',
+  'A daily look in': '一日ひと目',
+  'Once a day, around six in the evening, one line about the vault, a different one each day. It never asks you to stake. Set on the phone itself, nothing is sent anywhere.': '一日に一度、夕方六時ごろ、金庫についての一文が届きます。毎日ちがう文で、ステークを促すことはありません。端末自身が予約し、どこにも送信しません。',
+  'See what the vault did while you were away.': '離れているあいだに金庫で何があったかを見てみましょう。',
+  'Your place among stakers has probably moved today.': 'ステーカーの中でのあなたの順位は、今日も動いたはずです。',
+  'Your position, in one look: days, earned, what unlocks next.': 'ひと目でわかる自分の状況：日数、報酬、次に解除されるもの。',
+  'The queue is turning. See who asked out and who came back.': '列が動いています。誰が出ようとし、誰が戻ったかを見てみましょう。',
+  'Your card is ready whenever you feel like sharing it.': 'カードはいつでも共有できる状態です。',
+  'Thirty seconds in the vault, then back to your day.': '金庫で三十秒、それからまた一日へ。',
+  'A week of moves in the vault is worth one look.': '一週間の動きは、ひと目見る価値があります。',
   'Open radar': 'レーダーを開く',
   'Bottom half': '下半分',
   'Connect on Me to see your place.': '自分の順位を見るには、自分タブで接続してください。',

@@ -6,10 +6,6 @@
 // boleh dipindah, tidak boleh diganti.
 
 export const id: Record<string, string> = {
-  'Sixteen today?': 'Enam belas hari ini?',
-  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '16 bagian 1 SKR, satu persetujuan. Kebiasaan kecil yang menjaga stake-mu tetap bergerak.',
-  'A daily nudge for the Sixteen': 'Pengingat harian untuk Enam Belas',
-  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': 'Sekali sehari, sekitar pukul enam sore, pengingat lembut untuk menjaga stake-mu tetap bergerak. Diatur di ponsel sendiri, tidak ada yang dikirim ke mana pun.',
   'Earned on staking': 'Hasil dari stake',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Perkiraan dari harga saham pada stake atau keluar terakhirmu. Imbalan yang terkumpul sebelum langkah itu sudah masuk ke posisi dan tidak dihitung di sini.',
   'All': 'Semua',
@@ -278,6 +274,15 @@ export const id: Record<string, string> = {
   'BY EARNED': 'MENURUT HASIL',
   'BY STAKE': 'MENURUT STAKE',
   'Back to top': 'Kembali ke Top',
+  'A daily look in': 'Tengok sehari sekali',
+  'Once a day, around six in the evening, one line about the vault, a different one each day. It never asks you to stake. Set on the phone itself, nothing is sent anywhere.': 'Sekali sehari, sekitar pukul enam sore, satu kalimat tentang brankas, berbeda setiap hari. Tidak pernah mengajak kamu staking. Diatur oleh ponsel sendiri, tidak ada yang dikirim ke mana pun.',
+  'See what the vault did while you were away.': 'Lihat apa yang terjadi di brankas selagi kamu pergi.',
+  'Your place among stakers has probably moved today.': 'Peringkatmu di antara para staker mungkin bergeser hari ini.',
+  'Your position, in one look: days, earned, what unlocks next.': 'Posisimu dalam satu pandangan: hari, hasil, dan yang terbuka berikutnya.',
+  'The queue is turning. See who asked out and who came back.': 'Antrean bergerak. Lihat siapa yang minta keluar dan siapa yang kembali.',
+  'Your card is ready whenever you feel like sharing it.': 'Kartumu siap kapan pun kamu ingin membagikannya.',
+  'Thirty seconds in the vault, then back to your day.': 'Tiga puluh detik di brankas, lalu kembali ke harimu.',
+  'A week of moves in the vault is worth one look.': 'Seminggu pergerakan di brankas layak dilihat sekali.',
   'Open radar': 'Buka radar',
   'Bottom half': 'Separuh bawah',
   'Connect on Me to see your place.': 'Sambungkan di Saya untuk melihat peringkatmu.',

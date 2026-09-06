@@ -6,10 +6,6 @@
 // chỗ nhưng không đổi tên. "Thẻ" là tấm thẻ chia sẻ, các màn hình chính gọi là "mục".
 
 export const vi: Record<string, string> = {
-  'Sixteen today?': 'Mười sáu hôm nay chứ?',
-  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '16 phần 1 SKR, một lần duyệt. Một thói quen nhỏ giúp stake của bạn luôn chuyển động.',
-  'A daily nudge for the Sixteen': 'Nhắc nhẹ mỗi ngày về Mười sáu',
-  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': 'Mỗi ngày một lần, khoảng sáu giờ chiều, một lời nhắc nhẹ để stake của bạn luôn chuyển động. Đặt ngay trên điện thoại, không gửi gì đi đâu.',
   'Earned on staking': 'Đã kiếm được từ stake',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Ước tính theo giá cổ phần tại lần stake hoặc rút gần nhất của bạn. Phần thưởng tích luỹ trước đó đã gộp vào vị thế và không tính ở đây.',
   'All': 'Tất cả',
@@ -284,6 +280,15 @@ export const vi: Record<string, string> = {
   'BY EARNED': 'THEO LÃI',
   'BY STAKE': 'THEO STAKE',
   'Back to top': 'Về Top',
+  'A daily look in': 'Ghé mắt mỗi ngày',
+  'Once a day, around six in the evening, one line about the vault, a different one each day. It never asks you to stake. Set on the phone itself, nothing is sent anywhere.': 'Mỗi ngày một lần, khoảng sáu giờ chiều, một dòng về kho, mỗi ngày một khác. Nó không bao giờ rủ bạn stake. Do chính điện thoại đặt lịch, không có gì được gửi đi đâu cả.',
+  'See what the vault did while you were away.': 'Xem kho đã động đậy thế nào lúc bạn vắng mặt.',
+  'Your place among stakers has probably moved today.': 'Vị trí của bạn giữa những người stake hôm nay chắc đã đổi.',
+  'Your position, in one look: days, earned, what unlocks next.': 'Vị thế của bạn trong một cái nhìn: số ngày, phần kiếm được, cái sắp mở khoá.',
+  'The queue is turning. See who asked out and who came back.': 'Hàng chờ đang xoay. Xem ai xin ra và ai đã quay lại.',
+  'Your card is ready whenever you feel like sharing it.': 'Thẻ của bạn đã sẵn sàng, chia sẻ khi nào bạn muốn.',
+  'Thirty seconds in the vault, then back to your day.': 'Ba mươi giây trong kho, rồi trở lại ngày của bạn.',
+  'A week of moves in the vault is worth one look.': 'Một tuần chuyển động trong kho đáng để nhìn một lần.',
   'Open radar': 'Mở radar',
   'Bottom half': 'Nửa dưới',
   'Connect on Me to see your place.': 'Kết nối ở mục Tôi để xem thứ hạng của bạn.',

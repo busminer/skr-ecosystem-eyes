@@ -9,10 +9,6 @@
 // Numbers arrive already formatted, so the braces only move, never change.
 
 export const zh: Record<string, string> = {
-  'Sixteen today?': '今天十六份了吗？',
-  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '1 SKR 分成十六份，一次确认。一个让质押持续流动的小习惯。',
-  'A daily nudge for the Sixteen': '每日十六份提醒',
-  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': '每天傍晚六点左右，轻轻提醒你让质押保持流动。设置在手机本机，不会向外发送任何内容。',
   'Earned on staking': '质押收益',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': '按上次质押或退出时的份额价格估算。在那之前累积的奖励已计入仓位，这里不再计算。',
   'All': '全部',
@@ -282,6 +278,15 @@ export const zh: Record<string, string> = {
   'BY EARNED': '按收益',
   'BY STAKE': '按质押',
   'Back to top': '返回 Top',
+  'A daily look in': '每日一瞥',
+  'Once a day, around six in the evening, one line about the vault, a different one each day. It never asks you to stake. Set on the phone itself, nothing is sent anywhere.': '每天一次，傍晚六点前后，一句关于金库的话，每天都不一样。它从不劝你质押。由手机自己安排，不会把任何东西发往别处。',
+  'See what the vault did while you were away.': '看看你不在的时候，金库发生了什么。',
+  'Your place among stakers has probably moved today.': '你在质押者中的名次，今天多半又变了。',
+  'Your position, in one look: days, earned, what unlocks next.': '一眼看完自己的位置：天数、收益、下一个解锁。',
+  'The queue is turning. See who asked out and who came back.': '队列在转。看看谁要出去，谁又回来了。',
+  'Your card is ready whenever you feel like sharing it.': '卡片随时可以分享。',
+  'Thirty seconds in the vault, then back to your day.': '在金库里待三十秒，然后回到你的一天。',
+  'A week of moves in the vault is worth one look.': '金库里一周的动静，值得看一眼。',
   'Open radar': '打开雷达',
   'Bottom half': '后半段',
   'Connect on Me to see your place.': '在“我的”里连接钱包，即可看到你的名次。',

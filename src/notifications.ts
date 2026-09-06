@@ -8,7 +8,22 @@ const STORAGE_PREFIX = 'skr-eyes:unlock-alerts:';
 const CHANNEL_ID = 'skr-unlocks';
 const NUDGE_CHANNEL_ID = 'skr-nudges';
 const NUDGE_ID_KEY = 'skr-eyes:nudge:id';
+const NUDGE_IDS_KEY = 'skr-eyes:nudge:ids';
 const ASKED_KEY = 'skr-eyes:notifications:asked';
+
+// Seven lines, one per weekday, so the daily reminder knocks rather than
+// repeats one sentence forever. It asks for nothing: Alex's call on 06.09 was
+// that the app must never push anybody to stake, only say it is here and worth
+// a look. Android puts the app name above them, so they carry no title.
+const NUDGE_LINES = [
+  () => t('See what the vault did while you were away.'),
+  () => t('Your place among stakers has probably moved today.'),
+  () => t('Your position, in one look: days, earned, what unlocks next.'),
+  () => t('The queue is turning. See who asked out and who came back.'),
+  () => t('Your card is ready whenever you feel like sharing it.'),
+  () => t('Thirty seconds in the vault, then back to your day.'),
+  () => t('A week of moves in the vault is worth one look.'),
+] as const;
 
 type StoredSchedule = { unlockAt: number; notificationIds: string[] };
 
@@ -31,7 +46,7 @@ export async function configureNotifications() {
     // The daily nudge is a lighter thing than an unlock: its own channel, so a
     // person can mute the nudge in Android and keep the unlock.
     await Notifications.setNotificationChannelAsync(NUDGE_CHANNEL_ID, {
-      name: 'Daily sixteen',
+      name: 'Daily look',
       importance: Notifications.AndroidImportance.DEFAULT,
       vibrationPattern: [0, 80],
       lightColor: '#C9A96A',
@@ -56,29 +71,39 @@ export async function askNotificationPermissionOnce(): Promise<boolean> {
   }
 }
 
-// One gentle reminder a day, around six in the evening, to stake the sixteen.
-// Scheduled on the phone itself, nothing leaves it. Off is honoured by
-// cancelling whatever was scheduled.
+// One line a day, around six in the evening, about the vault itself. It never
+// asks for a stake. Scheduled on the phone, nothing leaves it, and off is
+// honoured by cancelling every one of them.
 export async function scheduleDailyNudge(on: boolean): Promise<void> {
   try {
-    const previous = await AsyncStorage.getItem(NUDGE_ID_KEY);
-    if (previous) {
-      await Notifications.cancelScheduledNotificationAsync(previous).catch(() => undefined);
+    // The old build scheduled one daily notification under its own key; a phone
+    // updating from it has to have that one cancelled too, or two reminders
+    // arrive every evening.
+    const single = await AsyncStorage.getItem(NUDGE_ID_KEY);
+    if (single) {
+      await Notifications.cancelScheduledNotificationAsync(single).catch(() => undefined);
       await AsyncStorage.removeItem(NUDGE_ID_KEY);
+    }
+    const stored = await AsyncStorage.getItem(NUDGE_IDS_KEY);
+    if (stored) {
+      const previous = JSON.parse(stored) as string[];
+      await Promise.all(previous.map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => undefined)));
+      await AsyncStorage.removeItem(NUDGE_IDS_KEY);
     }
     if (!on) return;
     const permission = await Notifications.getPermissionsAsync();
     if (!permission.granted) return;
-    const id = await Notifications.scheduleNotificationAsync({
+    // One weekly notification per weekday rather than one daily one: the same
+    // rhythm, seven different lines, and still nothing leaving the phone.
+    const ids = await Promise.all(NUDGE_LINES.map((line, index) => Notifications.scheduleNotificationAsync({
       content: {
-        title: t('Sixteen today?'),
-        body: t('16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.'),
+        body: line(),
         sound: 'default',
         data: { nudge: true },
       },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 18, minute: 0, channelId: NUDGE_CHANNEL_ID },
-    });
-    await AsyncStorage.setItem(NUDGE_ID_KEY, id);
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: index + 1, hour: 18, minute: 0, channelId: NUDGE_CHANNEL_ID },
+    })));
+    await AsyncStorage.setItem(NUDGE_IDS_KEY, JSON.stringify(ids));
   } catch {
     // A nudge that could not be set is not worth a crash.
   }

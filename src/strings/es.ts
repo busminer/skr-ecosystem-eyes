@@ -10,10 +10,6 @@
 // literal.
 
 export const es: Record<string, string> = {
-  'Sixteen today?': '¿Los dieciséis de hoy?',
-  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '16 partes de 1 SKR, una aprobación. Un pequeño hábito que mantiene tu stake en movimiento.',
-  'A daily nudge for the Sixteen': 'Un recordatorio diario de los Dieciséis',
-  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': 'Una vez al día, hacia las seis de la tarde, un recordatorio suave para mantener tu stake en movimiento. Se programa en el propio teléfono; no se envía nada a ningún sitio.',
   'Earned on staking': 'Ganado con el stake',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Estimación según el precio de la participación en tu último stake o salida. Las recompensas acumuladas antes de ese movimiento ya están dentro de tu posición y no se cuentan aquí.',
   'All': 'Todo',
@@ -284,6 +280,15 @@ export const es: Record<string, string> = {
   'BY EARNED': 'POR GANADO',
   'BY STAKE': 'POR STAKE',
   'Back to top': 'Volver a Top',
+  'A daily look in': 'Un vistazo diario',
+  'Once a day, around six in the evening, one line about the vault, a different one each day. It never asks you to stake. Set on the phone itself, nothing is sent anywhere.': 'Una vez al día, sobre las seis de la tarde, una línea sobre la bóveda, distinta cada día. Nunca te pide que hagas staking. Se programa en el propio teléfono y no se envía nada a ninguna parte.',
+  'See what the vault did while you were away.': 'Mira lo que hizo la bóveda mientras no estabas.',
+  'Your place among stakers has probably moved today.': 'Tu puesto entre los stakers probablemente se movió hoy.',
+  'Your position, in one look: days, earned, what unlocks next.': 'Tu posición de un vistazo: días, ganado y qué se desbloquea después.',
+  'The queue is turning. See who asked out and who came back.': 'La cola avanza. Mira quién pidió salir y quién volvió.',
+  'Your card is ready whenever you feel like sharing it.': 'Tu tarjeta está lista para cuando quieras compartirla.',
+  'Thirty seconds in the vault, then back to your day.': 'Treinta segundos en la bóveda y de vuelta a tu día.',
+  'A week of moves in the vault is worth one look.': 'Una semana de movimientos en la bóveda merece un vistazo.',
   'Open radar': 'Abrir el radar',
   'Bottom half': 'Mitad inferior',
   'Connect on Me to see your place.': 'Conecta en Yo para ver tu puesto.',

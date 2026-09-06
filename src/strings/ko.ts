@@ -7,10 +7,6 @@
 // 신청) / 대기(48시간 쿨다운) / 해제(대기가 끝나 출금 가능해짐) / 출금.
 
 export const ko: Record<string, string> = {
-  'Sixteen today?': '오늘의 열여섯?',
-  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '1 SKR을 16개로 나눠 한 번의 승인으로. 스테이킹을 계속 움직이게 하는 작은 습관입니다.',
-  'A daily nudge for the Sixteen': '열여섯 매일 알림',
-  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': '하루 한 번, 저녁 여섯 시쯤, 스테이킹을 계속 움직이게 하는 부드러운 알림입니다. 휴대폰 자체에 설정되며 어디에도 전송되지 않습니다.',
   'Earned on staking': '스테이킹 수익',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': '마지막 스테이킹 또는 언스테이킹 시점의 지분 가격으로 추정한 값입니다. 그 이전에 쌓인 보상은 포지션에 포함되어 여기서는 계산되지 않습니다.',
   'All': '전체',
@@ -281,6 +277,15 @@ export const ko: Record<string, string> = {
   'BY EARNED': '수익순',
   'BY STAKE': '스테이킹순',
   'Back to top': 'Top으로 돌아가기',
+  'A daily look in': '하루 한 번 둘러보기',
+  'Once a day, around six in the evening, one line about the vault, a different one each day. It never asks you to stake. Set on the phone itself, nothing is sent anywhere.': '하루 한 번, 저녁 여섯 시쯤 금고에 대한 한 줄이 옵니다. 매일 다른 문장이고 스테이킹을 권하지 않습니다. 휴대폰이 직접 예약하며 어디로도 전송되지 않습니다.',
+  'See what the vault did while you were away.': '자리를 비운 사이 금고에서 무슨 일이 있었는지 보세요.',
+  'Your place among stakers has probably moved today.': '스테이커들 사이의 순위가 오늘도 움직였을 겁니다.',
+  'Your position, in one look: days, earned, what unlocks next.': '한눈에 보는 내 자리: 일수, 수익, 다음 해제.',
+  'The queue is turning. See who asked out and who came back.': '대기열이 돌아갑니다. 누가 나가려 했고 누가 돌아왔는지 보세요.',
+  'Your card is ready whenever you feel like sharing it.': '카드는 언제든 공유할 수 있게 준비되어 있습니다.',
+  'Thirty seconds in the vault, then back to your day.': '금고에서 삼십 초, 그리고 다시 하루로.',
+  'A week of moves in the vault is worth one look.': '한 주의 움직임은 한 번 볼 만합니다.',
   'Open radar': '레이더 열기',
   'Bottom half': '하위 절반',
   'Connect on Me to see your place.': '내 정보에서 연결하면 내 순위를 볼 수 있습니다.',

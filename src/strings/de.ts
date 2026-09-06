@@ -15,10 +15,6 @@
 // von Chips und Schaltflächen bewusst kürzer als die wörtliche Übersetzung.
 
 export const de: Record<string, string> = {
-  'Sixteen today?': 'Heute die Sechzehn?',
-  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '16 Teile von 1 SKR, eine Freigabe. Eine kleine Gewohnheit, die Ihren Stake in Bewegung hält.',
-  'A daily nudge for the Sixteen': 'Ein täglicher Anstoß für die Sechzehn',
-  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': 'Einmal am Tag, gegen sechs Uhr abends, eine sanfte Erinnerung, den Stake in Bewegung zu halten. Wird auf dem Telefon selbst eingerichtet, nichts wird irgendwohin gesendet.',
   'Earned on staking': 'Durch Staking verdient',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Eine Schätzung anhand des Anteilspreises bei Ihrem letzten Stake oder Ausstieg. Belohnungen, die vor diesem Schritt verbucht wurden, stecken schon in Ihrer Position und werden hier nicht mitgezählt.',
   'All': 'Alle',
@@ -289,6 +285,15 @@ export const de: Record<string, string> = {
   'BY EARNED': 'NACH VERDIENST',
   'BY STAKE': 'NACH STAKE',
   'Back to top': 'Zurück zu Top',
+  'A daily look in': 'Täglicher Blick',
+  'Once a day, around six in the evening, one line about the vault, a different one each day. It never asks you to stake. Set on the phone itself, nothing is sent anywhere.': 'Einmal am Tag, gegen sechs Uhr abends, eine Zeile über den Tresor, jeden Tag eine andere. Sie fordert nie zum Staken auf. Wird vom Telefon selbst gestellt, nichts wird irgendwohin gesendet.',
+  'See what the vault did while you were away.': 'Sehen Sie, was der Tresor getan hat, während Sie weg waren.',
+  'Your place among stakers has probably moved today.': 'Ihr Platz unter den Stakern hat sich heute wahrscheinlich verschoben.',
+  'Your position, in one look: days, earned, what unlocks next.': 'Ihre Position auf einen Blick: Tage, Ertrag und was als Nächstes freigegeben wird.',
+  'The queue is turning. See who asked out and who came back.': 'Die Warteschlange dreht sich. Sehen Sie, wer hinauswollte und wer zurückkam.',
+  'Your card is ready whenever you feel like sharing it.': 'Ihre Karte ist bereit, wann immer Sie sie teilen möchten.',
+  'Thirty seconds in the vault, then back to your day.': 'Dreißig Sekunden im Tresor, dann zurück zu Ihrem Tag.',
+  'A week of moves in the vault is worth one look.': 'Eine Woche Bewegung im Tresor ist einen Blick wert.',
   'Open radar': 'Radar öffnen',
   'Bottom half': 'Untere Hälfte',
   'Connect on Me to see your place.': 'Verbinden Sie unter Ich, um Ihren Platz zu sehen.',

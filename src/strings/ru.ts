@@ -11,10 +11,6 @@
 // и кнопках намеренно короче дословного перевода.
 
 export const ru: Record<string, string> = {
-  'Sixteen today?': 'Сегодня шестнадцать?',
-  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '1 SKR шестнадцатью частями, одно подтверждение. Маленькая привычка, которая держит стейк в движении.',
-  'A daily nudge for the Sixteen': 'Ежедневный толчок про Шестнадцать',
-  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': 'Раз в день, около шести вечера, мягкое напоминание держать стейк в движении. Ставится на самом телефоне, наружу ничего не уходит.',
   'Earned on staking': 'Заработано на стейкинге',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Оценка по цене доли на момент последнего стейка или выхода. Награды, накопленные до этого хода, уже вошли в позицию и здесь не считаются.',
   'All': 'Все',
@@ -285,6 +281,15 @@ export const ru: Record<string, string> = {
   'BY EARNED': 'ПО ЗАРАБОТКУ',
   'BY STAKE': 'ПО СТЕЙКУ',
   'Back to top': 'Назад в Top',
+  'A daily look in': 'Ежедневный взгляд',
+  'Once a day, around six in the evening, one line about the vault, a different one each day. It never asks you to stake. Set on the phone itself, nothing is sent anywhere.': 'Раз в сутки, около шести вечера, одна строка про хранилище, каждый день другая. Стейкать она никогда не предлагает. Ставится самим телефоном, никуда ничего не уходит.',
+  'See what the vault did while you were away.': 'В хранилище кое-что изменилось, пока вас не было.',
+  'Your place among stakers has probably moved today.': 'Место среди стейкеров сегодня, скорее всего, сдвинулось.',
+  'Your position, in one look: days, earned, what unlocks next.': 'Позиция одним взглядом: дни, заработок, что разблокируется дальше.',
+  'The queue is turning. See who asked out and who came back.': 'Очередь движется. Видно, кто попросился на выход и кто вернулся.',
+  'Your card is ready whenever you feel like sharing it.': 'Карточка готова, когда захочется ей поделиться.',
+  'Thirty seconds in the vault, then back to your day.': 'Тридцать секунд в хранилище, и обратно к своим делам.',
+  'A week of moves in the vault is worth one look.': 'Неделя движений в хранилище стоит одного взгляда.',
   'Open radar': 'Открыть радар',
   'Bottom half': 'Нижняя половина',
   'Connect on Me to see your place.': 'Подключите кошелёк на вкладке «Я», чтобы увидеть своё место.',

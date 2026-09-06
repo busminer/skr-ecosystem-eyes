@@ -7,10 +7,6 @@
 // içeriği değişmez.
 
 export const tr: Record<string, string> = {
-  'Sixteen today?': 'Bugünkü on altı?',
-  '16 parts of 1 SKR, one approval. A small habit that keeps your stake moving.': '16 parça 1 SKR, tek onay. Stake\'ini hareket halinde tutan küçük bir alışkanlık.',
-  'A daily nudge for the Sixteen': 'On altı için günlük hatırlatma',
-  'Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.': 'Günde bir kez, akşam altı civarı, stake\'ini hareket halinde tutman için nazik bir hatırlatma. Telefonun kendisinde kurulur, hiçbir yere bir şey gönderilmez.',
   'Earned on staking': 'Stake kazancı',
   'An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.': 'Son stake veya çıkışındaki pay fiyatına göre tahmin. O hamleden önce biriken ödüller pozisyona katılmıştır ve burada sayılmaz.',
   'All': 'Tümü',
@@ -285,6 +281,15 @@ export const tr: Record<string, string> = {
   'BY EARNED': 'KAZANCA GÖRE',
   'BY STAKE': 'STAKE\'E GÖRE',
   'Back to top': 'Top\'a dön',
+  'A daily look in': 'Günde bir bakış',
+  'Once a day, around six in the evening, one line about the vault, a different one each day. It never asks you to stake. Set on the phone itself, nothing is sent anywhere.': 'Günde bir kez, akşam altı sularında, kasa hakkında bir satır gelir, her gün başka bir satır. Asla stake etmenizi istemez. Telefonun kendisi planlar, hiçbir yere bir şey gönderilmez.',
+  'See what the vault did while you were away.': 'Siz yokken kasada neler olduğuna bakın.',
+  'Your place among stakers has probably moved today.': 'Stake edenler arasındaki yeriniz bugün büyük olasılıkla değişti.',
+  'Your position, in one look: days, earned, what unlocks next.': 'Tek bakışta pozisyonunuz: gün, kazanç ve sırada ne açılıyor.',
+  'The queue is turning. See who asked out and who came back.': 'Sıra dönüyor. Kim çıkmak istedi, kim geri döndü, görün.',
+  'Your card is ready whenever you feel like sharing it.': 'Kartınız, paylaşmak istediğiniz an hazır.',
+  'Thirty seconds in the vault, then back to your day.': 'Kasada otuz saniye, sonra gününüze geri dönün.',
+  'A week of moves in the vault is worth one look.': 'Kasadaki bir haftalık hareket bir bakışı hak ediyor.',
   'Open radar': 'Radarı aç',
   'Bottom half': 'Alt yarı',
   'Connect on Me to see your place.': 'Sıranı görmek için Ben sekmesinde bağlan.',

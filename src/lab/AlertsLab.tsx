@@ -168,9 +168,9 @@ export function AlertsLab() {
         <Hairline />
         <View style={styles.toggleRow}>
           <View style={styles.toggleCopy}>
-            <Text style={styles.toggleLabel}>{t('A daily nudge for the Sixteen')}</Text>
+            <Text style={styles.toggleLabel}>{t('A daily look in')}</Text>
             <Text style={styles.toggleNote}>
-              {t('Once a day, around six in the evening, a gentle reminder to keep your stake moving. Set on the phone itself, nothing is sent anywhere.')}
+              {t('Once a day, around six in the evening, one line about the vault, a different one each day. It never asks you to stake. Set on the phone itself, nothing is sent anywhere.')}
             </Text>
           </View>
           <Switch
