@@ -145,9 +145,7 @@ export const es: Record<string, string> = {
   'An exact amount next to a start date is close to a fingerprint. Your choice, said plainly.': 'Un importe exacto junto a una fecha de inicio es casi una huella digital. Tú decides, dicho sin rodeos.',
 
   // Los dieciséis diarios
-  'Sixteen': 'Dieciséis',
   'The daily sixteen': 'Los dieciséis diarios',
-  '16 parts of 1 SKR, one approval. A small daily habit that keeps your position moving.': '16 partes de 1 SKR, una sola aprobación. Un pequeño hábito diario que mantiene tu posición en movimiento.',
 
   // Propina
   'Support SKR Eyes': 'Apoya a SKR Eyes',
@@ -163,7 +161,6 @@ export const es: Record<string, string> = {
   'Your wallet signs and sends it. The app only fetches a blockhash before and reads the status after.': 'Tu cartera lo firma y lo envía. La app solo obtiene un blockhash antes y lee el estado después.',
   'A tip changes nothing about your position and nothing about any airdrop. It is a thank you, not a fee.': 'Una propina no cambia nada en tu posición ni en ningún airdrop. Es un agradecimiento, no una comisión.',
   'Free and open source, built by one Seeker. Tips in SKR go to kosa.skr and are staked right away, all of them.': 'Gratis y de código abierto, hecha por un Seeker. Las propinas en SKR van a kosa.skr y se ponen en stake de inmediato, todas.',
-  'This app is free, open source, and built by one Seeker. If it saved you a moment, a tip is welcome. Every SKR that arrives is staked right away, all of it.': 'Esta app es gratis, de código abierto y hecha por un Seeker. Si te ahorró un momento, una propina es bienvenida. Cada SKR que llega se pone en stake de inmediato, todo.',
   'This is {name} itself. A tip to your own wallet moves nothing; try from another wallet.': 'Esta es la cartera {name}. Una propina a tu propia cartera no mueve nada; prueba desde otra.',
   'The chain rejected the transfer.': 'La cadena rechazó la transferencia.',
   'The wallet declined. Nothing was sent.': 'La cartera rechazó la operación. No se envió nada.',
@@ -234,7 +231,6 @@ export const es: Record<string, string> = {
   'This is what one transaction stakes. The total is this amount times the count below.': 'Esto es lo que pone en stake una transacción. El total es este importe por el número de abajo.',
   'How many transactions': 'Cuántas transacciones',
   'One transaction, one wallet approval.': 'Una transacción, una aprobación en la cartera.',
-  '{count} identical transactions from one approval, sent one after another. Each one is a separate on-chain stake.': '{count} transacciones idénticas con una sola aprobación, enviadas una tras otra. Cada una es un stake independiente en la cadena.',
   'This needs {needed} SKR and you hold {held}. ': 'Hacen falta {needed} SKR y tú tienes {held}. ',
   'At this amount you can send 1 part.': 'Con este importe puedes enviar 1 parte.',
   'At this amount you can send {count} parts.': 'Con este importe puedes enviar {count} partes.',
@@ -336,4 +332,10 @@ export const es: Record<string, string> = {
   '{count} treasury-size wallets set aside: {total} SKR, no names, no moves.': '{count} wallets de tamaño tesorería aparte: {total} SKR, sin nombres, sin movimientos.',
   '{people} people · ranked among people': '{people} personas · puestos entre personas',
   '{shown} of {people} people shown · more load as you scroll.': '{shown} de {people} personas mostradas · se cargan más al desplazarte.',
+  'What the card shows': 'Qué muestra la tarjeta',
+  '16 SKR · 16 transactions · ≈6 approvals': '16 SKR · 16 transacciones · ≈6 aprobaciones',
+  '1 approval': '1 aprobación',
+  '≈{count} approvals': '≈{count} aprobaciones',
+  '{count} identical transactions in one batch. The wallet may ask for your finger several times along the way.': '{count} transacciones idénticas en un solo lote. La billetera puede pedir tu huella varias veces por el camino.',
+  'never left the phone': 'nunca salió del teléfono',
 };

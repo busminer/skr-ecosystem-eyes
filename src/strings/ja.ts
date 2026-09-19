@@ -143,9 +143,7 @@ export const ja: Record<string, string> = {
   'This phone has nothing to share with.': 'この端末には共有できるアプリがありません。',
 
   // 毎日の 16 分割
-  'Sixteen': '16 分割',
   'The daily sixteen': '毎日の 16 分割',
-  '16 parts of 1 SKR, one approval. A small daily habit that keeps your position moving.': '1 SKR を 16 に分けて、承認は 1 回。ポジションを動かし続ける小さな毎日の習慣です。',
 
   // チップ
   'Support SKR Eyes': 'SKR Eyes を支援する',
@@ -161,7 +159,6 @@ export const ja: Record<string, string> = {
   'Your wallet signs and sends it. The app only fetches a blockhash before and reads the status after.': '署名して送るのはあなたのウォレットです。アプリは前にブロックハッシュを取得し、後に状態を読むだけです。',
   'A tip changes nothing about your position and nothing about any airdrop. It is a thank you, not a fee.': 'チップはポジションにもエアドロップにも何の影響もありません。手数料ではなく、感謝の気持ちです。',
   'Free and open source, built by one Seeker. Tips in SKR go to kosa.skr and are staked right away, all of them.': '無料でオープンソース、ひとりの Seeker が作りました。SKR のチップは kosa.skr に届き、すべてすぐにステークされます。',
-  'This app is free, open source, and built by one Seeker. If it saved you a moment, a tip is welcome. Every SKR that arrives is staked right away, all of it.': 'このアプリは無料でオープンソース、ひとりの Seeker が作りました。少しでも役に立ったなら、チップを歓迎します。届いた SKR はすべてすぐにステークされます。',
   'This is {name} itself. A tip to your own wallet moves nothing; try from another wallet.': 'これは {name} 自身です。自分のウォレットへのチップでは何も動きません。別のウォレットからお試しください。',
   'The chain rejected the transfer.': 'チェーンが送金を拒否しました。',
   'The wallet declined. Nothing was sent.': 'ウォレットが拒否しました。何も送られていません。',
@@ -230,7 +227,6 @@ export const ja: Record<string, string> = {
   'This is what one transaction stakes. The total is this amount times the count below.': 'これは 1 回の取引でステークする額です。合計はこの額に下の回数を掛けたものです。',
   'How many transactions': '取引の回数',
   'One transaction, one wallet approval.': '取引 1 回、ウォレットでの承認 1 回。',
-  '{count} identical transactions from one approval, sent one after another. Each one is a separate on-chain stake.': '1 回の承認で同じ取引を {count} 件、続けて送ります。どれもチェーン上では別々のステークです。',
   'This needs {needed} SKR and you hold {held}. ': 'これには {needed} SKR が必要ですが、残高は {held} です。',
   'At this amount you can send 1 part.': 'この金額なら 1 件送れます。',
   'At this amount you can send {count} parts.': 'この金額なら {count} 件送れます。',
@@ -332,4 +328,10 @@ export const ja: Record<string, string> = {
   '{count} treasury-size wallets set aside: {total} SKR, no names, no moves.': 'トレジャリー規模のウォレット {count} 件は別枠です。{total} SKR、名前なし、変動なし。',
   '{people} people · ranked among people': '{people} 人 · 人の中での順位',
   '{shown} of {people} people shown · more load as you scroll.': '{people} 人中 {shown} 人を表示 · スクロールでさらに読み込みます。',
+  'What the card shows': 'カードに表示される内容',
+  '16 SKR · 16 transactions · ≈6 approvals': '16 SKR · 16件のトランザクション · 約6回の承認',
+  '1 approval': '承認1回',
+  '≈{count} approvals': '約{count}回の承認',
+  '{count} identical transactions in one batch. The wallet may ask for your finger several times along the way.': '同一のトランザクション{count}件を1つのまとまりで送ります。途中でウォレットが指紋を何度か求めることがあります。',
+  'never left the phone': 'スマートフォンから出ていません',
 };

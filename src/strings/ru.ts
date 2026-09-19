@@ -146,9 +146,7 @@ export const ru: Record<string, string> = {
   'An exact amount next to a start date is close to a fingerprint. Your choice, said plainly.': 'Точная сумма рядом с датой начала почти как отпечаток пальца. Это личный выбор, говорим как есть.',
 
   // Шестнадцать
-  'Sixteen': 'Шестнадцать',
   'The daily sixteen': 'Ежедневные шестнадцать',
-  '16 parts of 1 SKR, one approval. A small daily habit that keeps your position moving.': '1 SKR шестнадцатью частями, одно подтверждение. Маленькая ежедневная привычка, которая держит позицию в движении.',
 
   // Чаевые
   'Support SKR Eyes': 'Поддержать SKR Eyes',
@@ -164,7 +162,6 @@ export const ru: Record<string, string> = {
   'Your wallet signs and sends it. The app only fetches a blockhash before and reads the status after.': 'Подписывает и отправляет кошелёк. Приложение только берёт блокхеш до и читает статус после.',
   'A tip changes nothing about your position and nothing about any airdrop. It is a thank you, not a fee.': 'Чаевые никак не влияют ни на позицию, ни на какой-либо аирдроп. Это спасибо, а не плата.',
   'Free and open source, built by one Seeker. Tips in SKR go to kosa.skr and are staked right away, all of them.': 'Бесплатно и с открытым кодом, сделано одним владельцем Seeker. Чаевые в SKR уходят на kosa.skr и сразу целиком идут в стейк.',
-  'This app is free, open source, and built by one Seeker. If it saved you a moment, a tip is welcome. Every SKR that arrives is staked right away, all of it.': 'Приложение бесплатное, с открытым кодом, сделано одним владельцем Seeker. Если оно сэкономило минуту, чаевые будут кстати. Каждый пришедший SKR сразу целиком идёт в стейк.',
   'This is {name} itself. A tip to your own wallet moves nothing; try from another wallet.': 'Это и есть {name}. Чаевые на собственный кошелёк ничего не двигают, нужен другой кошелёк.',
   'The chain rejected the transfer.': 'Цепочка отклонила перевод.',
   'The wallet declined. Nothing was sent.': 'Кошелёк отказал. Ничего не отправлено.',
@@ -235,7 +232,6 @@ export const ru: Record<string, string> = {
   'This is what one transaction stakes. The total is this amount times the count below.': 'Столько стейкает одна транзакция. Итог: эта сумма, умноженная на число ниже.',
   'How many transactions': 'Сколько транзакций',
   'One transaction, one wallet approval.': 'Одна транзакция, одно подтверждение в кошельке.',
-  '{count} identical transactions from one approval, sent one after another. Each one is a separate on-chain stake.': '{count} одинаковых транзакций с одного подтверждения, уходят одна за другой. Каждая из них отдельный стейк в цепочке.',
   'This needs {needed} SKR and you hold {held}. ': 'Нужно {needed} SKR, а на балансе {held}. ',
   'At this amount you can send 1 part.': 'На эту сумму выйдет 1 часть.',
   'At this amount you can send {count} parts.': 'На эту сумму выйдет частей: {count}.',
@@ -337,4 +333,10 @@ export const ru: Record<string, string> = {
   '{count} treasury-size wallets set aside: {total} SKR, no names, no moves.': '{count} казначейских кошельков за скобками: {total} SKR, без имён, без движений.',
   '{people} people · ranked among people': '{people} человек · места среди людей',
   '{shown} of {people} people shown · more load as you scroll.': 'Показано {shown} из {people} человек · дальше подгружается при прокрутке.',
+  'What the card shows': 'Что видно на карточке',
+  '16 SKR · 16 transactions · ≈6 approvals': '16 SKR · 16 транзакций · ≈6 подтверждений',
+  '1 approval': '1 подтверждение',
+  '≈{count} approvals': '≈{count} подтверждений',
+  '{count} identical transactions in one batch. The wallet may ask for your finger several times along the way.': '{count} одинаковых транзакций одной пачкой. Кошелёк может спросить палец несколько раз по пути.',
+  'never left the phone': 'не ушло с телефона',
 };

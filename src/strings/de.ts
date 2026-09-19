@@ -150,9 +150,7 @@ export const de: Record<string, string> = {
   'An exact amount next to a start date is close to a fingerprint. Your choice, said plainly.': 'Ein genauer Betrag neben einem Startdatum ist fast ein Fingerabdruck. Ihre Entscheidung, offen gesagt.',
 
   // Die täglichen Sechzehn
-  'Sixteen': 'Sechzehn',
   'The daily sixteen': 'Die täglichen Sechzehn',
-  '16 parts of 1 SKR, one approval. A small daily habit that keeps your position moving.': '16 Teile von 1 SKR, eine Freigabe. Eine kleine tägliche Gewohnheit, die Ihre Position in Bewegung hält.',
 
   // Trinkgeld
   'Support SKR Eyes': 'SKR Eyes unterstützen',
@@ -168,7 +166,6 @@ export const de: Record<string, string> = {
   'Your wallet signs and sends it. The app only fetches a blockhash before and reads the status after.': 'Ihre Wallet signiert und sendet. Die App holt vorher nur einen Blockhash und liest danach den Status.',
   'A tip changes nothing about your position and nothing about any airdrop. It is a thank you, not a fee.': 'Ein Trinkgeld ändert nichts an Ihrer Position und nichts an irgendeinem Airdrop. Es ist ein Dankeschön, keine Gebühr.',
   'Free and open source, built by one Seeker. Tips in SKR go to kosa.skr and are staked right away, all of them.': 'Kostenlos und quelloffen, gebaut von einem Seeker-Besitzer. Trinkgelder in SKR gehen an kosa.skr und werden sofort gestakt, alle.',
-  'This app is free, open source, and built by one Seeker. If it saved you a moment, a tip is welcome. Every SKR that arrives is staked right away, all of it.': 'Diese App ist kostenlos, quelloffen und von einem Seeker-Besitzer gebaut. Wenn sie Ihnen einen Moment gespart hat, ist ein Trinkgeld willkommen. Jeder SKR, der ankommt, wird sofort gestakt, vollständig.',
   'This is {name} itself. A tip to your own wallet moves nothing; try from another wallet.': 'Das ist {name} selbst. Ein Trinkgeld an die eigene Wallet bewegt nichts; versuchen Sie es von einer anderen Wallet.',
   'The chain rejected the transfer.': 'Die Chain hat die Überweisung abgelehnt.',
   'The wallet declined. Nothing was sent.': 'Die Wallet hat abgelehnt. Es wurde nichts gesendet.',
@@ -239,7 +236,6 @@ export const de: Record<string, string> = {
   'This is what one transaction stakes. The total is this amount times the count below.': 'So viel stakt eine Transaktion. Die Summe ist dieser Betrag mal die Anzahl unten.',
   'How many transactions': 'Wie viele Transaktionen',
   'One transaction, one wallet approval.': 'Eine Transaktion, eine Freigabe in der Wallet.',
-  '{count} identical transactions from one approval, sent one after another. Each one is a separate on-chain stake.': '{count} identische Transaktionen aus einer Freigabe, nacheinander gesendet. Jede ist ein eigener Stake auf der Chain.',
   'This needs {needed} SKR and you hold {held}. ': 'Dafür braucht es {needed} SKR, Sie halten {held}. ',
   'At this amount you can send 1 part.': 'Bei diesem Betrag können Sie 1 Teil senden.',
   'At this amount you can send {count} parts.': 'Bei diesem Betrag können Sie {count} Teile senden.',
@@ -341,4 +337,10 @@ export const de: Record<string, string> = {
   '{count} treasury-size wallets set aside: {total} SKR, no names, no moves.': '{count} Wallets in Treasury-Größe außen vor: {total} SKR, keine Namen, keine Bewegungen.',
   '{people} people · ranked among people': '{people} Leute · Plätze unter Leuten',
   '{shown} of {people} people shown · more load as you scroll.': '{shown} von {people} Leuten gezeigt · beim Scrollen kommen mehr.',
+  'What the card shows': 'Was die Karte zeigt',
+  '16 SKR · 16 transactions · ≈6 approvals': '16 SKR · 16 Transaktionen · ≈6 Freigaben',
+  '1 approval': '1 Freigabe',
+  '≈{count} approvals': '≈{count} Freigaben',
+  '{count} identical transactions in one batch. The wallet may ask for your finger several times along the way.': '{count} gleiche Transaktionen in einem Paket. Die Wallet kann unterwegs mehrmals nach Ihrem Finger fragen.',
+  'never left the phone': 'hat das Telefon nie verlassen',
 };

@@ -35,7 +35,16 @@ const POLL_DEADLINE_MS = 180_000;
 
 const APP_IDENTITY = { name: 'SKR Eyes', uri: 'https://skr.alexkosa.dev', icon: 'favicon.ico' };
 
-export type PartState = 'pending' | 'sending' | 'sent' | 'confirmed' | 'failed' | 'unknown';
+// 'unsent' is the part the wallet never broadcast. It used to be filed as
+// 'failed', and the summary then counted it among "rejected by the chain" —
+// an accusation the chain never made, which twice got made in public
+// against us instead. A part that never left the phone is its own fact.
+export type PartState = 'pending' | 'sending' | 'sent' | 'confirmed' | 'failed' | 'unsent' | 'unknown';
+
+// The states no amount of asking will move.
+export function isSettled(state: PartState): boolean {
+  return state === 'confirmed' || state === 'failed' || state === 'unsent';
+}
 
 export type StakePart = {
   index: number;
@@ -115,7 +124,7 @@ export function useStakeRun(wallet: string | null) {
           setPhase('error');
           return;
         }
-        const unsettled = saved.parts.some((part) => part.state !== 'confirmed' && part.state !== 'failed');
+        const unsettled = saved.parts.some((part) => !isSettled(part.state));
         if (!unsettled) return void forget();
         runRef.current = saved;
         setRun(saved);
@@ -141,7 +150,7 @@ export function useStakeRun(wallet: string | null) {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       const parts = runRef.current?.parts ?? [];
-      const open = parts.some((part) => part.state !== 'confirmed' && part.state !== 'failed');
+      const open = parts.some((part) => !isSettled(part.state));
       if (open) void drainRef.current?.();
     });
     return () => subscription.remove();
@@ -186,7 +195,7 @@ export function useStakeRun(wallet: string | null) {
 
       for (;;) {
         const parts = runRef.current?.parts ?? [];
-        const open = parts.filter((part) => part.state !== 'confirmed' && part.state !== 'failed');
+        const open = parts.filter((part) => !isSettled(part.state));
         if (open.length === 0) break;
 
         let answered = false;
@@ -194,7 +203,7 @@ export function useStakeRun(wallet: string | null) {
           // A part with no signature never left the phone, and no amount of
           // asking the chain will change that.
           if (!part.signature) {
-            patchPart(part.index, { state: 'failed', error: 'This part was never broadcast.' });
+            patchPart(part.index, { state: 'unsent', error: 'This part was never broadcast.' });
             answered = true;
             continue;
           }
@@ -218,7 +227,7 @@ export function useStakeRun(wallet: string | null) {
 
         if (Date.now() - started > POLL_DEADLINE_MS) {
           for (const part of runRef.current?.parts ?? []) {
-            if (part.state === 'confirmed' || part.state === 'failed') continue;
+            if (isSettled(part.state)) continue;
             patchPart(part.index, {
               state: 'unknown',
               error: 'The chain has not answered about this part yet. Its signature is saved — ask again before staking it a second time.',
@@ -234,10 +243,15 @@ export function useStakeRun(wallet: string | null) {
 
       const finished = runRef.current?.parts ?? [];
       const failed = finished.filter((part) => part.state === 'failed').length;
+      const unsent = finished.filter((part) => part.state === 'unsent').length;
       const unknown = finished.filter((part) => part.state === 'unknown').length;
-      if (failed > 0 || unknown > 0) {
+      if (failed > 0 || unknown > 0 || unsent > 0) {
+        // Three different facts, three different sentences. Only 'rejected'
+        // means the chain said no; 'never left the phone' means no money
+        // moved at all, and saying otherwise cost us two public accusations.
         const summary = [
           failed > 0 ? `${failed} rejected by the chain` : '',
+          unsent > 0 ? `${unsent} never left the phone` : '',
           unknown > 0 ? `${unknown} still unanswered` : '',
         ].filter(Boolean).join(', ');
         setError(`Of ${finished.length} parts: ${summary}. Every signature is saved. Ask again before you stake the same amount a second time.`);

@@ -145,9 +145,7 @@ export const vi: Record<string, string> = {
   'An exact amount next to a start date is close to a fingerprint. Your choice, said plainly.': 'Một con số chính xác đặt cạnh ngày bắt đầu gần như là dấu vân tay. Nói thẳng, quyền chọn là của bạn.',
 
   // Mười sáu phần mỗi ngày
-  'Sixteen': 'Mười sáu',
   'The daily sixteen': 'Mười sáu phần mỗi ngày',
-  '16 parts of 1 SKR, one approval. A small daily habit that keeps your position moving.': '16 phần của 1 SKR, một lần xác nhận. Một thói quen nhỏ mỗi ngày giúp vị thế của bạn luôn chuyển động.',
 
   // Ủng hộ ứng dụng
   'Support SKR Eyes': 'Ủng hộ SKR Eyes',
@@ -163,7 +161,6 @@ export const vi: Record<string, string> = {
   'Your wallet signs and sends it. The app only fetches a blockhash before and reads the status after.': 'Ví của bạn ký và gửi. Ứng dụng chỉ lấy blockhash trước đó và đọc trạng thái sau đó.',
   'A tip changes nothing about your position and nothing about any airdrop. It is a thank you, not a fee.': 'Tip không đổi gì ở vị thế của bạn, cũng không đổi gì ở bất kỳ airdrop nào. Đó là lời cảm ơn, không phải phí.',
   'Free and open source, built by one Seeker. Tips in SKR go to kosa.skr and are staked right away, all of them.': 'Miễn phí và mã nguồn mở, do một người dùng Seeker làm ra. Tip bằng SKR đi tới kosa.skr và được stake ngay, toàn bộ.',
-  'This app is free, open source, and built by one Seeker. If it saved you a moment, a tip is welcome. Every SKR that arrives is staked right away, all of it.': 'Ứng dụng này miễn phí, mã nguồn mở, do một người dùng Seeker làm ra. Nếu nó giúp bạn đỡ mất chút thời gian, một khoản tip là rất quý. Mỗi SKR nhận được đều được stake ngay, toàn bộ.',
   'This is {name} itself. A tip to your own wallet moves nothing; try from another wallet.': 'Đây chính là {name}. Tip vào ví của chính mình thì không chuyển gì cả; hãy thử từ một ví khác.',
   'The chain rejected the transfer.': 'Chuỗi đã từ chối giao dịch chuyển.',
   'The wallet declined. Nothing was sent.': 'Ví đã từ chối. Chưa gửi gì cả.',
@@ -234,7 +231,6 @@ export const vi: Record<string, string> = {
   'This is what one transaction stakes. The total is this amount times the count below.': 'Đây là mức một giao dịch stake. Tổng bằng số này nhân với số lần bên dưới.',
   'How many transactions': 'Bao nhiêu giao dịch',
   'One transaction, one wallet approval.': 'Một giao dịch, một lần xác nhận trong ví.',
-  '{count} identical transactions from one approval, sent one after another. Each one is a separate on-chain stake.': '{count} giao dịch giống nhau từ một lần xác nhận, gửi lần lượt. Mỗi giao dịch là một lần stake riêng trên chuỗi.',
   'This needs {needed} SKR and you hold {held}. ': 'Cần {needed} SKR mà bạn chỉ có {held}. ',
   'At this amount you can send 1 part.': 'Với số này bạn gửi được 1 phần.',
   'At this amount you can send {count} parts.': 'Với số này bạn gửi được {count} phần.',
@@ -336,4 +332,10 @@ export const vi: Record<string, string> = {
   '{count} treasury-size wallets set aside: {total} SKR, no names, no moves.': '{count} ví cỡ ngân khố được tách riêng: {total} SKR, không tên, không biến động.',
   '{people} people · ranked among people': '{people} người · xếp hạng giữa người với người',
   '{shown} of {people} people shown · more load as you scroll.': 'Hiện {shown} / {people} người · cuộn để tải thêm.',
+  'What the card shows': 'Thẻ hiển thị những gì',
+  '16 SKR · 16 transactions · ≈6 approvals': '16 SKR · 16 giao dịch · ≈6 lần xác nhận',
+  '1 approval': '1 lần xác nhận',
+  '≈{count} approvals': '≈{count} lần xác nhận',
+  '{count} identical transactions in one batch. The wallet may ask for your finger several times along the way.': '{count} giao dịch giống nhau trong một gói. Ví có thể yêu cầu vân tay của bạn vài lần trong quá trình này.',
+  'never left the phone': 'chưa từng rời khỏi điện thoại',
 };

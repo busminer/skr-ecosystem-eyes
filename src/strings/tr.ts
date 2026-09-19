@@ -146,9 +146,7 @@ export const tr: Record<string, string> = {
   'An exact amount next to a start date is close to a fingerprint. Your choice, said plainly.': 'Başlangıç tarihinin yanında tam bir tutar, neredeyse parmak izi gibidir. Seçim senin, açıkça söylüyoruz.',
 
   // Günlük on altı
-  'Sixteen': 'On altı',
   'The daily sixteen': 'Günlük on altı',
-  '16 parts of 1 SKR, one approval. A small daily habit that keeps your position moving.': '1 SKR\'nin 16 parçası, tek onay. Pozisyonunu hareketli tutan küçük bir günlük alışkanlık.',
 
   // Bahşiş penceresi
   'Support SKR Eyes': 'SKR Eyes\'a destek ol',
@@ -164,7 +162,6 @@ export const tr: Record<string, string> = {
   'Your wallet signs and sends it. The app only fetches a blockhash before and reads the status after.': 'İmzalayan ve gönderen cüzdanındır. Uygulama yalnızca öncesinde bir blockhash alır, sonrasında durumu okur.',
   'A tip changes nothing about your position and nothing about any airdrop. It is a thank you, not a fee.': 'Bahşiş pozisyonunda da herhangi bir airdrop\'ta da hiçbir şeyi değiştirmez. Bu bir teşekkür, ücret değil.',
   'Free and open source, built by one Seeker. Tips in SKR go to kosa.skr and are staked right away, all of them.': 'Ücretsiz ve açık kaynak, tek bir Seeker sahibinin elinden çıktı. SKR bahşişleri kosa.skr\'ye gider ve hemen stake edilir, hepsi.',
-  'This app is free, open source, and built by one Seeker. If it saved you a moment, a tip is welcome. Every SKR that arrives is staked right away, all of it.': 'Bu uygulama ücretsiz, açık kaynak ve tek bir Seeker sahibinin işi. Sana bir an kazandırdıysa bahşişe açığız. Gelen her SKR hemen stake edilir, tamamı.',
   'This is {name} itself. A tip to your own wallet moves nothing; try from another wallet.': 'Bu adres zaten {name}. Kendi cüzdanına bahşiş hiçbir şey taşımaz; başka bir cüzdandan dene.',
   'The chain rejected the transfer.': 'Zincir transferi reddetti.',
   'The wallet declined. Nothing was sent.': 'Cüzdan reddetti. Hiçbir şey gönderilmedi.',
@@ -235,7 +232,6 @@ export const tr: Record<string, string> = {
   'This is what one transaction stakes. The total is this amount times the count below.': 'Bir işlemin stake ettiği miktar budur. Toplam, bu tutarın aşağıdaki sayıyla çarpımıdır.',
   'How many transactions': 'Kaç işlem',
   'One transaction, one wallet approval.': 'Tek işlem, cüzdanda tek onay.',
-  '{count} identical transactions from one approval, sent one after another. Each one is a separate on-chain stake.': 'Tek onayla birbirinin aynı {count} işlem, arka arkaya gönderilir. Her biri zincirde ayrı bir stake\'tir.',
   'This needs {needed} SKR and you hold {held}. ': 'Bunun için {needed} SKR gerekiyor, sende {held} var. ',
   'At this amount you can send 1 part.': 'Bu tutarla 1 parça gönderebilirsin.',
   'At this amount you can send {count} parts.': 'Bu tutarla {count} parça gönderebilirsin.',
@@ -337,4 +333,10 @@ export const tr: Record<string, string> = {
   '{count} treasury-size wallets set aside: {total} SKR, no names, no moves.': '{count} hazine boyutunda cüzdan ayrı tutuldu: {total} SKR, ad yok, hareket yok.',
   '{people} people · ranked among people': '{people} kişi · sıralama kişiler arasında',
   '{shown} of {people} people shown · more load as you scroll.': '{people} kişiden {shown} gösteriliyor · kaydırdıkça daha fazlası yüklenir.',
+  'What the card shows': 'Kartta neler görünür',
+  '16 SKR · 16 transactions · ≈6 approvals': '16 SKR · 16 işlem · ≈6 onay',
+  '1 approval': '1 onay',
+  '≈{count} approvals': '≈{count} onay',
+  '{count} identical transactions in one batch. The wallet may ask for your finger several times along the way.': 'Tek pakette {count} özdeş işlem. Cüzdan yol boyunca parmağınızı birkaç kez isteyebilir.',
+  'never left the phone': 'telefondan hiç çıkmadı',
 };

@@ -333,7 +333,12 @@ export function MyLab() {
               paragraph; the sheet it opens says everything the paragraph did. */}
           {connected ? (
             <Pressable accessibilityRole="button" onPress={() => { void Haptics.selectionAsync(); setSixteen(true); setStaking(true); }} style={({ pressed }) => [styles.sixteenRow, pressed && { opacity: 0.7 }]}>
-              <Eyebrow tone={colors.metal}>{t('The daily sixteen')}</Eyebrow>
+              <View style={styles.sixteenCopy}>
+                <Eyebrow tone={colors.metal}>{t('The daily sixteen')}</Eyebrow>
+                {/* The price named up front. It used to say "one approval",
+                    which the Seed Vault makes untrue past three parts. */}
+                <Text style={styles.sixteenNote}>{t('16 SKR · 16 transactions · ≈6 approvals')}</Text>
+              </View>
               <Chevron tone={colors.metal} />
             </Pressable>
           ) : null}
@@ -502,7 +507,9 @@ export function MyLab() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 130, gap: spacing.lg },
-  sixteenRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44, paddingHorizontal: spacing.sm },
+  sixteenRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, minHeight: 44, paddingHorizontal: spacing.sm },
+  sixteenCopy: { gap: 2, flexShrink: 1 },
+  sixteenNote: { color: colors.muted, fontFamily: font.regular, ...type.micro, fontVariant: ['tabular-nums'] },
   privacyPanel: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
   privacyHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.md, minHeight: 52 },
   privacyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },

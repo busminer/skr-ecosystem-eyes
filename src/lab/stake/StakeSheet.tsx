@@ -15,9 +15,20 @@ const COUNTS = [1, 4, 8, 16];
 function partTone(state: string): string {
   if (state === 'confirmed') return colors.positive;
   if (state === 'failed') return colors.negative;
+  // Never broadcast: no money moved. Grey, because red would repeat the
+  // old lie that the chain turned it down.
+  if (state === 'unsent') return colors.faint;
   if (state === 'unknown') return colors.pending;
   if (state === 'sending' || state === 'sent') return colors.pending;
   return colors.lineStrong;
+}
+
+// What each split costs in fingerprints: the Seed Vault signs about three
+// transactions per touch, measured on a Seeker. Said here, before the
+// wallet opens, so nobody meets the sixth prompt as a surprise.
+function approvalsFor(count: number): string {
+  const touches = Math.ceil(count / 3);
+  return touches === 1 ? t('1 approval') : t('≈{count} approvals', { count: touches });
 }
 
 export function StakeSheet({ wallet, hasPosition, onClose, presetAmount, presetSplit }: { wallet: string; hasPosition: boolean; onClose: () => void; presetAmount?: string; presetSplit?: number }) {
@@ -89,6 +100,20 @@ export function StakeSheet({ wallet, hasPosition, onClose, presetAmount, presetS
                 />
                 <Text style={styles.amountUnit}>SKR</Text>
               </View>
+              {/* The sheet used to open on an empty zero and ask the person to
+                  invent a number. Three round ones and the whole wallet. */}
+              <View style={styles.quicks}>
+                {(['1', '5', '10'] as const).map((preset) => (
+                  <Pressable key={preset} accessibilityRole="button" onPress={() => { void Haptics.selectionAsync(); setAmount(preset); }} style={({ pressed }) => [styles.quick, amount === preset && styles.quickOn, pressed && { opacity: 0.7 }]}>
+                    <Text style={[styles.quickText, amount === preset && styles.quickTextOn]}>{preset}</Text>
+                  </Pressable>
+                ))}
+                {held != null && held > 0n ? (
+                  <Pressable accessibilityRole="button" onPress={() => { void Haptics.selectionAsync(); setAmount(fromRaw(held / BigInt(split))); }} style={({ pressed }) => [styles.quick, pressed && { opacity: 0.7 }]}>
+                    <Text style={styles.quickText}>{t('All')}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
               <Text style={[styles.hint, (tooSmall || overPrecise) && styles.warn]}>
                 {overPrecise
                   ? t('SKR has six decimal places. Shorten the amount — the extra digits cannot be staked.')
@@ -115,6 +140,10 @@ export function StakeSheet({ wallet, hasPosition, onClose, presetAmount, presetS
                     >
                       <Text style={[styles.splitLabel, on && styles.splitLabelOn, unaffordable && styles.splitLabelShort]}>{option} tx</Text>
                       <Text style={[styles.splitNeed, unaffordable && styles.splitLabelShort]}>{perPart > 0n ? `${fromRaw(perPart * BigInt(option))} SKR` : '—'}</Text>
+                      {/* The real price of a split is paid in fingerprints, and
+                          from eight parts up the line turns gold to say the
+                          wallet will come back for more. */}
+                      <Text style={[styles.splitTouches, option >= 8 && styles.splitTouchesMany, unaffordable && styles.splitLabelShort]}>{approvalsFor(option)}</Text>
                     </Pressable>
                   );
                 })}
@@ -122,7 +151,7 @@ export function StakeSheet({ wallet, hasPosition, onClose, presetAmount, presetS
               <Text style={styles.hint}>
                 {split === 1
                   ? t('One transaction, one wallet approval.')
-                  : t('{count} identical transactions from one approval, sent one after another. Each one is a separate on-chain stake.', { count: split })}
+                  : t('{count} identical transactions in one batch. The wallet may ask for your finger several times along the way.', { count: split })}
               </Text>
 
               {/* Said in the wallet's own terms rather than as an error code.
@@ -149,7 +178,7 @@ export function StakeSheet({ wallet, hasPosition, onClose, presetAmount, presetS
                 </View>
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>{t('you stake in total')}</Text>
-                  <Text style={[styles.summaryValue, styles.summaryTotal]}>{totalRaw > 0n ? `${fromRaw(totalRaw)} SKR` : '—'}</Text>
+                  <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={[styles.summaryValue, styles.summaryTotal]}>{totalRaw > 0n ? `${fromRaw(totalRaw)} SKR` : '—'}</Text>
                 </View>
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>{t('position account rent')}</Text>
@@ -197,14 +226,29 @@ export function StakeSheet({ wallet, hasPosition, onClose, presetAmount, presetS
               <View style={styles.track}>
                 <Animated.View style={[styles.fill, { width: `${total > 0 ? (confirmed / total) * 100 : 0}%` }]} />
               </View>
-              <View style={styles.parts}>
+              {/* Sixteen rows saying the same amount sixteen times taught
+                  nobody anything. A grid says the shape of the run at a
+                  glance, and the ledger under it counts each verdict once. */}
+              <View style={styles.grid}>
                 {run.parts.map((part) => (
-                  <Animated.View key={part.index} entering={FadeInDown.duration(200)} style={styles.partRow}>
-                    <View style={[styles.partDot, { backgroundColor: partTone(part.state) }]} />
-                    <Text style={styles.partAmount}>{fromRaw(BigInt(part.amountRaw))} SKR</Text>
-                    <Text style={[styles.partState, { color: partTone(part.state) }]}>{t(part.state)}</Text>
+                  <Animated.View key={part.index} entering={FadeInDown.duration(200).delay(part.index * 24)} style={[styles.cell, { borderColor: partTone(part.state) }]}>
+                    <View style={[styles.cellDot, { backgroundColor: partTone(part.state) }]} />
                   </Animated.View>
                 ))}
+              </View>
+              <View style={styles.ledger}>
+                {(['confirmed', 'sent', 'pending', 'unknown', 'failed', 'unsent'] as const).map((state) => {
+                  const count = run.parts.filter((part) => part.state === state).length;
+                  if (!count) return null;
+                  return (
+                    <View key={state} style={styles.ledgerRow}>
+                      <View style={[styles.partDot, { backgroundColor: partTone(state) }]} />
+                      <Text style={styles.ledgerCount}>{count}</Text>
+                      <Text style={[styles.partState, { color: partTone(state) }]}>{state === 'unsent' ? t('never left the phone') : t(state)}</Text>
+                      <Text style={styles.ledgerAmount}>{fromRaw(run.parts.filter((part) => part.state === state).reduce((sum, part) => sum + BigInt(part.amountRaw), 0n))} SKR</Text>
+                    </View>
+                  );
+                })}
               </View>
             </Panel>
 
@@ -239,7 +283,7 @@ export function StakeSheet({ wallet, hasPosition, onClose, presetAmount, presetS
 
 const styles = StyleSheet.create({
   screen: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: colors.bg, zIndex: 30 },
-  content: { padding: spacing.lg, paddingBottom: 140, gap: spacing.lg },
+  content: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },
   head: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   title: { color: colors.text, fontFamily: font.bold, fontSize: 22, letterSpacing: -0.4, marginTop: spacing.xs },
   close: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: colors.lineStrong, alignItems: 'center', justifyContent: 'center' },
@@ -248,6 +292,11 @@ const styles = StyleSheet.create({
   amountRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
   amountInput: { flex: 1, color: colors.text, fontFamily: font.black, fontSize: 34, letterSpacing: -1, padding: 0 },
   amountUnit: { color: colors.muted, fontFamily: font.semibold, fontSize: 14 },
+  quicks: { flexDirection: 'row', gap: spacing.sm },
+  quick: { minWidth: 52, alignItems: 'center', paddingVertical: 8, paddingHorizontal: spacing.md, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line },
+  quickOn: { borderColor: colors.accent, backgroundColor: colors.accentWash },
+  quickText: { color: colors.muted, fontFamily: font.semibold, fontSize: 13, fontVariant: ['tabular-nums'] },
+  quickTextOn: { color: colors.accent },
   shortfall: { color: colors.pending, fontFamily: font.medium, fontSize: 13, lineHeight: 19, marginTop: spacing.sm },
   holding: { color: colors.muted, fontFamily: font.regular, fontSize: 13, marginTop: spacing.sm },
   hint: { color: colors.muted, fontFamily: font.regular, ...type.small },
@@ -258,23 +307,30 @@ const styles = StyleSheet.create({
   // balance check they were meant for did not exist until now.
   splitShort: { opacity: 0.45 },
   splitLabelShort: { color: colors.faint },
-  splitNeed: { color: colors.faint, fontFamily: font.regular, fontSize: 10.5, marginTop: 2 },
+  splitNeed: { color: colors.muted, fontFamily: font.regular, fontSize: 11, marginTop: 2, fontVariant: ['tabular-nums'] },
+  splitTouches: { color: colors.faint, fontFamily: font.regular, fontSize: 11, marginTop: 2 },
+  splitTouchesMany: { color: colors.metal },
   warn: { color: colors.pending },
   splitLabel: { color: colors.muted, fontFamily: font.semibold, fontSize: 13 },
   splitLabelOn: { color: colors.accent },
   summary: { gap: spacing.sm },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.md },
   summaryLabel: { color: colors.muted, fontFamily: font.regular, ...type.small },
   summaryValue: { color: colors.text, fontFamily: font.semibold, ...type.small },
-  summaryTotal: { color: colors.accent, fontSize: 14 },
+  // The one number the whole sheet exists for.
+  summaryTotal: { color: colors.accent, fontFamily: font.black, fontSize: 22, letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
   progressHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   counter: { color: colors.text, fontFamily: font.bold, fontSize: 16, fontVariant: ['tabular-nums'] },
   track: { height: 8, borderRadius: 4, backgroundColor: colors.line, overflow: 'hidden' },
   fill: { height: 8, borderRadius: 4, backgroundColor: colors.accent },
-  parts: { gap: spacing.sm },
-  partRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  cell: { flexBasis: '22%', flexGrow: 1, maxWidth: '23.5%', aspectRatio: 1, borderRadius: radius.inner, borderWidth: 1, backgroundColor: colors.inset, alignItems: 'center', justifyContent: 'center' },
+  cellDot: { width: 10, height: 10, borderRadius: 5 },
+  ledger: { gap: spacing.sm },
+  ledgerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  ledgerCount: { minWidth: 20, color: colors.text, fontFamily: font.bold, ...type.small, fontVariant: ['tabular-nums'] },
+  ledgerAmount: { marginLeft: 'auto', color: colors.muted, fontFamily: font.mono, ...type.micro, fontVariant: ['tabular-nums'] },
   partDot: { width: 8, height: 8, borderRadius: 4 },
-  partAmount: { flex: 1, color: colors.text, fontFamily: font.medium, ...type.small },
   partState: { fontFamily: font.semibold, ...type.micro },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   errorPanel: { padding: spacing.md, gap: spacing.sm, borderColor: colors.negative },

@@ -142,9 +142,7 @@ export const ko: Record<string, string> = {
   'An exact amount next to a start date is close to a fingerprint. Your choice, said plainly.': '정확한 금액이 시작 날짜 옆에 놓이면 지문에 가깝습니다. 어떻게 할지는 직접 정하세요. 있는 그대로 말씀드립니다.',
 
   // 매일 열여섯
-  'Sixteen': '열여섯',
   'The daily sixteen': '매일 열여섯',
-  '16 parts of 1 SKR, one approval. A small daily habit that keeps your position moving.': '1 SKR을 16조각으로, 승인은 한 번. 포지션을 계속 움직이게 하는 작은 하루 습관입니다.',
 
   // 후원(팁) 창
   'Support SKR Eyes': 'SKR Eyes 후원하기',
@@ -160,7 +158,6 @@ export const ko: Record<string, string> = {
   'Your wallet signs and sends it. The app only fetches a blockhash before and reads the status after.': '서명과 전송은 지갑이 합니다. 앱은 보내기 전에 블록해시를 받아 오고, 보낸 뒤에 상태를 읽을 뿐입니다.',
   'A tip changes nothing about your position and nothing about any airdrop. It is a thank you, not a fee.': '팁은 포지션에도, 어떤 에어드롭에도 아무 영향이 없습니다. 수수료가 아니라 고마움의 표시입니다.',
   'Free and open source, built by one Seeker. Tips in SKR go to kosa.skr and are staked right away, all of them.': '무료 오픈소스이고, Seeker 한 사람이 만들었습니다. SKR 팁은 kosa.skr로 가서 전부 바로 스테이킹됩니다.',
-  'This app is free, open source, and built by one Seeker. If it saved you a moment, a tip is welcome. Every SKR that arrives is staked right away, all of it.': '이 앱은 무료 오픈소스이고, Seeker 한 사람이 만들었습니다. 덕분에 시간을 조금이라도 아꼈다면 팁은 언제든 환영입니다. 들어오는 SKR은 전부 바로 스테이킹됩니다.',
   'This is {name} itself. A tip to your own wallet moves nothing; try from another wallet.': '여기가 바로 {name}입니다. 자기 지갑에 보내는 팁은 아무것도 옮기지 않습니다. 다른 지갑에서 시도해 보세요.',
   'The chain rejected the transfer.': '체인이 전송을 거부했습니다.',
   'The wallet declined. Nothing was sent.': '지갑이 거절했습니다. 아무것도 보내지 않았습니다.',
@@ -231,7 +228,6 @@ export const ko: Record<string, string> = {
   'This is what one transaction stakes. The total is this amount times the count below.': '거래 한 건이 스테이킹하는 금액입니다. 합계는 이 금액에 아래 횟수를 곱한 값입니다.',
   'How many transactions': '거래 횟수',
   'One transaction, one wallet approval.': '거래 한 건, 지갑 승인 한 번.',
-  '{count} identical transactions from one approval, sent one after another. Each one is a separate on-chain stake.': '한 번의 승인으로 같은 거래 {count}건을 차례로 보냅니다. 각각이 체인상의 별개 스테이킹입니다.',
   'This needs {needed} SKR and you hold {held}. ': '{needed} SKR이 필요한데 보유량은 {held}입니다. ',
   'At this amount you can send 1 part.': '이 금액이면 1건을 보낼 수 있습니다.',
   'At this amount you can send {count} parts.': '이 금액이면 {count}건을 보낼 수 있습니다.',
@@ -333,4 +329,10 @@ export const ko: Record<string, string> = {
   '{count} treasury-size wallets set aside: {total} SKR, no names, no moves.': '재무 규모 지갑 {count}개는 따로 둡니다. {total} SKR, 이름 없음, 변동 없음.',
   '{people} people · ranked among people': '{people}명 · 사람들 사이의 순위',
   '{shown} of {people} people shown · more load as you scroll.': '{people}명 중 {shown}명 표시 · 스크롤하면 더 불러옵니다.',
+  'What the card shows': '카드에 표시되는 내용',
+  '16 SKR · 16 transactions · ≈6 approvals': '16 SKR · 트랜잭션 16건 · 약 6회 승인',
+  '1 approval': '승인 1회',
+  '≈{count} approvals': '약 {count}회 승인',
+  '{count} identical transactions in one batch. The wallet may ask for your finger several times along the way.': '동일한 트랜잭션 {count}건을 한 묶음으로 보냅니다. 지갑이 도중에 지문을 여러 번 요청할 수 있습니다.',
+  'never left the phone': '휴대폰을 떠나지 않음',
 };
