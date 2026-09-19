@@ -267,7 +267,10 @@ export function Button({ label, onPress, tone = colors.accent, ghost = false, qu
         pressed && styles.buttonPressed,
       ]}
     >
-      <Text maxFontSizeMultiplier={1.4} style={[styles.buttonText, (ghost || quiet) && styles.buttonTextGhost, quiet && styles.buttonTextQuiet]}>{label}</Text>
+      {/* A button that grows a second line grows taller, and a label that
+          changes with state then bounces the whole column under it. One line,
+          shrunk a hair when it must. */}
+      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} maxFontSizeMultiplier={1.4} style={[styles.buttonText, (ghost || quiet) && styles.buttonTextGhost, quiet && styles.buttonTextQuiet]}>{label}</Text>
     </Pressable>
   );
 }

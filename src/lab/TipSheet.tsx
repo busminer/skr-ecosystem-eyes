@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Buffer } from 'buffer';
@@ -149,18 +149,17 @@ export function TipSheet({ onClose }: { onClose: () => void }) {
           <Pressable accessibilityRole="button" accessibilityLabel="Close" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={phase === 'signing' || phase === 'confirming' ? undefined : onClose} style={[styles.close, (phase === 'signing' || phase === 'confirming') && { opacity: 0.3 }]}><Text style={styles.closeText}>×</Text></Pressable>
         </View>
 
-        <Panel style={styles.panel}>
-          <Text style={styles.lead}>{t('This app is free, open source, and built by one Seeker. If it saved you a moment, a tip is welcome. Every SKR that arrives is staked right away, all of it.')}</Text>
-          <Text style={styles.note}>{t('A tip changes nothing about your position and nothing about any airdrop. It is a thank you, not a fee.')}</Text>
-        </Panel>
-
+        {/* The sheet used to open with a paragraph repeating the very panel
+            the person just tapped to get here, in a box the same weight as
+            the work below it. The amount is the first thing now; the
+            reassurances stand together at the foot, where reassurances go. */}
         {phase === 'done' && signature ? (
           <Panel style={styles.panel} tone={colors.positive}>
             <Eyebrow tone={colors.positive}>{t('Thank you')}</Eyebrow>
             <Text style={styles.doneTitle}>{t('{amount} SKR on its way to {name}', { amount: fromRaw(raw), name: RECIPIENT_NAME })}</Text>
             <Text style={styles.mono}>{`signature  ${signature.slice(0, 8)}…${signature.slice(-8)}\ncommitment ${checked ? 'confirmed by the wallet, checked by the app' : 'sent by the wallet, not yet seen by the app · check Solscan'}`}</Text>
-            <Button ghost label={t('Open on Solscan')} onPress={() => void Linking.openURL(`https://solscan.io/tx/${signature}`)} />
             <Button label={t('Done')} onPress={onClose} tone={colors.metal} />
+            <Button quiet label={t('Open on Solscan')} onPress={() => void Linking.openURL(`https://solscan.io/tx/${signature}`)} />
           </Panel>
         ) : (
           <>
@@ -178,11 +177,12 @@ export function TipSheet({ onClose }: { onClose: () => void }) {
                 />
                 <Text style={styles.amountUnit}>SKR</Text>
               </View>
-              <Text style={[styles.note, overPrecise && styles.warn]}>
+              <Text style={[styles.note, styles.helper, overPrecise && styles.warn]}>
                 {overPrecise ? t('SKR has six decimal places. Shorten the amount.') : held ? t('You hold {held} SKR.', { held }) : t('Any amount you like. Goes to {name}, the wallet behind this app.', { name: RECIPIENT_NAME })}
               </Text>
             </Panel>
 
+            {phase === 'confirming' ? <ActivityIndicator color={colors.metal} /> : null}
             <Button
               label={phase === 'signing' ? t('Approve in your wallet') : phase === 'confirming' ? t('Landing on chain…') : raw > 0n ? t('Send {amount} SKR to {name}', { amount: fromRaw(raw), name: RECIPIENT_NAME }) : t('Send a tip')}
               onPress={() => void send()}
@@ -194,7 +194,10 @@ export function TipSheet({ onClose }: { onClose: () => void }) {
           </>
         )}
 
-        <Text style={styles.foot}>{t('Your wallet signs and sends it. The app only fetches a blockhash before and reads the status after.')}</Text>
+        <View style={styles.footer}>
+          {phase === 'done' ? null : <Text style={styles.foot}>{t('A tip changes nothing about your position and nothing about any airdrop. It is a thank you, not a fee.')}</Text>}
+          <Text style={styles.foot}>{t('Your wallet signs and sends it. The app only fetches a blockhash before and reads the status after.')}</Text>
+        </View>
       </ScrollView>
     </Animated.View>
   );
@@ -202,14 +205,16 @@ export function TipSheet({ onClose }: { onClose: () => void }) {
 
 const styles = StyleSheet.create({
   screen: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: colors.bg, zIndex: 30 },
-  content: { padding: spacing.lg, paddingBottom: 140, gap: spacing.lg },
+  content: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },
   head: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   title: { color: colors.text, fontFamily: font.bold, fontSize: 22, marginTop: spacing.xs },
   close: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, borderWidth: 1, borderColor: colors.lineStrong },
   closeText: { color: colors.text, fontSize: 20, lineHeight: 22 },
   panel: { padding: spacing.md, gap: spacing.sm },
-  lead: { color: colors.text, fontFamily: font.regular, ...type.body },
   note: { color: colors.muted, fontFamily: font.regular, ...type.small },
+  // Three different sentences take turns down here; the tallest of them sets
+  // the height for all three so the input never hops.
+  helper: { minHeight: 36 },
   warn: { color: colors.pending },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
   amountInput: { flex: 1, minHeight: 50, borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.inner, paddingHorizontal: spacing.lg, color: colors.text, backgroundColor: colors.bg, fontFamily: font.mono, fontSize: 18 },
@@ -217,5 +222,6 @@ const styles = StyleSheet.create({
   doneTitle: { color: colors.text, fontFamily: font.bold, fontSize: 18 },
   mono: { color: colors.muted, fontFamily: font.mono, ...type.micro },
   error: { color: colors.negative, fontFamily: font.medium, ...type.small },
-  foot: { color: colors.faint, fontFamily: font.regular, ...type.micro },
+  footer: { gap: spacing.sm },
+  foot: { color: colors.muted, fontFamily: font.regular, ...type.micro },
 });
