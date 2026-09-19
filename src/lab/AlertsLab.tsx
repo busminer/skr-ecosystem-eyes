@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
@@ -9,10 +9,42 @@ import { compact } from '../format';
 import { scheduleDailyNudge, clearStoredSchedule, hasUnlockAlerts, scheduleNotificationProof, scheduleUnlockAlerts } from '../notifications';
 import { usePref } from '../prefs';
 import { readSessionAddress } from '../session';
-import { colors, font, radius, spacing, type } from '../theme';
+import { colors, font, numeric, radius, spacing, type } from '../theme';
 import type { EcosystemState, WalletProfile } from '../types';
-import { Button, Evidence, Eyebrow, Hairline, Panel, RangeSwitch } from './kit';
+import { Button, Chevron, Evidence, Eyebrow, Hairline, Inset, Panel, RangeSwitch } from './kit';
 import { TipSheet } from './TipSheet';
+
+// A setting is a name and a control. The sentence that explains it is worth
+// keeping and is not worth carrying down the screen forever.
+//
+// This panel used to be four of these rows in a column, each one a label, a
+// three-line paragraph and a switch, and the paragraphs came to more of the
+// screen than the settings did. Nobody reads the same explanation twice; they
+// read it once, decide, and from then on they are looking for the switch. So
+// the words go behind the name, and the chevron says they are still there.
+//
+// `open` is forced on when the control is dead: a switch you cannot move has
+// to say why without being asked.
+function Setting({ label, note, open, onPeek, control }: { label: string; note?: ReactNode; open?: boolean; onPeek?: () => void; control: ReactNode }) {
+  return (
+    <View>
+      <View style={styles.settingRow}>
+        <Pressable
+          accessibilityRole={note ? 'button' : undefined}
+          accessibilityState={note ? { expanded: open === true } : undefined}
+          disabled={!note || !onPeek}
+          onPress={onPeek}
+          style={({ pressed }) => [styles.settingName, pressed && styles.pressed]}
+        >
+          <Text style={styles.settingLabel}>{label}</Text>
+          {note ? <Chevron open={open} /> : null}
+        </Pressable>
+        {control}
+      </View>
+      {note && open ? <Inset style={styles.note}>{typeof note === 'string' ? <Text style={styles.noteText}>{note}</Text> : note}</Inset> : null}
+    </View>
+  );
+}
 
 export function AlertsLab() {
   // The language switch lives here because this is the only settings screen the
@@ -34,6 +66,15 @@ export function AlertsLab() {
   // The opening: the turn from 1.0, back by request, or the first stone from 1.1.
   const [splashTurn, setSplashTurn] = usePref('splash:turn', true);
   const [tipping, setTipping] = useState(false);
+  // One disclosure open at a time. Two paragraphs unfolded at once is the
+  // screen we are leaving behind.
+  const [peek, setPeek] = useState<string | null>(null);
+  const [langsOpen, setLangsOpen] = useState(false);
+
+  const toggle = useCallback((key: string) => {
+    void Haptics.selectionAsync();
+    setPeek((current) => (current === key ? null : key));
+  }, []);
 
   useEffect(() => {
     Notifications.getPermissionsAsync().then((result) => {
@@ -104,11 +145,15 @@ export function AlertsLab() {
   }, []);
 
   const { config, fallback } = resolveAlertThresholds(state);
+  const canArm = Boolean(profile && profile.nextUnlockAt);
 
   return (
     <View style={styles.screen}>
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Panel style={styles.panel}>
+      {/* The one panel on this screen allowed to raise its hand, and only
+          while the phone is refusing to wake anybody. Once it is allowed that
+          is a settled fact, and a settled fact goes quiet. */}
+      <Panel style={styles.panel} tone={granted === false ? colors.pending : undefined}>
         <View style={styles.permissionHead}>
           <View style={styles.permissionCopy}>
             <Eyebrow tone={granted ? colors.positive : colors.pending}>{granted ? t('Notifications allowed') : t('Notifications off')}</Eyebrow>
@@ -126,83 +171,92 @@ export function AlertsLab() {
         ) : null}
       </Panel>
 
+      {/* Three switches, one column, one width. The opening moved out: it is a
+          choice about the app, not about being woken, and its wide two-way
+          control was the thing breaking the column. */}
       <Panel style={styles.panel}>
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleCopy}>
-            <Text style={styles.toggleLabel}>{t('Wake me at my unlock')}</Text>
-            <Text style={styles.toggleNote}>
-              {!profile
-                ? t('Connect your wallet on the Me screen and this switch becomes live.')
-                : profile.nextUnlockAt
-                  ? t('One hour before, and again the moment the cooldown ends. Scheduled by this phone from the exact on-chain time.')
-                  : t('Nothing of yours is unlocking, so there is nothing to wake you for yet.')}
-            </Text>
-          </View>
-          {arming
+        <Setting
+          label={t('Wake me at my unlock')}
+          open={peek === 'unlock' || !canArm}
+          onPeek={() => toggle('unlock')}
+          note={(
+            <View style={styles.noteStack}>
+              <Text style={styles.noteText}>
+                {!profile
+                  ? t('Connect your wallet on the Me screen and this switch becomes live.')
+                  : profile.nextUnlockAt
+                    ? t('One hour before, and again the moment the cooldown ends. Scheduled by this phone from the exact on-chain time.')
+                    : t('Nothing of yours is unlocking, so there is nothing to wake you for yet.')}
+              </Text>
+              {/* This used to hang at the bottom of the panel with no heading
+                  and no control beside it, reading like a setting somebody
+                  forgot to finish. It belongs to this switch, because this
+                  switch is the only thing in the app that wakes the phone. */}
+              <Text style={styles.noteText}>
+                {t("Other people's moves do not wake the phone while the app is closed. Only your own unlock does.")}
+              </Text>
+            </View>
+          )}
+          control={arming
             ? <ActivityIndicator color={colors.accent} />
             : (
               <Switch
                 value={armed === true}
-                disabled={!profile || !profile.nextUnlockAt}
+                disabled={!canArm}
                 onValueChange={(value) => void toggleUnlock(value)}
                 trackColor={{ true: colors.accentDim, false: colors.line }}
                 thumbColor={armed ? colors.accent : colors.faint}
               />
             )}
-        </View>
+        />
         <Hairline />
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleCopy}>
-            <Text style={styles.toggleLabel}>{t('Large moves, heard and felt')}</Text>
-            <Text style={styles.toggleNote}>
-              {t('From 100K SKR only: a stake rings like an old phone, an exit lands with a low boom, a withdrawal closes a door. On every screen while the app is open, each with a short buzz.')}
-            </Text>
-          </View>
-          <Switch
-            value={largeAlerts}
-            onValueChange={(value) => { void Haptics.selectionAsync(); setLargeAlerts(value); }}
-            trackColor={{ true: colors.accentDim, false: colors.line }}
-            thumbColor={largeAlerts ? colors.accent : colors.faint}
-          />
-        </View>
+        <Setting
+          label={t('Large moves, heard and felt')}
+          open={peek === 'large'}
+          onPeek={() => toggle('large')}
+          note={t('From 100K SKR only: a stake rings like an old phone, an exit lands with a low boom, a withdrawal closes a door. On every screen while the app is open, each with a short buzz.')}
+          control={(
+            <Switch
+              value={largeAlerts}
+              onValueChange={(value) => { void Haptics.selectionAsync(); setLargeAlerts(value); }}
+              trackColor={{ true: colors.accentDim, false: colors.line }}
+              thumbColor={largeAlerts ? colors.accent : colors.faint}
+            />
+          )}
+        />
         <Hairline />
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleCopy}>
-            <Text style={styles.toggleLabel}>{t('A daily look in')}</Text>
-            <Text style={styles.toggleNote}>
-              {t('Once a day, around six in the evening, one line about the vault, a different one each day. It never asks you to stake. Set on the phone itself, nothing is sent anywhere.')}
-            </Text>
-          </View>
-          <Switch
-            value={nudge}
-            onValueChange={(value) => { void Haptics.selectionAsync(); setNudge(value); void scheduleDailyNudge(value); }}
-            trackColor={{ true: colors.accentDim, false: colors.line }}
-            thumbColor={nudge ? colors.accent : colors.faint}
-          />
-        </View>
-        <Hairline />
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleCopy}>
-            <Text style={styles.toggleLabel}>{t('Opening')}</Text>
-            <Text style={styles.toggleNote}>{splashTurn ? t('The phone turns and the eye blinks, the opening from 1.0.') : t('One phone falls into the dark and the eye opens over the pile, the opening from 1.1.')}</Text>
-          </View>
-          <RangeSwitch value={splashTurn ? 'turn' : 'stone'} options={['turn', 'stone']} label={(option) => option === 'turn' ? t('Turn') : t('First stone')} onChange={(next) => { void Haptics.selectionAsync(); setSplashTurn(next === 'turn'); }} />
-        </View>
-        <Hairline />
-        <Text style={[styles.toggleNote, styles.spaced]}>
-          {t("Other people's moves do not wake the phone while the app is closed. Only your own unlock does.")}
-        </Text>
+        <Setting
+          label={t('A daily look in')}
+          open={peek === 'nudge'}
+          onPeek={() => toggle('nudge')}
+          note={t('Once a day, around six in the evening, one line about the vault, a different one each day. It never asks you to stake. Set on the phone itself, nothing is sent anywhere.')}
+          control={(
+            <Switch
+              value={nudge}
+              onValueChange={(value) => { void Haptics.selectionAsync(); setNudge(value); void scheduleDailyNudge(value); }}
+              trackColor={{ true: colors.accentDim, false: colors.line }}
+              thumbColor={nudge ? colors.accent : colors.faint}
+            />
+          )}
+        />
       </Panel>
 
+      {/* Two columns of exactly 78 points used to hold these numbers, which is
+          fine until somebody turns the system text up and the second column
+          walks off the edge. Now they are recessed rows that can breathe, and
+          the figures are tabular, so three rows line up the way a table
+          should. */}
       <Panel style={styles.panel}>
         <Eyebrow>{t('What counts as large')}</Eyebrow>
         <View style={styles.thresholds}>
           {(['stake', 'unstake', 'withdraw'] as const).map((event) => (
-            <View key={event} style={styles.thresholdRow}>
-              <Text style={styles.thresholdLabel}>{t(event)}</Text>
-              <Text style={styles.thresholdValue}>{compact(config.events[event].standard)}</Text>
-              <Text style={styles.thresholdCritical}>{compact(config.events[event].critical)}</Text>
-            </View>
+            <Inset key={event} style={styles.thresholdRow}>
+              <Text numberOfLines={1} style={styles.thresholdLabel}>{t(event)}</Text>
+              <View style={styles.thresholdFigures}>
+                <Text style={styles.thresholdValue}>{compact(config.events[event].standard)}</Text>
+                <Text style={styles.thresholdCritical}>{compact(config.events[event].critical)}</Text>
+              </View>
+            </Inset>
           ))}
         </View>
         <Text style={styles.thresholdNote}>
@@ -210,34 +264,67 @@ export function AlertsLab() {
         </Text>
       </Panel>
 
+      {/* Two choices about the app itself. The language used to be a wrapped
+          field of up to ten identical pills — the densest run of buttons in
+          the app — standing open for a decision made once. Now the row says
+          which one is on, and opens when it is asked to. */}
       <Panel style={styles.panel}>
-        <Text style={styles.toggleLabel}>{t('Language')}</Text>
-        <Text style={[styles.toggleNote, styles.langNote]}>
-          {t('The app follows your phone until you choose here. The card you share stays in English, so it reads the same to everyone who sees it.')}
-        </Text>
-        {/* Each language is written in its own script. Somebody looking for
-            their language looks for the shape of their own writing, not for the
-            English word for it. */}
-        <View style={styles.langs}>
-          {LANGS.map((option) => {
-            const on = option === language;
-            return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-                key={option}
-                onPress={() => { void Haptics.selectionAsync(); setLang(option); }}
-                style={({ pressed }) => [styles.lang, on && styles.langOn, pressed && styles.langPressed]}
-              >
-                <Text style={[styles.langText, on && styles.langTextOn]}>{LANG_LABEL[option]}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <Setting
+          label={t('Opening')}
+          open={peek === 'opening'}
+          onPeek={() => toggle('opening')}
+          note={splashTurn ? t('The phone turns and the eye blinks, the opening from 1.0.') : t('One phone falls into the dark and the eye opens over the pile, the opening from 1.1.')}
+          control={<RangeSwitch value={splashTurn ? 'turn' : 'stone'} options={['turn', 'stone']} label={(option) => option === 'turn' ? t('Turn') : t('First stone')} onChange={(next) => { void Haptics.selectionAsync(); setSplashTurn(next === 'turn'); }} />}
+        />
+        <Hairline />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: langsOpen }}
+          onPress={() => { void Haptics.selectionAsync(); setLangsOpen((open) => !open); }}
+          style={({ pressed }) => [styles.settingRow, pressed && styles.pressed]}
+        >
+          <Text style={styles.settingLabel}>{t('Language')}</Text>
+          <View style={styles.langNow}>
+            <Text style={styles.langNowText}>{LANG_LABEL[language]}</Text>
+            <Chevron open={langsOpen} />
+          </View>
+        </Pressable>
+        {langsOpen ? (
+          <View style={styles.langBlock}>
+            <Inset style={styles.note}>
+              <Text style={styles.noteText}>
+                {t('The app follows your phone until you choose here. The card you share stays in English, so it reads the same to everyone who sees it.')}
+              </Text>
+            </Inset>
+            {/* Each language is written in its own script. Somebody looking for
+                their language looks for the shape of their own writing, not for
+                the English word for it. */}
+            <View style={styles.langs}>
+              {LANGS.map((option) => {
+                const on = option === language;
+                return (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    key={option}
+                    onPress={() => { void Haptics.selectionAsync(); setLang(option); }}
+                    style={({ pressed }) => [styles.lang, on && styles.langOn, pressed && styles.langPressed]}
+                  >
+                    <Text style={[styles.langText, on && styles.langTextOn]}>{LANG_LABEL[option]}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
       </Panel>
 
-      <Button label={t('Send a test notification')} onPress={() => void proof()} ghost />
-      {status ? <Text style={styles.status}>{status}</Text> : null}
+      {/* The status line used to appear out of nowhere and shove everything
+          under it down the screen. The room for it is now always there. */}
+      <View style={styles.proof}>
+        <Button label={t('Send a test notification')} onPress={() => void proof()} quiet />
+        <View style={styles.statusSlot}>{status ? <Text style={styles.status}>{status}</Text> : null}</View>
+      </View>
 
       {/* Quiet, at the bottom, after everything that matters: a way to say
           thank you in SKR. Not a fee, not a nag, and it says where the tip
@@ -246,7 +333,7 @@ export function AlertsLab() {
         <View style={styles.tipRow}>
           <View style={styles.tipCopy}>
             <Eyebrow tone={colors.metal}>{t('Support SKR Eyes')}</Eyebrow>
-            <Text style={styles.toggleNote}>{t('Free and open source, built by one Seeker. Tips in SKR go to kosa.skr and are staked right away, all of them.')}</Text>
+            <Text style={styles.noteText}>{t('Free and open source, built by one Seeker. Tips in SKR go to kosa.skr and are staked right away, all of them.')}</Text>
           </View>
           <Button label={t('Send a tip')} tone={colors.metal} onPress={() => { void Haptics.selectionAsync(); setTipping(true); }} />
         </View>
@@ -271,32 +358,35 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 130, gap: spacing.lg },
   panel: { padding: spacing.md },
+  pressed: { opacity: 0.6 },
   tipRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  sounds: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
-  sound: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line },
-  soundDot: { width: 7, height: 7, borderRadius: 4 },
-  soundLabel: { color: colors.text, fontFamily: font.semibold, fontSize: 13 },
   tipCopy: { flex: 1, gap: 4 },
   permissionHead: { flexDirection: 'row', gap: spacing.md },
   permissionCopy: { flex: 1, gap: spacing.sm },
   permissionText: { color: colors.muted, fontFamily: font.regular, ...type.body },
   permissionAction: { marginTop: spacing.md },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
-  toggleCopy: { flex: 1, gap: 3 },
-  toggleLabel: { color: colors.text, fontFamily: font.semibold, fontSize: 14 },
-  toggleNote: { color: colors.muted, fontFamily: font.regular, ...type.small },
-  thresholds: { marginTop: spacing.md, gap: spacing.sm },
-  thresholdRow: { flexDirection: 'row', alignItems: 'center' },
-  thresholdLabel: { flex: 1, color: colors.muted, fontFamily: font.semibold, ...type.small, textTransform: 'uppercase' },
-  thresholdValue: { width: 78, textAlign: 'right', color: colors.text, fontFamily: font.semibold, ...type.small },
-  thresholdCritical: { width: 78, textAlign: 'right', color: colors.pending, fontFamily: font.semibold, ...type.small },
-  spaced: { marginTop: spacing.md },
+  settingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, minHeight: 56 },
+  settingName: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  settingLabel: { flexShrink: 1, color: colors.text, fontFamily: font.semibold, fontSize: 14 },
+  note: { marginBottom: spacing.md },
+  noteStack: { gap: spacing.sm },
+  noteText: { color: colors.muted, fontFamily: font.regular, ...type.small },
+  thresholds: { marginTop: spacing.md, gap: 5 },
+  thresholdRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 9 },
+  thresholdLabel: { flexShrink: 1, color: colors.muted, fontFamily: font.semibold, ...type.small, textTransform: 'uppercase', letterSpacing: 0.6 },
+  thresholdFigures: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.lg, marginLeft: 'auto' },
+  thresholdValue: { minWidth: 54, textAlign: 'right', color: colors.text, fontFamily: font.monoSemibold, ...type.small, ...numeric },
+  thresholdCritical: { minWidth: 54, textAlign: 'right', color: colors.pending, fontFamily: font.monoSemibold, ...type.small, ...numeric },
   thresholdNote: { color: colors.faint, fontFamily: font.regular, ...type.small, marginTop: spacing.md },
+  proof: { alignItems: 'flex-start', gap: spacing.xs },
+  statusSlot: { minHeight: 36, justifyContent: 'center', paddingHorizontal: spacing.sm },
   status: { color: colors.positive, fontFamily: font.medium, ...type.small },
-  langNote: { marginTop: spacing.xs },
-  langs: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
-  lang: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line },
-  langOn: { borderColor: colors.accent, backgroundColor: colors.panelHi },
+  langNow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  langNowText: { color: colors.accent, fontFamily: font.semibold, fontSize: 13 },
+  langBlock: { gap: spacing.md, paddingBottom: spacing.sm },
+  langs: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  lang: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line },
+  langOn: { borderColor: colors.accent, backgroundColor: colors.accentWash },
   langPressed: { opacity: 0.7 },
   langText: { color: colors.muted, fontFamily: font.semibold, fontSize: 13 },
   langTextOn: { color: colors.accent },

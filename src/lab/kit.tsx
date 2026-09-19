@@ -85,6 +85,24 @@ export function TabIcon({ name, tone, size = 22 }: { name: 'pulse' | 'flow' | 't
   );
 }
 
+// A disclosure. The screens are full of paragraphs that explain a switch once
+// and then sit under it forever, taking more room than the setting they
+// describe. The chevron is the promise that the words are still there.
+export function Chevron({ open = false, tone = colors.faint, size = 14 }: { open?: boolean; tone?: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d={open ? 'M6 14.75 12 8.75 18 14.75' : 'M9.25 5.75 15.5 12 9.25 18.25'}
+        fill="none"
+        stroke={tone}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export function Eyebrow({ children, tone = colors.faint }: PropsWithChildren<{ tone?: string }>) {
   return <Text style={[styles.eyebrow, { color: tone }]}>{children}</Text>;
 }
