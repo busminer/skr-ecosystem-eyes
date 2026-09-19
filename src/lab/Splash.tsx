@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { createAudioPlayer } from 'expo-audio';
 import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Mask, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import Animated, {
@@ -14,6 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { prefValue, prefsReady } from '../prefs';
+import { t } from '../i18n';
 import { colors, font, spacing } from '../theme';
 
 // The opening: the first stone.
@@ -81,6 +82,16 @@ export function Splash({ onDone }: { onDone: () => void }) {
     return d;
   }, [W, pileTop]);
 
+  // The opening runs four and a half seconds and used to be a wall: the
+  // hundredth launch waits exactly as long as the first. A tap anywhere now
+  // folds it early through the same leave it would have taken anyway.
+  const finished = useRef(false);
+  const finish = useCallback(() => {
+    if (finished.current) return;
+    finished.current = true;
+    onDone();
+  }, [onDone]);
+
   const fall = useSharedValue(0);
   const wave = useSharedValue(0);
   const flash = useSharedValue(0);
@@ -127,8 +138,8 @@ export function Splash({ onDone }: { onDone: () => void }) {
       withTiming(1, { duration: 320, easing: Easing.out(Easing.quad) }),
     ));
     word.value = withDelay(WORD_AT, withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) }));
-    leave.value = withDelay(LEAVE_AT, withTiming(1, { duration: LEAVE_MS, easing: Easing.in(Easing.cubic) }, (finished) => {
-      if (finished) runOnJS(onDone)();
+    leave.value = withDelay(LEAVE_AT, withTiming(1, { duration: LEAVE_MS, easing: Easing.in(Easing.cubic) }, (done) => {
+      if (done) runOnJS(finish)();
     }));
 
     return () => {
@@ -136,7 +147,13 @@ export function Splash({ onDone }: { onDone: () => void }) {
       timers.forEach((timer) => clearTimeout(timer));
       players.forEach((item) => item.remove());
     };
-  }, [fall, wave, flash, eye, lid, word, leave, onDone]);
+  }, [fall, wave, flash, eye, lid, word, leave, finish]);
+
+  const skip = useCallback(() => {
+    leave.value = withTiming(1, { duration: 220, easing: Easing.in(Easing.quad) }, (done) => {
+      if (done) runOnJS(finish)();
+    });
+  }, [finish, leave]);
 
   const screenStyle = useAnimatedStyle(() => ({ opacity: 1 - leave.value }));
 
@@ -163,7 +180,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
   const wordStyle = useAnimatedStyle(() => ({ opacity: word.value, transform: [{ translateY: (1 - word.value) * 8 }] }));
 
   return (
-    <Animated.View style={[styles.screen, screenStyle]} pointerEvents="none">
+    <Animated.View style={[styles.screen, screenStyle]}>
       <Svg width={W} height={H} style={StyleSheet.absoluteFill}>
         <Defs>
           <RadialGradient id="soft" cx="50%" cy="50%" r="50%">
@@ -239,7 +256,11 @@ export function Splash({ onDone }: { onDone: () => void }) {
 
       <Animated.View style={[styles.word, { top: eyeY + 74 }, wordStyle]}>
         <Text style={styles.wordmark}>SKR EYES</Text>
+        {/* The other opening signs off with this line; the name should read
+            the same whichever door the app came in through. */}
+        <Text style={styles.tagline}>{t('every number has a receipt')}</Text>
       </Animated.View>
+      <Pressable style={StyleSheet.absoluteFill} onPress={skip} />
     </Animated.View>
   );
 }
@@ -250,11 +271,12 @@ const STARS: Array<[number, number, number]> = (() => {
 })();
 
 const styles = StyleSheet.create({
-  screen: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#05080D', zIndex: 20 },
+  screen: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: colors.bg, zIndex: 20 },
   stone: { position: 'absolute', top: -36, width: 90, height: 90, alignItems: 'center', justifyContent: 'center' },
   stoneBody: { width: 10, height: 17, borderRadius: 3, backgroundColor: colors.positive },
   halo: { position: 'absolute', width: 300, height: 300 },
   eye: { position: 'absolute', width: 120, height: 120 },
   word: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-  wordmark: { color: colors.text, fontFamily: font.black, fontSize: 15, letterSpacing: 3.4, textAlign: 'center', paddingLeft: 3.4, marginTop: spacing.sm },
+  wordmark: { color: colors.text, fontFamily: font.black, fontSize: 20, letterSpacing: 3, textAlign: 'center', paddingLeft: 3, marginTop: spacing.sm },
+  tagline: { color: colors.muted, fontFamily: font.regular, fontSize: 12, letterSpacing: 0.4, textAlign: 'center', marginTop: spacing.sm },
 });

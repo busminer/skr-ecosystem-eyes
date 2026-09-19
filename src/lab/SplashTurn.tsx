@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { createAudioPlayer } from 'expo-audio';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import Animated, {
@@ -74,6 +74,14 @@ export function SplashTurn({ onDone }: { onDone: () => void }) {
   // Where the device stands, measured rather than guessed: the rings have to sit
   // on it, not on the middle of the screen, which the wordmark below shifts.
   const [centre, setCentre] = useState<{ x: number; y: number } | null>(null);
+  // A tap anywhere folds the opening early, through the same leave it would
+  // have taken anyway. One guard so the tap and the clock cannot both say done.
+  const finished = useRef(false);
+  const finish = useCallback(() => {
+    if (finished.current) return;
+    finished.current = true;
+    onDone();
+  }, [onDone]);
   const reach = Math.round(Math.max(screenW, screenH) * 0.62);
 
   useEffect(() => {
@@ -112,8 +120,8 @@ export function SplashTurn({ onDone }: { onDone: () => void }) {
       withDelay(70, withTiming(1, { duration: 120, easing: Easing.in(Easing.quad) })),
       withTiming(0, { duration: 140, easing: Easing.out(Easing.quad) }),
     ));
-    leave.value = withDelay(LEAVE_AT, withTiming(1, { duration: LEAVE_MS, easing: Easing.in(Easing.cubic) }, (finished) => {
-      if (finished) runOnJS(onDone)();
+    leave.value = withDelay(LEAVE_AT, withTiming(1, { duration: LEAVE_MS, easing: Easing.in(Easing.cubic) }, (done) => {
+      if (done) runOnJS(finish)();
     }));
 
     return () => {
@@ -124,7 +132,13 @@ export function SplashTurn({ onDone }: { onDone: () => void }) {
       clearTimeout(blinkBuzz);
       players.forEach((item) => item.remove());
     };
-  }, [beam, enter, flash, turn, eye, lid, leave, onDone]);
+  }, [beam, enter, flash, turn, eye, lid, leave, finish]);
+
+  const skip = useCallback(() => {
+    leave.value = withTiming(1, { duration: 220, easing: Easing.in(Easing.quad) }, (done) => {
+      if (done) runOnJS(finish)();
+    });
+  }, [finish, leave]);
 
   const screenStyle = useAnimatedStyle(() => ({ opacity: 1 - leave.value }));
 
@@ -167,7 +181,7 @@ export function SplashTurn({ onDone }: { onDone: () => void }) {
   }));
 
   return (
-    <Animated.View style={[styles.screen, screenStyle]} pointerEvents="none">
+    <Animated.View style={[styles.screen, screenStyle]}>
       {/* The ground: the vault's star dust and the rings of the Top radar,
           centred on the device rather than on the screen. */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -244,6 +258,7 @@ export function SplashTurn({ onDone }: { onDone: () => void }) {
         <Text style={styles.wordmark}>SKR EYES</Text>
         <Text style={styles.tagline}>{t('every number has a receipt')}</Text>
       </Animated.View>
+      <Pressable style={StyleSheet.absoluteFill} onPress={skip} />
     </Animated.View>
   );
 }
@@ -259,10 +274,10 @@ const styles = StyleSheet.create({
   earpiece: { width: 24, height: 2, borderRadius: 2, backgroundColor: '#293c45' },
   selfie: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#1f3a44', marginTop: 5 },
   rear: { backgroundColor: '#1B262D', borderColor: '#415761' },
-  island: { position: 'absolute', left: 16, top: 44, width: 26, height: 54, borderRadius: 13, backgroundColor: '#030506', borderWidth: 2, borderColor: '#354a54', alignItems: 'center', justifyContent: 'space-around', paddingVertical: 4 },
+  island: { position: 'absolute', left: 16, top: 44, width: 26, height: 54, borderRadius: 13, backgroundColor: '#030506', borderWidth: 2, borderColor: '#31454f', alignItems: 'center', justifyContent: 'space-around', paddingVertical: 4 },
   islandLens: { width: 15, height: 15, borderRadius: 8, backgroundColor: '#050B10', borderWidth: 1, borderColor: '#1b2a30' },
   flash: { position: 'absolute', left: 52, top: 46, width: 8, height: 8, borderRadius: 4, backgroundColor: '#9daaaa' },
-  camera: { position: 'absolute', left: 16, top: 15, width: 26, height: 26, borderRadius: 13, backgroundColor: '#020405', borderWidth: 2, borderColor: '#435762', alignItems: 'center', justifyContent: 'center' },
+  camera: { position: 'absolute', left: 16, top: 15, width: 26, height: 26, borderRadius: 13, backgroundColor: '#020405', borderWidth: 2, borderColor: '#415761', alignItems: 'center', justifyContent: 'center' },
   cameraLens: { position: 'absolute', left: 4, right: 4, top: 4, bottom: 4, borderRadius: 9, backgroundColor: '#0A1520', borderWidth: 1, borderColor: '#233b45' },
   eye: { width: 34, height: 26, borderRadius: 13, backgroundColor: '#F4F1E9', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   iris: { width: 17, height: 17, borderRadius: 9, backgroundColor: colors.metal, alignItems: 'center', justifyContent: 'center' },
@@ -275,5 +290,5 @@ const styles = StyleSheet.create({
   vaultRing: { width: 11, height: 11, borderRadius: 6, borderWidth: 1, borderColor: '#86989f', opacity: 0.75 },
   sideButton: { position: 'absolute', right: -3, top: 104, width: 3, height: 22, borderRadius: 2, backgroundColor: '#74858c' },
   wordmark: { color: colors.text, fontFamily: font.black, fontSize: 20, letterSpacing: 3, textAlign: 'center' },
-  tagline: { color: colors.faint, fontFamily: font.regular, fontSize: 12, letterSpacing: 0.4, textAlign: 'center', marginTop: spacing.sm },
+  tagline: { color: colors.muted, fontFamily: font.regular, fontSize: 12, letterSpacing: 0.4, textAlign: 'center', marginTop: spacing.sm },
 });
