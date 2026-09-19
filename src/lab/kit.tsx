@@ -40,6 +40,51 @@ export function Mark({ size = 26, tone = colors.accent, open = 1 }: { size?: num
   );
 }
 
+// The five tabs, drawn.
+//
+// The bar used to be five words and a 22-by-2 dash under the live one. On a
+// 360-wide phone that is seventy-two points a tab, so "Alerts" and "Vault"
+// were shrunk to ten and a half and the only thing telling you where you were
+// was a dash two pixels tall. A person glancing at the phone had to read to
+// find out which room they were standing in.
+//
+// Shapes are read without reading. Each one says what its tab holds — the
+// vault door, the flow of events, the standings, a person, a bell — and the
+// live one sits in a pool of accent light, which is the one place on any
+// screen where the accent is spent by default.
+export function TabIcon({ name, tone, size = 22 }: { name: 'pulse' | 'flow' | 'top' | 'me' | 'alerts'; tone: string; size?: number }) {
+  const stroke = { stroke: tone, strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      {name === 'pulse' ? (
+        <G>
+          <Rect x={3} y={4} width={18} height={16} rx={3} {...stroke} />
+          <Circle cx={12} cy={12} r={4} {...stroke} />
+          <Path d="M12 6.4v1.4M12 16.2v1.4M6.6 12h1.4M16 12h1.4" {...stroke} />
+        </G>
+      ) : null}
+      {name === 'flow' ? <Path d="M2.5 14.5h4L9 6.5l4 11 2.2-5.5h4.3" {...stroke} /> : null}
+      {name === 'top' ? (
+        <G>
+          <Path d="M4 20.5V13M12 20.5V4.5M20 20.5V9.5" {...stroke} />
+        </G>
+      ) : null}
+      {name === 'me' ? (
+        <G>
+          <Circle cx={12} cy={8.5} r={3.6} {...stroke} />
+          <Path d="M4.8 20c.6-3.8 3.6-6 7.2-6s6.6 2.2 7.2 6" {...stroke} />
+        </G>
+      ) : null}
+      {name === 'alerts' ? (
+        <G>
+          <Path d="M18 9.5a6 6 0 1 0-12 0c0 6-2.5 8-2.5 8h17S18 15.5 18 9.5" {...stroke} />
+          <Path d="M13.7 21a2 2 0 0 1-3.4 0" {...stroke} />
+        </G>
+      ) : null}
+    </Svg>
+  );
+}
+
 export function Eyebrow({ children, tone = colors.faint }: PropsWithChildren<{ tone?: string }>) {
   return <Text style={[styles.eyebrow, { color: tone }]}>{children}</Text>;
 }
@@ -48,13 +93,34 @@ export function Hairline({ inset = 0 }: { inset?: number }) {
   return <View style={[styles.hairline, { marginHorizontal: inset }]} />;
 }
 
-export function Panel({ children, style, tone }: PropsWithChildren<{ style?: object; tone?: string }>) {
+// A raised surface, lit rather than outlined.
+//
+// The border is now dark enough to read as the shadow under an edge, and a
+// hair of light runs along the top where a real surface would catch it. A
+// `tone` replaces that light with a coloured edge — which is why a tone has to
+// mean something: it is this panel putting its hand up. Twelve panels down a
+// screen, each with its own coloured edge, is twelve hands up and no question
+// answered, which is what the Pulse and Alerts tabs had become.
+//
+// `flat` is for a panel that sits inside another one: no light of its own, so
+// the screen stops reading as boxes inside boxes.
+export function Panel({ children, style, tone, flat = false }: PropsWithChildren<{ style?: object; tone?: string; flat?: boolean }>) {
   return (
-    <View style={[styles.panel, style]}>
-      {tone ? <View style={[styles.panelEdge, { backgroundColor: tone }]} /> : null}
+    <View style={[styles.panel, flat && styles.panelFlat, style]}>
+      {tone
+        ? <View style={[styles.panelEdge, { backgroundColor: tone }]} />
+        : flat ? null : <View style={styles.panelSheen} />}
       {children}
     </View>
   );
+}
+
+// A row that belongs to the panel around it: recessed into it, never given a
+// border of its own. This is the second surface level the screens never had —
+// before it, anything that needed to stand apart inside a panel was drawn as
+// another panel.
+export function Inset({ children, style }: PropsWithChildren<{ style?: object }>) {
+  return <View style={[styles.insetBox, style]}>{children}</View>;
 }
 
 // One number owns each screen. Everything else is quieter by design.
@@ -71,7 +137,12 @@ export function Hero({ label, value, unit, note, tone = colors.text, small = fal
   );
 }
 
-export function Tile({ label, value, unit, note, tone = colors.accent, onPress }: { label: string; value: string; unit?: string; note?: string; tone?: string; onPress?: () => void }) {
+// A tile's coloured top edge used to default to the accent, so every tile on
+// every screen wore it and the accent stopped meaning anything. Now a tile is
+// lit like any other panel unless its number genuinely has a state — cooling
+// down, ready, leaving — and then the edge is that state's colour and is worth
+// looking at.
+export function Tile({ label, value, unit, note, tone, onPress }: { label: string; value: string; unit?: string; note?: string; tone?: string; onPress?: () => void }) {
   const body = (
     <Panel style={styles.tile} tone={tone}>
       <Text numberOfLines={1} style={styles.tileLabel}>{label}</Text>
@@ -157,15 +228,28 @@ export function Pill({ label, tone = colors.positive, filled = false }: { label:
 // looks fine at the default font and pushes its last button off the screen the
 // moment someone enlarges the system text — which is exactly the person we
 // should be looking after.
-export function Button({ label, onPress, tone = colors.accent, ghost = false, disabled = false, fill = false }: { label: string; onPress?: () => void; tone?: string; ghost?: boolean; disabled?: boolean; fill?: boolean }) {
+//
+// `quiet` is the third rung, and the reason it exists: a row of three ghost
+// buttons — Wake me, Refresh, Disconnect — reads as three offers of equal
+// weight, when in truth one is a setting, one is housekeeping and one ends the
+// session. Ghost was the only step down from filled, so everything secondary
+// became a bordered rectangle. Quiet drops the box entirely and leaves a word
+// with a touch target, which is what those three always were.
+export function Button({ label, onPress, tone = colors.accent, ghost = false, quiet = false, disabled = false, fill = false }: { label: string; onPress?: () => void; tone?: string; ghost?: boolean; quiet?: boolean; disabled?: boolean; fill?: boolean }) {
   return (
     <Pressable
       accessibilityRole="button"
       disabled={disabled || !onPress}
       onPress={onPress}
-      style={({ pressed }) => [styles.button, fill && styles.buttonFill, ghost ? styles.buttonGhost : { backgroundColor: tone }, disabled && styles.buttonDisabled, pressed && styles.buttonPressed]}
+      style={({ pressed }) => [
+        styles.button,
+        fill && styles.buttonFill,
+        quiet ? styles.buttonQuiet : ghost ? styles.buttonGhost : { backgroundColor: tone },
+        disabled && styles.buttonDisabled,
+        pressed && styles.buttonPressed,
+      ]}
     >
-      <Text maxFontSizeMultiplier={1.4} style={[styles.buttonText, ghost && styles.buttonTextGhost]}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.4} style={[styles.buttonText, (ghost || quiet) && styles.buttonTextGhost, quiet && styles.buttonTextQuiet]}>{label}</Text>
     </Pressable>
   );
 }
@@ -173,8 +257,14 @@ export function Button({ label, onPress, tone = colors.accent, ghost = false, di
 const styles = StyleSheet.create({
   eyebrow: { ...type.eyebrow, fontFamily: font.semibold, textTransform: 'uppercase' },
   hairline: { height: 1, backgroundColor: colors.line },
-  panel: { backgroundColor: colors.panel, borderRadius: radius.card, borderWidth: 1, borderColor: colors.line, overflow: 'hidden' },
-  panelEdge: { position: 'absolute', left: 0, right: 0, top: 0, height: 1.5, opacity: 0.85 },
+  // The border dropped from #15212C to #111B24: dark enough to read as the
+  // shadow under an edge rather than as a drawn outline. The light on top does
+  // the work the outline used to do, and does it without shouting.
+  panel: { backgroundColor: colors.panel, borderRadius: radius.card, borderWidth: 1, borderColor: '#111B24', overflow: 'hidden' },
+  panelFlat: { backgroundColor: 'transparent', borderColor: 'transparent' },
+  panelEdge: { position: 'absolute', left: 0, right: 0, top: 0, height: 1.5, opacity: 0.7 },
+  panelSheen: { position: 'absolute', left: 0, right: 0, top: 0, height: 1, backgroundColor: colors.sheen },
+  insetBox: { backgroundColor: colors.inset, borderRadius: radius.inner, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   hero: { paddingTop: spacing.sm },
   heroRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, marginTop: spacing.xs },
   heroValue: { fontFamily: font.black, fontVariant: ['tabular-nums'], ...type.hero },
@@ -205,11 +295,16 @@ const styles = StyleSheet.create({
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 4 },
   pillDot: { width: 5, height: 5, borderRadius: 3 },
   pillText: { fontFamily: font.bold, fontSize: 11, letterSpacing: 0.8 },
-  button: { minHeight: 50, borderRadius: radius.card, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  // radius.button, not radius.card. They used to share 14 and a filled button
+  // was indistinguishable from a small panel; now 12 against 16 keeps a button
+  // reading as something you press.
+  button: { minHeight: 50, borderRadius: radius.button, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   buttonFill: { flexGrow: 1, flexShrink: 1, flexBasis: 128 },
   buttonGhost: { borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: 'transparent' },
+  buttonQuiet: { minHeight: 44, backgroundColor: 'transparent', paddingHorizontal: spacing.sm },
   buttonDisabled: { opacity: 0.4 },
   buttonPressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
   buttonText: { color: colors.bg, fontFamily: font.bold, fontSize: 13, letterSpacing: 0.4, textAlign: 'center' },
   buttonTextGhost: { color: colors.text },
+  buttonTextQuiet: { color: colors.muted, fontFamily: font.medium, letterSpacing: 0.2 },
 });

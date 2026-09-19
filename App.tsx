@@ -16,11 +16,11 @@ import { askNotificationPermissionOnce, configureNotifications, scheduleDailyNud
 import { hydratePrefs, prefValue, prefsReady } from './src/prefs';
 import { prepareSound } from './src/sound';
 import { useEventCues } from './src/lab/cues';
-import { colors, font, spacing, type } from './src/theme';
+import { colors, font, radius, spacing, type } from './src/theme';
 import type { Freshness, FreshnessDetail } from './src/types';
 import { AlertsLab } from './src/lab/AlertsLab';
 import { FlowLab } from './src/lab/FlowLab';
-import { Mark } from './src/lab/kit';
+import { Mark, TabIcon } from './src/lab/kit';
 import { Splash } from './src/lab/Splash';
 import { SplashTurn } from './src/lab/SplashTurn';
 import { MyLab } from './src/lab/MyLab';
@@ -109,7 +109,9 @@ function TabBar({ tab, onSelect }: { tab: Tab; onSelect: (next: Tab) => void }) 
             onPress={() => onSelect(item.key)}
             style={({ pressed }) => [styles.navItem, pressed && styles.navPressed]}
           >
-            <View style={[styles.navBar, active && styles.navBarActive]} />
+            <View style={[styles.navGlow, active && styles.navGlowActive]}>
+              <TabIcon name={item.key} tone={active ? colors.accent : colors.faint} />
+            </View>
             <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.navLabel, active && styles.navLabelActive]}>{t(item.label)}</Text>
           </Pressable>
         );
@@ -216,9 +218,18 @@ export default function App() {
         <View style={[styles.topBar, tab === 'pulse' && { zIndex: 3, backgroundColor: vaultAtTop ? 'transparent' : colors.bg }]}>
           <Mark size={22} open={freshness ? freshnessOpen[freshness] : 1} />
           <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.wordmark}>SKR EYES</Text>
+          {/* One answer, said once.
+              This corner used to say the same thing three ways at the same
+              time: the eye's lids, a coloured dot and the word FRESH. Three
+              indicators agreeing is not reassurance, it is clutter — and it
+              spent the header's whole right side on the most boring state
+              there is, the one where nothing is wrong.
+              Now the eye carries it while all is well, and the word only
+              appears when it is not: aging, stale, gone. */}
           <View style={styles.status}>
-            <View style={[styles.statusDot, { backgroundColor: tone }]} />
-            <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.statusText, { color: tone }]}>{t(freshness ?? 'syncing').toUpperCase()}</Text>
+            {freshness && freshness !== 'fresh'
+              ? <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={[styles.statusText, { color: tone }]}>{t(freshness).toUpperCase()}</Text>
+              : null}
             {source === 'overall' ? null : <Age stamp={stamps[source]} />}
           </View>
         </View>
@@ -252,11 +263,16 @@ const styles = StyleSheet.create({
   statusText: { fontFamily: font.semibold, ...type.eyebrow },
   statusAge: { color: colors.faint, fontFamily: font.mono, fontSize: 10.5, letterSpacing: 0.2 },
   body: { flex: 1 },
-  nav: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: colors.bg, paddingBottom: spacing.md, paddingTop: spacing.sm },
-  navItem: { flex: 1, alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs },
+  nav: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#0E1821', backgroundColor: colors.bg, paddingTop: spacing.sm },
+  navItem: { flex: 1, alignItems: 'center', gap: 5, paddingVertical: spacing.xs },
   navPressed: { opacity: 0.7 },
-  navBar: { width: 22, height: 2, borderRadius: 1, backgroundColor: 'transparent' },
-  navBarActive: { backgroundColor: colors.accent },
-  navLabel: { color: colors.muted, fontFamily: font.semibold, fontSize: 13 },
+  // The pool of light under the live tab. It is 46 wide against a tab that is
+  // about 72, so it never touches its neighbours, and it is the only place in
+  // the app where the accent appears without being asked for.
+  navGlow: { width: 46, height: 30, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  navGlowActive: { backgroundColor: colors.accentWash },
+  // Down from 13 to 11.5: the shape above it is now doing the naming, so the
+  // word is a caption and stops fighting the icon for the eye.
+  navLabel: { color: colors.faint, fontFamily: font.semibold, fontSize: 11.5, letterSpacing: 0.2 },
   navLabelActive: { color: colors.text },
 });
