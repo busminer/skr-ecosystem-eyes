@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Svg, { Path } from 'react-native-svg';
 import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,7 +16,7 @@ import { colors, font, radius, spacing, type } from '../theme';
 import type { TopMe, WalletProfile } from '../types';
 import { fetchWalletAge, type PositionAge } from './age';
 import { forgetStakeRun } from './stake/useStakeRun';
-import { Button, Evidence, Eyebrow, Meter, Panel, Tile } from './kit';
+import { Button, Chevron, Evidence, Eyebrow, Inset, Meter, Panel } from './kit';
 import { StakerCard, cardFacts } from './StakerCard';
 import type { CardFacts } from './cardArt';
 import { CardExporter, shareCardPng } from './shareCard';
@@ -83,6 +84,10 @@ export function MyLab() {
   // The place on the card is on by default: it is what people asked for.
   const [showPlace, setShowPlace] = usePref('card:showPlace', true);
   const privacy = { hideName, hideAmount, showPlace };
+  // Two disclosures: the earned estimate's small print, and the card's
+  // privacy switches. Folded because both are read once and set rarely.
+  const [explainEarned, setExplainEarned] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
   // Where this wallet stands among people, from the leaderboard.
   const [standing, setStanding] = useState<{ me: TopMe; people: number } | null>(null);
   // Top's "Share my place" lands here wanting the card shared once it is drawn.
@@ -314,22 +319,24 @@ export function MyLab() {
 
       {claimed ? (
         <>
-          <View style={styles.tiles}>
-            <Tile
-              label={t('Leaving')}
-              value={compact(profile!.totals.pendingUnstake)}
-              unit="SKR"
-              note={profile!.totals.pendingPositions === 1 ? t('1 position in cooldown') : t('{count} positions in cooldown', { count: integer(profile!.totals.pendingPositions) })}
-              tone={colors.pending}
-            />
-            <Tile
-              label={profile!.totals.withdrawable > 0 ? t('Ready now') : t('Next unlock')}
-              value={profile!.totals.withdrawable > 0 ? compact(profile!.totals.withdrawable) : nextUnlock ? countdown(nextUnlock - now) : '—'}
-              unit={profile!.totals.withdrawable > 0 ? 'SKR' : undefined}
-              note={profile!.totals.withdrawable > 0 ? t('Cooldown finished') : nextUnlock ? t('Until this position is free') : t('Nothing queued')}
-              tone={profile!.totals.withdrawable > 0 ? colors.positive : colors.accent}
-            />
-          </View>
+          {connected
+            ? <Button label={t('Stake SKR')} onPress={() => { void Haptics.selectionAsync(); setSixteen(false); setStaking(true); }} />
+            : (
+              <>
+                <Text style={styles.lead}>{t('This position is being looked at, not signed for. Connect the wallet that holds it to stake from it.')}</Text>
+                <Button label={t('Connect Solana Mobile')} onPress={() => void connect()} disabled={busy} />
+              </>
+            )}
+
+          {/* The sixteen is a stake too: only the wallet that can sign gets
+              the door. It was a whole panel with its own gold button and a
+              paragraph; the sheet it opens says everything the paragraph did. */}
+          {connected ? (
+            <Pressable accessibilityRole="button" onPress={() => { void Haptics.selectionAsync(); setSixteen(true); setStaking(true); }} style={({ pressed }) => [styles.sixteenRow, pressed && { opacity: 0.7 }]}>
+              <Eyebrow tone={colors.metal}>{t('The daily sixteen')}</Eyebrow>
+              <Chevron tone={colors.metal} />
+            </Pressable>
+          ) : null}
 
           <Panel style={styles.sharePanel}>
             <View style={styles.shareHead}>
@@ -354,14 +361,28 @@ export function MyLab() {
               </Pressable>
             ) : null}
             {profile!.totals.earned != null ? (
-              <View style={styles.earnedRow}>
-                <View style={styles.shareLabel}><Eyebrow>{t('Earned on staking')}</Eyebrow></View>
+              <Pressable accessibilityRole="button" accessibilityState={{ expanded: explainEarned }} onPress={() => { void Haptics.selectionAsync(); setExplainEarned((open) => !open); }} style={({ pressed }) => [styles.earnedRow, pressed && { opacity: 0.7 }]}>
+                <View style={styles.earnedHead}><Eyebrow>{t('Earned on staking')}</Eyebrow><Chevron open={explainEarned} /></View>
                 <Text style={styles.earnedValue}>{`+${compact(profile!.totals.earned)} SKR`}</Text>
-              </View>
+              </Pressable>
             ) : null}
-            {profile!.totals.earned != null ? (
-              <Text style={styles.shareNote}>{t('An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.')}</Text>
+            {profile!.totals.earned != null && explainEarned ? (
+              <Inset style={styles.earnedExplain}><Text style={styles.insetNote}>{t('An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.')}</Text></Inset>
             ) : null}
+            {/* What used to be two more cards of the same weight as everything
+                else: the queue, recessed into the panel it always belonged to. */}
+            <View style={styles.queueRow}>
+              <Inset style={styles.queueCell}>
+                <Text style={styles.queueLabel}>{t('Leaving')}</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.queueValue, profile!.totals.pendingUnstake > 0 && { color: colors.pending }]}>{compact(profile!.totals.pendingUnstake)}<Text style={styles.queueUnit}> SKR</Text></Text>
+                <Text numberOfLines={2} style={styles.queueNote}>{profile!.totals.pendingPositions === 1 ? t('1 position in cooldown') : t('{count} positions in cooldown', { count: integer(profile!.totals.pendingPositions) })}</Text>
+              </Inset>
+              <Inset style={styles.queueCell}>
+                <Text style={styles.queueLabel}>{profile!.totals.withdrawable > 0 ? t('Ready now') : t('Next unlock')}</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.queueValue, profile!.totals.withdrawable > 0 && { color: colors.positive }]}>{profile!.totals.withdrawable > 0 ? compact(profile!.totals.withdrawable) : nextUnlock ? countdown(nextUnlock - now) : '\u2014'}{profile!.totals.withdrawable > 0 ? <Text style={styles.queueUnit}> SKR</Text> : null}</Text>
+                <Text numberOfLines={2} style={styles.queueNote}>{profile!.totals.withdrawable > 0 ? t('Cooldown finished') : nextUnlock ? t('Until this position is free') : t('Nothing queued')}</Text>
+              </Inset>
+            </View>
             <Text style={styles.shareNote}>
               {age?.days != null
                 ? age.exact
@@ -371,30 +392,14 @@ export function MyLab() {
             </Text>
           </Panel>
 
-          {connected
-            ? <Button label={t('Stake SKR')} onPress={() => { void Haptics.selectionAsync(); setSixteen(false); setStaking(true); }} />
-            : (
-              <>
-                <Text style={styles.lead}>{t('This position is being looked at, not signed for. Connect the wallet that holds it to stake from it.')}</Text>
-                <Button label={t('Connect Solana Mobile')} onPress={() => void connect()} disabled={busy} />
-              </>
-            )}
-
-          {/* The sixteen is a stake too: only the wallet that can sign gets the button. */}
-          {connected ? (
-          <Panel style={styles.dailyPanel}>
-            <View style={styles.dailyRow}>
-              <View style={styles.dailyCopy}>
-                <Eyebrow tone={colors.metal}>{t('The daily sixteen')}</Eyebrow>
-                <Text style={styles.dailyNote}>{t('16 parts of 1 SKR, one approval. A small daily habit that keeps your position moving.')}</Text>
-              </View>
-              <Button label={t('Sixteen')} tone={colors.metal} onPress={() => { void Haptics.selectionAsync(); setSixteen(true); setStaking(true); }} />
-            </View>
-          </Panel>
-          ) : null}
 
           <Panel style={styles.privacyPanel}>
-            <View style={styles.privacyRow}>
+            <Pressable accessibilityRole="button" accessibilityState={{ expanded: privacyOpen }} onPress={() => { void Haptics.selectionAsync(); setPrivacyOpen((open) => !open); }} style={({ pressed }) => [styles.privacyHead, pressed && { opacity: 0.7 }]}>
+              <Text style={styles.privacyLabel}>{t('What the card shows')}</Text>
+              <Chevron open={privacyOpen} />
+            </Pressable>
+            {privacyOpen ? (<>
+            <View style={[styles.privacyRow, styles.privacyDivided]}>
               <View style={styles.privacyCopy}>
                 <Text style={styles.privacyLabel}>{t('Hide my name on the card')}</Text>
                 <Text style={styles.privacyNote}>{t('The eye in the ring closes and the card says A Seeker.')}</Text>
@@ -421,6 +426,7 @@ export function MyLab() {
                 where the name and the amount are printed, which is exactly what
                 the hidden name was for. So the card drops to the tier itself. */}
             {hideName && showPlace ? <Text style={styles.privacyTell}>{t('With your name hidden the card shows the tier only. An exact place would lead anyone straight to your row on Top.')}</Text> : null}
+            </>) : null}
           </Panel>
 
           <Button
@@ -430,10 +436,15 @@ export function MyLab() {
             tone={colors.metal}
           />
 
+          {/* One is a setting, one ends the session, one is housekeeping.
+              They were three identical grey rectangles; now two quiet words
+              and a drawn arrow, in that order of importance. */}
           <View style={styles.actions}>
-            <Button fill label={alertStatus ? t('Alerts armed') : t('Wake me at unlock')} onPress={() => void enableAlerts()} disabled={busy || !nextUnlock} ghost />
-            <Button fill label={t('Refresh')} onPress={() => void inspect(address)} disabled={busy} ghost />
-            <Button fill label={t('Disconnect')} onPress={() => void disconnect()} ghost />
+            <Button label={alertStatus ? t('Alerts armed') : t('Wake me at unlock')} onPress={() => void enableAlerts()} disabled={busy || !nextUnlock} quiet />
+            <Button label={t('Disconnect')} onPress={() => void disconnect()} quiet />
+            <Pressable accessibilityRole="button" accessibilityLabel={t('Refresh')} disabled={busy} onPress={() => void inspect(address)} style={({ pressed }) => [styles.refreshBtn, (pressed || busy) && { opacity: 0.6 }]}>
+              <Svg width={17} height={17} viewBox="0 0 24 24"><Path d="M20 12a8 8 0 1 1-2.4-5.7M20 3.6v4.2h-4.2" stroke={colors.muted} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" /></Svg>
+            </Pressable>
           </View>
           {shareNote ? <Text style={styles.status}>{shareNote}</Text> : null}
           {alertStatus ? <Text style={styles.status}>{alertStatus}</Text> : null}
@@ -491,30 +502,9 @@ export function MyLab() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 130, gap: spacing.lg },
-  card: { backgroundColor: colors.panelHi, borderRadius: 18, borderWidth: 1, borderColor: colors.line, padding: spacing.lg, overflow: 'hidden' },
-  cardClaimed: { borderColor: colors.metalDim },
-  cardEdge: { position: 'absolute', left: 0, right: 0, top: 0, height: 2, backgroundColor: colors.metal, opacity: 0.55 },
-  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cardBrand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  cardBrandText: { color: colors.muted, fontFamily: font.monoBold, ...type.eyebrow, textTransform: 'uppercase' },
-  cardName: { color: colors.text, fontFamily: font.monoSemibold, fontSize: 15, letterSpacing: 0.4, marginTop: spacing.lg },
-  cardAmountRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: spacing.xs },
-  cardAmount: { color: colors.text, fontFamily: font.black, fontVariant: ['tabular-nums'], fontSize: 38, lineHeight: 44, letterSpacing: -1.6 },
-  cardUnit: { color: colors.muted, fontFamily: font.semibold, fontSize: 13 },
-  cardEmpty: { color: colors.faint, fontFamily: font.regular, fontSize: 15, lineHeight: 44, marginTop: spacing.xs },
-  cardStats: { flexDirection: 'row', gap: spacing.xl, marginTop: spacing.lg },
-  cardStat: { gap: 3 },
-  cardStatLabel: { color: colors.faint, fontFamily: font.monoBold, fontSize: 9, letterSpacing: 1.3 },
-  cardStatValue: { color: colors.text, fontFamily: font.monoSemibold, fontSize: 14, fontVariant: ['tabular-nums'] },
-  cardStatAccent: { color: colors.metal },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.lg, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.line },
-  cardFooterText: { color: colors.faint, fontFamily: font.mono, fontSize: 10 },
-  tiles: { flexDirection: 'row', gap: spacing.md },
-  dailyPanel: { padding: spacing.md },
-  dailyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  dailyCopy: { flex: 1, gap: 4 },
-  dailyNote: { color: colors.muted, fontFamily: font.regular, ...type.small },
+  sixteenRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44, paddingHorizontal: spacing.sm },
   privacyPanel: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
+  privacyHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.md, minHeight: 52 },
   privacyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
   privacyDivided: { borderTopWidth: 1, borderTopColor: colors.line },
   privacyCopy: { flex: 1, gap: 3 },
@@ -526,7 +516,16 @@ const styles = StyleSheet.create({
   shareHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
   shareLabel: { flexShrink: 1 },
   shareValue: { color: colors.metal, fontFamily: font.bold, fontSize: 15, fontVariant: ['tabular-nums'] },
-  earnedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.md },
+  earnedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, marginTop: spacing.md },
+  earnedHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1 },
+  earnedExplain: { marginTop: spacing.sm },
+  insetNote: { color: colors.muted, fontFamily: font.regular, ...type.small },
+  queueRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  queueCell: { flex: 1, paddingVertical: spacing.md, gap: 3 },
+  queueLabel: { color: colors.muted, fontFamily: font.semibold, ...type.eyebrow, textTransform: 'uppercase' },
+  queueValue: { color: colors.text, fontFamily: font.bold, fontVariant: ['tabular-nums'], ...type.figure },
+  queueUnit: { color: colors.muted, fontFamily: font.medium, fontSize: 12, letterSpacing: 0 },
+  queueNote: { color: colors.muted, fontFamily: font.regular, ...type.micro },
   earnedValue: { color: colors.positive, fontFamily: font.bold, fontSize: 18, fontVariant: ['tabular-nums'] },
   shareMeter: { marginTop: spacing.md },
   placeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.line },
@@ -536,7 +535,8 @@ const styles = StyleSheet.create({
   placeOf: { color: colors.muted, fontFamily: font.regular, fontSize: 12, letterSpacing: 0 },
   placeTier: { color: colors.metal, fontFamily: font.monoBold, fontSize: 10, letterSpacing: 0.8 },
   shareNote: { color: colors.muted, fontFamily: font.regular, ...type.small, marginTop: spacing.md },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  refreshBtn: { marginLeft: 'auto', width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' },
   status: { color: colors.positive, fontFamily: font.medium, ...type.small },
   lead: { color: colors.muted, fontFamily: font.regular, ...type.body },
   orRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
