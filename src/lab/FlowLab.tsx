@@ -10,8 +10,8 @@ import { compact, shortAddress } from '../format';
 import { usePref } from '../prefs';
 import { playCue } from '../sound';
 import { Carousel } from './Carousel';
-import { colors, font, gold, radius, spacing, type } from '../theme';
-import { Eyebrow, Panel } from './kit';
+import { colors, font, gold, numeric, radius, spacing, type } from '../theme';
+import { Button, Eyebrow, Inset, Panel } from './kit';
 
 // The live floor of the vault. Every line here is a finalized transaction that
 // actually happened: nothing is invented to fill the silence, and when the
@@ -123,70 +123,69 @@ function who(event: FlowEvent): string {
   return event.name ? `${event.name}.skr` : shortAddress(event.wallet);
 }
 
-// The pinned block. Within a day it is today's biggest move; if the day was
-// quiet it says so and shows the last big one instead of pretending.
-
-function Headline({ event, now, title }: { event: FlowEvent; now: number; title?: string }) {
+// A large move, drawn once.
+//
+// The pinned block and a large move in the feed were the same card written out
+// twice: the same top row, the same figure, the same foot, and eight pairs of
+// near-identical styles behind them. `pinned` is the only real difference —
+// the pinned one names which record it is holding and sits still inside the
+// carousel, the feed one arrives with the motion of the feed and opens a
+// receipt when it is touched.
+//
+// The tone stays, on both: a coloured edge on a panel means "this one is
+// putting its hand up", and a move that is a stake, an exit or a withdrawal is
+// exactly that — the state is the event.
+function EventCard({ event, now, pinned = false, title, onPress }: { event: FlowEvent; now: number; pinned?: boolean; title?: string; onPress?: () => void }) {
   const tone = TONE[event.type] ?? colors.muted;
-  const today = now - event.blockTime <= DAY_SECONDS;
-  return (
-    <Panel style={[styles.headline, { borderColor: tone }]} tone={tone}>
-      <View style={styles.headlineTop}>
-        <Eyebrow tone={tone}>{title ?? (today ? t('Biggest seen today') : t('Last big move'))}</Eyebrow>
-        <Text style={styles.headlineTime}>{t('{age} ago', { age: ago(event.blockTime, now) })}</Text>
+  const verb = t(VERB[event.type] ?? event.type).toUpperCase();
+  const card = (
+    <Panel style={[styles.card, pinned && styles.cardPinned]} tone={tone}>
+      <View style={styles.cardTop}>
+        {pinned
+          ? <Eyebrow tone={tone}>{title ?? (now - event.blockTime <= DAY_SECONDS ? t('Biggest seen today') : t('Last big move'))}</Eyebrow>
+          : <Text style={[styles.kind, { color: tone }]}>{verb}</Text>}
+        <Text style={styles.time}>{t('{age} ago', { age: ago(event.blockTime, now) })}</Text>
       </View>
-      <View style={styles.headlineRow}>
-        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.headlineAmount}>
-          {event.amount != null ? compact(event.amount) : '—'}
+      <View style={styles.amountRow}>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.amount, pinned && styles.amountPinned]}>
+          {event.amount != null ? compact(event.amount) : pinned ? '—' : t('amount unavailable')}
         </Text>
-        <Text style={styles.headlineUnit}>SKR</Text>
-        <Text style={[styles.headlineKind, { color: tone }]}>{t(VERB[event.type] ?? event.type).toUpperCase()}</Text>
+        {pinned || event.amount != null ? <Text style={styles.unit}>SKR</Text> : null}
+        {pinned ? <Text style={[styles.kind, styles.kindTail, { color: tone }]}>{verb}</Text> : null}
       </View>
-      <View style={styles.headlineFoot}>
+      <View style={styles.cardFoot}>
         <Text numberOfLines={1} style={styles.wallet}>{who(event)}</Text>
         <Text style={styles.slot}>{t('slot {slot}', { slot: event.slot.toLocaleString('en-US') })}</Text>
       </View>
     </Panel>
   );
-}
-
-function BigEvent({ event, now, onPress }: { event: FlowEvent; now: number; onPress?: () => void }) {
-  const tone = TONE[event.type] ?? colors.muted;
-  return (
-    <Animated.View entering={FadeInDown.duration(280)} layout={Layout.duration(220)} onTouchEnd={onPress}>
-      <Panel style={styles.card} tone={tone}>
-        <View style={styles.cardTop}>
-          <Text style={[styles.kind, { color: tone }]}>{t(VERB[event.type] ?? event.type).toUpperCase()}</Text>
-          <Text style={styles.time}>{t('{age} ago', { age: ago(event.blockTime, now) })}</Text>
-        </View>
-        <View style={styles.amountRow}>
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.amount}>
-            {event.amount != null ? compact(event.amount) : t('amount unavailable')}
-          </Text>
-          {event.amount != null ? <Text style={styles.unit}>SKR</Text> : null}
-        </View>
-        <View style={styles.cardFoot}>
-          <Text numberOfLines={1} style={styles.wallet}>{who(event)}</Text>
-          <Text style={styles.slot}>{t('slot {slot}', { slot: event.slot.toLocaleString('en-US') })}</Text>
-        </View>
-      </Panel>
-    </Animated.View>
-  );
+  if (pinned) return card;
+  return <Animated.View entering={FadeInDown.duration(280)} layout={Layout.duration(220)} onTouchEnd={onPress}>{card}</Animated.View>;
 }
 
 function FoldedBig({ count, total, expanded, onPress }: { count: number; total: number; expanded: boolean; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.folded, pressed && styles.foldedPressed]}>
-      <View style={styles.foldedMark} />
-      <Text style={styles.foldedText}>
-        {expanded ? t('Fold the older large moves') : count === 1 ? t('1 more large move') : t('{count} more large moves', { count })}
-      </Text>
-      <Text style={styles.foldedTotal}>{expanded ? '' : `${compact(total)} SKR`}</Text>
-      <Text style={styles.foldedChevron}>{expanded ? '×' : '+'}</Text>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.foldedWrap, pressed && styles.foldedPressed]}>
+      <Panel style={styles.folded}>
+        <View style={styles.foldedMark} />
+        <Text style={styles.foldedText}>
+          {expanded ? t('Fold the older large moves') : count === 1 ? t('1 more large move') : t('{count} more large moves', { count })}
+        </Text>
+        <Text style={styles.foldedTotal}>{expanded ? '' : `${compact(total)} SKR`}</Text>
+        <Text style={styles.foldedChevron}>{expanded ? '×' : '+'}</Text>
+      </Panel>
     </Pressable>
   );
 }
 
+// Dust, which is nearly all of the traffic.
+//
+// This was five texts on one baseline with five points between them: the
+// figure, SKR, the name, the verb and the age. On a 360-wide phone — and
+// sooner than that at a large system font — the name and the verb are the two
+// that give, so the two things a person actually reads were the first to be
+// squeezed. Two lines now: the number and when, then who and what. Nothing
+// competes for the same space, and nothing here is below 11 px.
 function SmallEvent({ event, now, onPress }: { event: FlowEvent; now: number; onPress?: () => void }) {
   const tone = TONE[event.type] ?? colors.muted;
   return (
@@ -195,11 +194,15 @@ function SmallEvent({ event, now, onPress }: { event: FlowEvent; now: number; on
           the card itself would turn a quiet feed into a traffic light. */}
       <View style={[styles.rowStripe, { backgroundColor: tone }]} />
       <View style={styles.rowBody}>
-        <Text numberOfLines={1} style={styles.rowAmount}>{event.amount != null ? compact(event.amount) : '—'}</Text>
-        <Text style={styles.rowUnit}>SKR</Text>
-        <Text numberOfLines={1} style={styles.rowWallet}>{who(event)}</Text>
-        <Text style={[styles.rowKind, { color: tone }]}>{t(VERB[event.type] ?? event.type).toUpperCase()}</Text>
-        <Text style={styles.rowTime}>{ago(event.blockTime, now)}</Text>
+        <View style={styles.rowLine}>
+          <Text numberOfLines={1} style={styles.rowAmount}>{event.amount != null ? compact(event.amount) : '—'}</Text>
+          <Text style={styles.rowUnit}>SKR</Text>
+          <Text style={styles.rowTime}>{ago(event.blockTime, now)}</Text>
+        </View>
+        <View style={styles.rowLine}>
+          <Text numberOfLines={1} style={styles.rowWallet}>{who(event)}</Text>
+          <Text style={[styles.rowKind, { color: tone }]}>{t(VERB[event.type] ?? event.type).toUpperCase()}</Text>
+        </View>
       </View>
     </Animated.View>
   );
@@ -344,30 +347,42 @@ export function FlowLab({ active }: { active: boolean }) {
           <Eyebrow tone={live ? colors.positive : colors.pending}>{live ? t('Live from the vault') : t('Reconnecting')}</Eyebrow>
           <Text style={styles.title}>{arrivals > 0 ? t('{count} landed while you watched', { count: arrivals }) : t('Watching the chain')}</Text>
         </View>
+        {/* Two settings, not two filters. They used to be bordered pills, the
+            same shape as the kind chips three lines below them, so the eye read
+            five controls of one family where there are two families. A setting
+            loses the box and keeps a light: the dot is lit when it is on. */}
         <View style={styles.headSwitches}>
-          <Pressable accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={() => { void Haptics.selectionAsync(); setHaptics(!haptics); }} style={styles.hapticToggle}>
-            <Text style={[styles.hapticLabel, haptics && styles.hapticOn]}>{haptics ? t('BUZZ ON') : t('BUZZ OFF')}</Text>
+          <Pressable accessibilityRole="button" accessibilityState={{ selected: haptics }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={() => { void Haptics.selectionAsync(); setHaptics(!haptics); }} style={styles.toggle}>
+            <View style={[styles.toggleDot, haptics && styles.toggleDotOn]} />
+            <Text style={[styles.toggleLabel, haptics && styles.toggleLabelOn]}>{haptics ? t('BUZZ ON') : t('BUZZ OFF')}</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
+            accessibilityState={{ selected: sound }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={() => { void Haptics.selectionAsync(); const next = !sound; setSound(next); if (next) playCue('surge', 0.6); }}
-            style={styles.hapticToggle}
+            style={styles.toggle}
           >
-            <Text style={[styles.hapticLabel, sound && styles.hapticOn]}>{sound ? t('SOUND ON') : t('SOUND OFF')}</Text>
+            <View style={[styles.toggleDot, sound && styles.toggleDotOn]} />
+            <Text style={[styles.toggleLabel, sound && styles.toggleLabelOn]}>{sound ? t('SOUND ON') : t('SOUND OFF')}</Text>
           </Pressable>
         </View>
       </View>
 
       {big ? (
         <Carousel width={headWidth} auto={!reducedMotion}>
-          <Headline event={big} now={now} />
+          <EventCard event={big} now={now} pinned />
           {headlines.filter((item) => item.id !== big.id).map((item) => (
-            <Headline key={item.id} event={item} now={now} title={item.type === 'stake' ? t('Biggest stake today') : item.type === 'unstake' ? t('Biggest exit today') : t('Biggest withdrawal today')} />
+            <EventCard key={item.id} event={item} now={now} pinned title={item.type === 'stake' ? t('Biggest stake today') : item.type === 'unstake' ? t('Biggest exit today') : t('Biggest withdrawal today')} />
           ))}
         </Carousel>
       ) : null}
 
+      {/* Four kinds of move, and the day's total under each. The colour of a
+          kind used to sit permanently on its number, so four state colours were
+          burning at the top of the screen before anything had happened. The
+          number is the day's shape; the colour now appears only on the chip
+          that is chosen, as the edge of a panel putting its hand up. */}
       <View style={styles.filters}>
         {KINDS.map((option) => {
           const on = option.key === kind;
@@ -380,35 +395,15 @@ export function FlowLab({ active }: { active: boolean }) {
               hitSlop={{ top: 8, bottom: 8, left: 2, right: 2 }}
               key={option.key}
               onPress={() => { void Haptics.selectionAsync(); setKind(option.key); }}
-              style={[styles.chip, on && { borderColor: tone }]}
+              style={styles.chipWrap}
             >
-              <Text numberOfLines={1} style={[styles.chipLabel, on && styles.chipLabelOn]}>{t(option.label)}</Text>
-              {total != null ? <Text numberOfLines={1} style={[styles.chipTotal, { color: tone }]}>{compact(total)}</Text> : <Text style={styles.chipTotal}>{t('24h')}</Text>}
+              <Panel style={styles.chip} tone={on ? tone : undefined}>
+                <Text numberOfLines={1} style={[styles.chipLabel, on && styles.chipLabelOn]}>{t(option.label)}</Text>
+                <Text numberOfLines={1} style={styles.chipTotal}>{total != null ? compact(total) : t('24h')}</Text>
+              </Panel>
             </Pressable>
           );
         })}
-      </View>
-
-      {/* The size filter, exactly as it was: everything, a thousand and up,
-          a hundred thousand and up. The chips above say what kind, this row
-          says how big. */}
-      <View style={styles.sizes}>
-        {SIZES.map((option) => {
-          const on = option.min === minimum;
-          return (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-              key={option.label}
-              onPress={() => { void Haptics.selectionAsync(); setMinimum(option.min); }}
-              style={[styles.filter, on && styles.filterOn]}
-            >
-              <Text style={[styles.filterLabel, on && styles.filterLabelOn]}>{t(option.label)}</Text>
-            </Pressable>
-          );
-        })}
-        <Text style={styles.filterNote}>{minimum > 0 ? t('only {amount} SKR and up', { amount: compact(minimum) }) : t('everything, dust included')}</Text>
       </View>
 
       {receipt ? (
@@ -419,12 +414,42 @@ export function FlowLab({ active }: { active: boolean }) {
           </View>
           <Text style={styles.receiptTitle}>{receipt.amount != null ? compact(receipt.amount) : '—'} SKR {t(VERB[receipt.type] ?? receipt.type)}</Text>
           <Text style={styles.wallet}>{who(receipt)}</Text>
-          <Text style={styles.receiptMono}>{`signature  ${shortAddress(receipt.signature)}\nslot       ${receipt.slot.toLocaleString('en-US')}\nblock time ${new Date(receipt.blockTime * 1000).toLocaleString()}\ncommitment finalized`}</Text>
-          <Pressable accessibilityRole="button" onPress={() => void Linking.openURL(`https://solscan.io/tx/${receipt.signature}`)} style={styles.receiptLink}>
-            <Text style={styles.receiptLinkText}>{t('Open on Solscan')}</Text>
-          </Pressable>
+          {/* The chain's own words, recessed into the receipt rather than drawn
+              as a second panel inside the first. */}
+          <Inset style={styles.receiptProof}>
+            <Text style={styles.receiptMono}>{`signature  ${shortAddress(receipt.signature)}\nslot       ${receipt.slot.toLocaleString('en-US')}\nblock time ${new Date(receipt.blockTime * 1000).toLocaleString()}\ncommitment finalized`}</Text>
+          </Inset>
+          <View style={styles.receiptAction}>
+            <Button label={t('Open on Solscan')} ghost onPress={() => void Linking.openURL(`https://solscan.io/tx/${receipt.signature}`)} />
+          </View>
         </Panel>
       ) : null}
+
+      {/* How big, and what that leaves — one line, and the line the feed is
+          already carrying. Three pills of the same build as the kind chips made
+          a second row of buttons that said nothing about kind at all; a
+          recessed switch beside the feed's own sentence says it is a setting of
+          the feed below, not another filter above. */}
+      <View style={styles.feedHead}>
+        <Text style={styles.feedNote}>{minimum > 0 ? t('only {amount} SKR and up', { amount: compact(minimum) }) : t('everything, dust included')}</Text>
+        <View style={styles.sizes}>
+          {SIZES.map((option) => {
+            const on = option.min === minimum;
+            return (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                key={option.label}
+                onPress={() => { void Haptics.selectionAsync(); setMinimum(option.min); }}
+                style={[styles.size, on && styles.sizeOn]}
+              >
+                <Text style={[styles.sizeLabel, on && styles.sizeLabelOn]}>{t(option.label)}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
 
       {events.length === 0 ? (
         <Panel style={styles.empty}>
@@ -461,7 +486,7 @@ export function FlowLab({ active }: { active: boolean }) {
               continue;
             }
             nodes.push(isBig
-              ? <BigEvent key={event.id} event={event} now={now} onPress={() => { void Haptics.selectionAsync(); setReceipt(event); }} />
+              ? <EventCard key={event.id} event={event} now={now} onPress={() => { void Haptics.selectionAsync(); setReceipt(event); }} />
               : <SmallEvent key={event.id} event={event} now={now} onPress={() => { void Haptics.selectionAsync(); setReceipt(event); }} />);
           }
 
@@ -489,63 +514,64 @@ const styles = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.md },
   headCopy: { flex: 1 },
   title: { color: colors.text, fontFamily: font.semibold, fontSize: 17, marginTop: spacing.xs },
-  headSwitches: { alignItems: 'flex-end', gap: spacing.xs },
-  hapticToggle: { borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.pill, paddingHorizontal: 11, paddingVertical: 5 },
-  hapticLabel: { color: colors.faint, fontFamily: font.semibold, fontSize: 11, letterSpacing: 0.8 },
-  hapticOn: { color: colors.accent },
-  headline: { padding: spacing.md, gap: spacing.sm },
-  headlineTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headlineTime: { color: colors.muted, fontFamily: font.regular, ...type.micro },
-  headlineRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  headlineAmount: { color: colors.text, fontFamily: font.black, fontVariant: ['tabular-nums'], fontSize: 30, letterSpacing: -1 },
-  headlineUnit: { color: colors.muted, fontFamily: font.semibold, fontSize: 12 },
-  headlineKind: { marginLeft: 'auto', fontFamily: font.bold, fontSize: 11, letterSpacing: 1 },
-  headlineFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sizes: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  headSwitches: { alignItems: 'flex-end', gap: 6 },
+  toggle: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 3 },
+  toggleDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.dim },
+  toggleDotOn: { backgroundColor: colors.accent },
+  toggleLabel: { color: colors.muted, fontFamily: font.semibold, fontSize: 11, letterSpacing: 0.8 },
+  toggleLabelOn: { color: colors.text },
   receipt: { padding: spacing.md, gap: spacing.xs },
-  close: { color: colors.faint, fontSize: 20, lineHeight: 22 },
+  close: { color: colors.muted, fontSize: 20, lineHeight: 22 },
   receiptTitle: { color: colors.text, fontFamily: font.bold, fontSize: 18 },
-  receiptMono: { color: colors.muted, fontFamily: font.mono, ...type.micro, marginTop: spacing.xs },
-  receiptLink: { marginTop: spacing.sm, alignSelf: 'flex-start', borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6 },
-  receiptLinkText: { color: colors.text, fontFamily: font.semibold, fontSize: 12 },
-  headRailWrap: { marginHorizontal: -spacing.lg },
-  headRail: { gap: spacing.md, paddingHorizontal: spacing.lg },
+  receiptProof: { marginTop: spacing.sm },
+  receiptMono: { color: colors.muted, fontFamily: font.mono, ...type.micro },
+  receiptAction: { alignSelf: 'flex-start', marginTop: spacing.xs },
   filters: { flexDirection: 'row', alignItems: 'stretch', gap: 6 },
-  chip: { flex: 1, borderWidth: 1, borderColor: colors.line, borderRadius: 10, backgroundColor: colors.panel, paddingHorizontal: 8, paddingVertical: 6, minWidth: 0 },
-  chipBig: { flex: 0, minWidth: 54 },
-  chipLabel: { color: colors.muted, fontFamily: font.bold, fontSize: 10.5, letterSpacing: 0 },
+  chipWrap: { flex: 1, minWidth: 0 },
+  // A chip is pressed, so it keeps the button radius rather than the card's.
+  chip: { flex: 1, borderRadius: radius.button, paddingHorizontal: 6, paddingVertical: 7, minWidth: 0 },
+  chipLabel: { color: colors.muted, fontFamily: font.bold, fontSize: 11.5 },
   chipLabelOn: { color: colors.text },
-  chipTotal: { color: colors.faint, fontFamily: font.mono, fontSize: 9.5, marginTop: 2 },
-  filter: { borderWidth: 1, borderColor: colors.line, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 5 },
-  filterOn: { borderColor: colors.accentDim, backgroundColor: colors.panelHi },
-  filterLabel: { color: colors.faint, fontFamily: font.semibold, fontSize: 11.5, letterSpacing: 0.6 },
-  filterLabelOn: { color: colors.accent },
-  filterNote: { marginLeft: 'auto', color: colors.faint, fontFamily: font.regular, ...type.micro },
+  chipTotal: { color: colors.muted, fontFamily: font.mono, fontSize: 11, marginTop: 2, ...numeric },
+  feedHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  feedNote: { flex: 1, color: colors.muted, fontFamily: font.regular, ...type.micro },
+  sizes: { flexDirection: 'row', gap: 2, backgroundColor: colors.inset, borderRadius: radius.pill, padding: 3 },
+  size: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill },
+  sizeOn: { backgroundColor: colors.accentWash },
+  sizeLabel: { color: colors.muted, fontFamily: font.semibold, fontSize: 11, letterSpacing: 0.4 },
+  sizeLabelOn: { color: colors.accent },
   feed: { gap: spacing.sm },
   card: { padding: spacing.md, gap: spacing.sm, marginVertical: spacing.xs },
+  cardPinned: { marginVertical: 0 },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   kind: { fontFamily: font.bold, fontSize: 11, letterSpacing: 1 },
-  time: { color: colors.faint, fontFamily: font.regular, ...type.micro },
+  kindTail: { marginLeft: 'auto' },
+  time: { color: colors.muted, fontFamily: font.regular, ...type.micro },
   amountRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  amount: { color: colors.text, fontFamily: font.bold, fontVariant: ['tabular-nums'], fontSize: 26, letterSpacing: -0.8 },
+  amount: { color: colors.text, fontFamily: font.bold, fontSize: 26, letterSpacing: -0.8, ...numeric },
+  amountPinned: { fontFamily: font.black, fontSize: 30, letterSpacing: -1 },
   unit: { color: colors.muted, fontFamily: font.medium, fontSize: 12 },
   cardFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   wallet: { fontFamily: font.semibold, fontSize: 13.5, ...gold },
-  slot: { color: colors.faint, fontFamily: font.mono, ...type.micro },
-  row: { flexDirection: 'row', backgroundColor: colors.panel, borderRadius: radius.inner, borderWidth: 1, borderColor: colors.line, overflow: 'hidden', marginBottom: 5 },
+  slot: { color: colors.muted, fontFamily: font.mono, ...type.micro },
+  // The feed already puts eight points between its children; the row used to
+  // add five of its own on top of that.
+  row: { flexDirection: 'row', backgroundColor: colors.panel, borderRadius: radius.inner, overflow: 'hidden' },
   rowStripe: { width: 3 },
-  rowBody: { flex: 1, flexDirection: 'row', alignItems: 'baseline', gap: 5, paddingVertical: 8, paddingHorizontal: spacing.md },
-  rowAmount: { color: colors.text, fontFamily: font.bold, fontSize: 15, fontVariant: ['tabular-nums'], letterSpacing: -0.3 },
-  rowUnit: { color: colors.muted, fontFamily: font.medium, fontSize: 10.5 },
-  rowKind: { fontFamily: font.bold, fontSize: 9.5, letterSpacing: 0.8 },
-  rowWallet: { flex: 1, fontFamily: font.semibold, fontSize: 12.5, marginLeft: 4, ...gold },
-  rowTime: { width: 38, textAlign: 'right', color: colors.faint, fontFamily: font.regular, ...type.micro },
-  folded: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.card, backgroundColor: colors.panel, marginVertical: spacing.xs },
+  rowBody: { flex: 1, gap: 1, paddingVertical: 7, paddingHorizontal: spacing.md },
+  rowLine: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  rowAmount: { color: colors.text, fontFamily: font.bold, fontSize: 15, letterSpacing: -0.3, ...numeric },
+  rowUnit: { color: colors.muted, fontFamily: font.medium, fontSize: 11 },
+  rowKind: { marginLeft: 'auto', fontFamily: font.bold, fontSize: 11, letterSpacing: 0.8 },
+  rowWallet: { flexShrink: 1, fontFamily: font.semibold, fontSize: 12.5, ...gold },
+  rowTime: { marginLeft: 'auto', color: colors.muted, fontFamily: font.regular, ...type.micro },
+  foldedWrap: { marginVertical: spacing.xs },
+  folded: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.md },
   foldedPressed: { opacity: 0.85 },
   foldedMark: { width: 3, height: 18, borderRadius: 2, backgroundColor: colors.metal },
-  foldedText: { color: colors.text, fontFamily: font.semibold, fontSize: 13 },
-  foldedTotal: { marginLeft: 'auto', color: colors.muted, fontFamily: font.semibold, fontSize: 13, fontVariant: ['tabular-nums'] },
-  foldedChevron: { color: colors.accent, fontFamily: font.bold, fontSize: 16, width: 16, textAlign: 'center' },
+  foldedText: { color: colors.text, fontFamily: font.semibold, fontSize: 13, flexShrink: 1 },
+  foldedTotal: { marginLeft: 'auto', color: colors.muted, fontFamily: font.semibold, fontSize: 13, ...numeric },
+  foldedChevron: { color: colors.muted, fontFamily: font.bold, fontSize: 16, width: 16, textAlign: 'center' },
   empty: { padding: spacing.lg },
   emptyText: { color: colors.muted, fontFamily: font.regular, ...type.body },
 });

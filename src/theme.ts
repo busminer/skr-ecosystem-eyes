@@ -1,3 +1,5 @@
+import type { TextStyle } from 'react-native';
+
 // Visual language for the SKR Eyes lab build.
 // One accent, one metal, three state colours. Everything else is grey.
 //
@@ -92,4 +94,9 @@ export const type = {
 // Every number on these screens is read, not skimmed: a figure that changes
 // must not shift the ones beside it. One import instead of the same two lines
 // repeated in nine StyleSheets.
-export const numeric = { fontVariant: ['tabular-nums'] as const } as const;
+//
+// Typed as a TextStyle slice on purpose. Written `as const` it is a readonly
+// tuple, which StyleSheet.create refuses, and every screen that reached for it
+// ended up keeping a private copy — which is the one thing a shared token is
+// there to prevent.
+export const numeric: Pick<TextStyle, 'fontVariant'> = { fontVariant: ['tabular-nums'] };

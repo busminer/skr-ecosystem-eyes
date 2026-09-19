@@ -12,7 +12,7 @@ import { colors, font, gold, spacing, type } from '../theme';
 import type { EcosystemState } from '../types';
 import { DayHeat } from './DayHeat';
 import { FlipNumber } from './FlipNumber';
-import { Button, Evidence, Eyebrow, HorizonRail, Panel, RangeSwitch, Tile } from './kit';
+import { Button, Evidence, Eyebrow, Hairline, HorizonRail, Inset, Panel, RangeSwitch } from './kit';
 import { VaultScene, type SceneHandle, type SceneTap } from './VaultScene';
 import { fetchEvents, subscribeFeed } from './feed';
 
@@ -85,7 +85,7 @@ function FactCard({ label, value, note, tone, width, series, bipolar }: { label:
       {series ? <HourBars series={series} tone={tone ?? colors.accent} bipolar={bipolar} /> : null}
       <Text numberOfLines={1} style={styles.factLabel}>{label.toUpperCase()}</Text>
       <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={[styles.factValue, tone ? { color: tone } : null]}>{value}</Text>
-      <Text numberOfLines={2} style={[styles.factNote, series ? styles.factNoteNarrow : null]}>{note}</Text>
+      <Text numberOfLines={2} style={styles.factNote}>{note}</Text>
     </Panel>
   );
 }
@@ -95,7 +95,9 @@ type QueueRow = NonNullable<EcosystemState['metrics']>['queue'][number];
 
 // The exit list keeps its own clock. Counting down every second used to
 // redraw the whole tab, cards and rail and scene wrapper alike, and that
-// one-second hitch showed in the scene as a stutter. Now only these rows tick.
+// one-second hitch showed in the scene as a stutter. Now only these rows tick —
+// and because the rows own the clock, the panel they now live inside, with its
+// heading and its totals, does not tick with them.
 function QueueList({ queue, shown, allQueue, onToggle }: { queue: QueueRow[]; shown: QueueRow[]; allQueue: boolean; onToggle: () => void }) {
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1_000));
   useEffect(() => {
@@ -103,7 +105,7 @@ function QueueList({ queue, shown, allQueue, onToggle }: { queue: QueueRow[]; sh
     return () => clearInterval(timer);
   }, []);
   return (
-    <Panel style={styles.list}>
+    <View>
       {shown.map((position, index) => {
         const ready = position.status === 'withdrawable' || position.unlockAt <= now;
         return (
@@ -123,7 +125,7 @@ function QueueList({ queue, shown, allQueue, onToggle }: { queue: QueueRow[]; sh
           <Text style={styles.moreText}>{allQueue ? t('Show fewer') : t('Show all {count}', { count: queue.length })}</Text>
         </Pressable>
       ) : null}
-    </Panel>
+    </View>
   );
 }
 
@@ -135,6 +137,11 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
   const [range, setRange] = useState<Range>('24h');
   const [receipt, setReceipt] = useState<SceneTap | null>(null);
   const [allQueue, setAllQueue] = useState(false);
+  // The maturity bands are the same queue, bucketed. They were a panel of their
+  // own, sitting between the two tiles that summed them and the list that spells
+  // them out — the same fact three times down one screen. Now they are one line
+  // inside the queue's own panel, opened by whoever wants the shape of it.
+  const [horizonOpen, setHorizonOpen] = useState(false);
   const [motionCalm, setMotionCalm] = usePref('motion:calm', false);
   const [motionOff, setMotionOff] = usePref('motion:off', false);
   const [motionClassic, setMotionClassic] = usePref('motion:classic', false);
@@ -284,7 +291,12 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
   // instead of sitting on a black band above it.
   // The hourly series is the day's own; the week and the month have no hours to draw.
   const hourSeries = range === '24h' && Array.isArray(state?.analytics?.hourly) ? state!.analytics.hourly : null;
-  const sceneHeight = Math.round(Math.min(420, Math.max(300, height * 0.4))) + topInset;
+  // The scene is drawn in proportions, not in pixels — the pile, the sky and
+  // the horizon are all fractions of the height it is given — so it can give a
+  // little back. 0.36 of the screen instead of 0.4 puts the figure and the
+  // day's two numbers above the fold on a phone held at a large system font,
+  // and costs the vault about thirty points of sky.
+  const sceneHeight = Math.round(Math.min(400, Math.max(280, height * 0.36))) + topInset;
   const queue = [...(metrics?.queue ?? [])].sort((left, right) => left.unlockAt - right.unlockAt);
   const shownQueue = allQueue ? queue : queue.slice(0, QUEUE_SHORT);
 
@@ -297,42 +309,51 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
       scrollEventThrottle={48}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={colors.accent} />}
     >
-      {classic ? (
-        /* Classic: the board that flips, large, where the scene would be. */
-        <View style={styles.classicHero}>
-          <Eyebrow>{t('Active stake')}</Eyebrow>
-          <View style={styles.classicRow}>
-            <FlipNumber value={hero ? hero.figure : '—'} size={64} />
-            <Text style={styles.classicUnit}>{hero ? hero.unit : 'SKR'}</Text>
+      {/* The scene and the line under it are one thing, so they are one group
+          with a gap of its own. They used to be two children of a list with a
+          16 gap and a −8 margin pulling the second one back up: the same
+          distance, written as a correction. */}
+      <View style={styles.top}>
+        {classic ? (
+          /* Classic: the board that flips, large, where the scene would be. */
+          <View style={styles.classicHero}>
+            <Eyebrow>{t('Active stake')}</Eyebrow>
+            <View style={styles.classicRow}>
+              <FlipNumber value={hero ? hero.figure : '—'} size={64} />
+              <Text style={styles.classicUnit}>{hero ? hero.unit : 'SKR'}</Text>
+            </View>
           </View>
-        </View>
-      ) : (
-        <View style={[styles.sceneWrap, { height: sceneHeight, marginHorizontal: -spacing.lg }]}>
-          {/* the header's own height is the scene's top inset: nothing is drawn under the wordmark */}
-          <VaultScene ref={scene} height={sceneHeight} onTap={setReceipt} />
-        </View>
-      )}
-
-      {/* The figure and the two lines share one row under the scene: the
-          lines on the left, the flip board on the right, in the space the
-          board left empty when it lived over the pile. */}
-      <View style={[styles.under, classic && styles.underClassic]}>
-        <View style={styles.underLines}>
-          <Text numberOfLines={1} style={styles.hudNote}>
-            {metrics ? t('{percent}% of all SKR is staked', { percent: metrics.stakedPercent.toFixed(2) }) : error ? t('Waiting for a finalized answer') : t('Reading the vault')}
-          </Text>
-          {day ? (
-            <Text numberOfLines={1} style={styles.hudDay}>
-              <Text style={{ color: colors.positive }}>+{compact(day.staked)}</Text>{` ${t('in')} · `}<Text style={{ color: colors.negative }}>{compact(day.unstaked)}</Text>{` ${t('asked out')}`}
-            </Text>
-          ) : null}
-        </View>
-        {classic ? null : (
-          <View style={styles.underFigure}>
-            <FlipNumber value={hero ? hero.figure : '—'} size={40} />
-            <Text style={styles.unit}>{hero ? hero.unit : 'SKR'}</Text>
+        ) : (
+          <View style={[styles.sceneWrap, { height: sceneHeight, marginHorizontal: -spacing.lg }]}>
+            {/* the header's own height is the scene's top inset: nothing is drawn under the wordmark */}
+            <VaultScene ref={scene} height={sceneHeight} onTap={setReceipt} />
           </View>
         )}
+
+        {/* The figure and the two lines share one row under the scene: the
+            lines on the left, the flip board on the right, in the space the
+            board left empty when it lived over the pile. */}
+        <View style={styles.under}>
+          <View style={styles.underLines}>
+            {/* The shadow under these two lines is for reading them against the
+                sky. In classic there is no sky, only the flat background, and a
+                shadow there is a smudge. */}
+            <Text numberOfLines={1} style={[styles.hudNote, !classic && styles.overScene]}>
+              {metrics ? t('{percent}% of all SKR is staked', { percent: metrics.stakedPercent.toFixed(2) }) : error ? t('Waiting for a finalized answer') : t('Reading the vault')}
+            </Text>
+            {day ? (
+              <Text numberOfLines={1} style={[styles.hudDay, !classic && styles.overScene]}>
+                <Text style={{ color: colors.positive }}>+{compact(day.staked)}</Text>{` ${t('in')} · `}<Text style={{ color: colors.negative }}>{compact(day.unstaked)}</Text>{` ${t('asked out')}`}
+              </Text>
+            ) : null}
+          </View>
+          {classic ? null : (
+            <View style={styles.underFigure}>
+              <FlipNumber value={hero ? hero.figure : '—'} size={40} />
+              <Text style={styles.unit}>{hero ? hero.unit : 'SKR'}</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {receipt ? (
@@ -357,65 +378,128 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
           person has switched the scene off. */}
       {motion === 'off' || classic || reducedMotion ? <DayHeat width={inner} hours={hours} percent={metrics?.stakedPercent ?? null} /> : null}
 
-      <View style={styles.periodHead}>
-        <Eyebrow>{t(RANGE_TITLE[range])}</Eyebrow>
-        <RangeSwitch value={range} options={[...RANGES]} onChange={(next) => setRange(next as Range)} />
-      </View>
+      {/* Heading, cards and the coverage note are one block with a tight gap of
+          its own, instead of three list children pulled together by negative
+          margins. */}
+      <View style={styles.period}>
+        <View style={styles.periodHead}>
+          <Eyebrow>{t(RANGE_TITLE[range])}</Eyebrow>
+          <RangeSwitch value={range} options={[...RANGES]} onChange={(next) => setRange(next as Range)} />
+        </View>
 
-      <Carousel width={inner} auto={!reducedMotion}>
-        <FactCard width={inner} note={note} label={t('staked')} value={period ? compact(period.staked) : '—'} tone={colors.positive} series={hourSeries?.map((hour) => hour.staked)} />
-        <FactCard width={inner} note={note} label={t('asked out')} value={period ? compact(period.unstaked) : '—'} tone={colors.negative} series={hourSeries?.map((hour) => hour.unstaked)} />
-        <FactCard
-          width={inner}
-          note={`${note} · ${t('staked minus requested out')}`}
-          label={t('net')}
-          value={period ? `${period.netFlow >= 0 ? '+' : '−'}${compact(Math.abs(period.netFlow))}` : '—'}
-          tone={(period?.netFlow ?? 0) >= 0 ? colors.positive : colors.negative}
-          series={hourSeries?.map((hour) => hour.staked - hour.unstaked)}
-          bipolar
-        />
-        <FactCard width={inner} note={note} label={t('wallets')} value={period ? integer(period.wallets) : '—'} tone={colors.metal} series={hourSeries?.map((hour) => hour.events)} />
-      </Carousel>
-
-      {partial ? <Text style={styles.partial}>{t('history covers {days}d', { days: Math.floor(coverageDays) })}</Text> : null}
-
-      {/* Both tiles open the whole queue, as they did when it was a tab of
-          its own: the list unfolds and the page scrolls down to it. */}
-      <View style={styles.tiles}>
-        <Tile label={t('In cooldown')} value={metrics ? compact(metrics.pendingUnstake) : '—'} unit="SKR" note={metrics ? t('{count} positions waiting out the 48 hours', { count: integer(metrics.pendingPositions) }) : undefined} tone={colors.pending} onPress={openQueue} />
-        <Tile label={t('Ready to exit')} value={metrics ? compact(metrics.withdrawable) : '—'} unit="SKR" note={t('Cooldown finished, not yet withdrawn')} tone={colors.positive} onPress={openQueue} />
-      </View>
-
-      <Panel style={styles.railPanel}>
-        <Eyebrow>{t('When the queue matures')}</Eyebrow>
-        <View style={styles.railBody}>
-          <HorizonRail
-            bands={[
-              { label: t('ready'), value: horizon?.ready ?? 0, tone: colors.positive, display: horizon ? compact(horizon.ready) : '—' },
-              { label: '0–6h', value: horizon?.next6h ?? 0, tone: colors.pending, display: horizon ? compact(horizon.next6h) : '—' },
-              { label: '6–12h', value: horizon?.next12h ?? 0, tone: colors.pending, display: horizon ? compact(horizon.next12h) : '—' },
-              { label: '12–24h', value: horizon?.next24h ?? 0, tone: colors.accent, display: horizon ? compact(horizon.next24h) : '—' },
-              { label: '24–48h', value: horizon?.next48h ?? 0, tone: colors.accent, display: horizon ? compact(horizon.next48h) : '—' },
-            ]}
+        <Carousel width={inner} auto={!reducedMotion}>
+          <FactCard width={inner} note={note} label={t('staked')} value={period ? compact(period.staked) : '—'} tone={colors.positive} series={hourSeries?.map((hour) => hour.staked)} />
+          <FactCard width={inner} note={note} label={t('asked out')} value={period ? compact(period.unstaked) : '—'} tone={colors.negative} series={hourSeries?.map((hour) => hour.unstaked)} />
+          <FactCard
+            width={inner}
+            note={`${note} · ${t('staked minus requested out')}`}
+            label={t('net')}
+            value={period ? `${period.netFlow >= 0 ? '+' : '−'}${compact(Math.abs(period.netFlow))}` : '—'}
+            tone={(period?.netFlow ?? 0) >= 0 ? colors.positive : colors.negative}
+            series={hourSeries?.map((hour) => hour.staked - hour.unstaked)}
+            bipolar
           />
-        </View>
-      </Panel>
+          <FactCard width={inner} note={note} label={t('wallets')} value={period ? integer(period.wallets) : '—'} tone={colors.metal} series={hourSeries?.map((hour) => hour.events)} />
+        </Carousel>
 
-      <View style={styles.listHead} onLayout={(event) => { queueY.current = event.nativeEvent.layout.y; }}>
-        <Eyebrow>{t('Exits in flight, soonest first')}</Eyebrow>
-        <Text style={styles.listCount}>{t('{count} shown', { count: shownQueue.length })}</Text>
+        {partial ? <Text style={styles.partial}>{t('history covers {days}d', { days: Math.floor(coverageDays) })}</Text> : null}
       </View>
-      <QueueList queue={queue} shown={shownQueue} allQueue={allQueue} onToggle={() => setAllQueue((value) => !value)} />
 
-      <Panel style={styles.motionPanel}>
-        <View style={styles.motionRow}>
-          <View style={styles.motionCopy}>
-            <Eyebrow>{t('Motion')}</Eyebrow>
-            <Text style={styles.motionNote}>{motion === 'classic' ? t('The old main screen: no scene, the day as a heat strip, the number on its flip board.') : motion === 'off' ? t('The vault stands still.') : motion === 'calm' ? t('One gentle frame a second.') : t('Live while you watch. Calm after 90 seconds without a touch.')}</Text>
+      {/* One queue, one panel.
+          It used to be said three times running: two tiles that both opened the
+          list, then five bands that bucketed the same SKR, then the list. Now
+          the two totals are a recessed header on the list they summarise — a
+          touch still opens the whole queue, as the tiles did — the bands live
+          behind their own heading for whoever wants the shape of the next
+          forty-eight hours, and the rows underneath are the queue itself: who,
+          how much, how long. */}
+      <View onLayout={(event) => { queueY.current = event.nativeEvent.layout.y; }}>
+        <Panel style={styles.queue}>
+          <View style={styles.queueHead}>
+            <Eyebrow>{t('Exits in flight, soonest first')}</Eyebrow>
+            <Text style={styles.listCount}>{t('{count} shown', { count: shownQueue.length })}</Text>
           </View>
-          <RangeSwitch value={motion} options={[...MOTIONS]} onChange={(next) => { setMotionClassic(next === 'classic'); setMotionOff(next === 'off'); setMotionCalm(next === 'calm'); }} />
+
+          <Pressable accessibilityRole="button" onPress={openQueue}>
+            <Inset style={styles.totals}>
+              <View style={styles.total}>
+                <View style={styles.totalHead}>
+                  <View style={[styles.totalMark, { backgroundColor: colors.pending }]} />
+                  <Text style={styles.totalLabel}>{t('In cooldown')}</Text>
+                  <Text style={[styles.totalValue, { color: colors.pending }]}>{metrics ? compact(metrics.pendingUnstake) : '—'} SKR</Text>
+                </View>
+                {metrics ? <Text style={styles.totalNote}>{t('{count} positions waiting out the 48 hours', { count: integer(metrics.pendingPositions) })}</Text> : null}
+              </View>
+              <View style={[styles.total, styles.totalDivided]}>
+                <View style={styles.totalHead}>
+                  <View style={[styles.totalMark, { backgroundColor: colors.positive }]} />
+                  <Text style={styles.totalLabel}>{t('Ready to exit')}</Text>
+                  <Text style={[styles.totalValue, { color: colors.positive }]}>{metrics ? compact(metrics.withdrawable) : '—'} SKR</Text>
+                </View>
+                <Text style={styles.totalNote}>{t('Cooldown finished, not yet withdrawn')}</Text>
+              </View>
+            </Inset>
+          </Pressable>
+
+          <View style={styles.horizon}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: horizonOpen }}
+              onPress={() => setHorizonOpen((open) => !open)}
+              style={styles.horizonHead}
+            >
+              <Eyebrow tone={horizonOpen ? colors.accent : colors.faint}>{t('When the queue matures')}</Eyebrow>
+              <Text style={[styles.caret, horizonOpen && styles.caretOpen]}>›</Text>
+            </Pressable>
+            {horizonOpen ? (
+              <Inset style={styles.horizonBody}>
+                <HorizonRail
+                  bands={[
+                    { label: t('ready'), value: horizon?.ready ?? 0, tone: colors.positive, display: horizon ? compact(horizon.ready) : '—' },
+                    { label: '0–6h', value: horizon?.next6h ?? 0, tone: colors.pending, display: horizon ? compact(horizon.next6h) : '—' },
+                    { label: '6–12h', value: horizon?.next12h ?? 0, tone: colors.pending, display: horizon ? compact(horizon.next12h) : '—' },
+                    { label: '12–24h', value: horizon?.next24h ?? 0, tone: colors.accent, display: horizon ? compact(horizon.next24h) : '—' },
+                    { label: '24–48h', value: horizon?.next48h ?? 0, tone: colors.accent, display: horizon ? compact(horizon.next48h) : '—' },
+                  ]}
+                />
+              </Inset>
+            ) : null}
+          </View>
+
+          <QueueList queue={queue} shown={shownQueue} allQueue={allQueue} onToggle={() => setAllQueue((value) => !value)} />
+        </Panel>
+      </View>
+
+      {/* Motion is a setting, not a reading of the vault. It wore the same pill
+          switch as the period above, so the screen offered two identical
+          controls where one picks what you are looking at and the other picks
+          how the app behaves from now on. It keeps its place at the foot of the
+          screen and loses the panel and the pills: a rule, a heading and four
+          words, the live one lit. */}
+      <View style={styles.motion}>
+        <Hairline />
+        <View style={styles.motionCopy}>
+          <Eyebrow>{t('Motion')}</Eyebrow>
+          <Text style={styles.motionNote}>{motion === 'classic' ? t('The old main screen: no scene, the day as a heat strip, the number on its flip board.') : motion === 'off' ? t('The vault stands still.') : motion === 'calm' ? t('One gentle frame a second.') : t('Live while you watch. Calm after 90 seconds without a touch.')}</Text>
         </View>
-      </Panel>
+        <View style={styles.motionOptions}>
+          {MOTIONS.map((option) => {
+            const on = option === motion;
+            return (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                key={option}
+                onPress={() => { setMotionClassic(option === 'classic'); setMotionOff(option === 'off'); setMotionCalm(option === 'calm'); }}
+                style={({ pressed }) => [styles.motionOption, pressed && styles.motionPressed]}
+              >
+                <Text style={[styles.motionWord, on && styles.motionWordOn]}>{option.toUpperCase()}</Text>
+                <View style={[styles.motionUnderline, on && styles.motionUnderlineOn]} />
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
 
       <Evidence
         lines={[
@@ -434,38 +518,57 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.lg, paddingTop: 0, paddingBottom: 120, gap: spacing.lg },
   sceneWrap: { backgroundColor: colors.bg, overflow: 'hidden' },
+  top: { gap: spacing.sm },
   classicHero: { gap: spacing.sm, paddingTop: spacing.sm },
   classicRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
   classicUnit: { color: colors.muted, fontFamily: font.semibold, fontSize: 14, letterSpacing: 1 },
-  underClassic: { marginTop: 0 },
-  under: { marginTop: -spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  under: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   underLines: { flex: 1, gap: 2 },
   underFigure: { alignItems: 'flex-end', gap: 3 },
   unit: { color: colors.muted, fontFamily: font.semibold, fontSize: 11, letterSpacing: 0.8 },
-  hudNote: { color: colors.text, fontFamily: font.medium, fontSize: 15, lineHeight: 21, textShadowColor: '#000', textShadowRadius: 6 },
-  hudDay: { color: colors.muted, fontFamily: font.semibold, fontSize: 14.5, lineHeight: 20, textShadowColor: '#000', textShadowRadius: 6 },
+  hudNote: { color: colors.text, fontFamily: font.medium, fontSize: 15, lineHeight: 21 },
+  hudDay: { color: colors.muted, fontFamily: font.semibold, fontSize: 14.5, lineHeight: 20 },
+  overScene: { textShadowColor: '#000', textShadowRadius: 6 },
   receipt: { padding: spacing.md, gap: spacing.xs },
   receiptHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   close: { color: colors.faint, fontSize: 20, lineHeight: 22 },
   receiptTitle: { color: colors.text, fontFamily: font.bold, fontSize: 18 },
   receiptWho: { fontFamily: font.semibold, fontSize: 13, ...gold },
   receiptMono: { color: colors.muted, fontFamily: font.mono, ...type.micro, marginTop: spacing.xs, marginBottom: spacing.sm },
-  facts: { gap: spacing.md, paddingRight: spacing.lg },
   fact: { padding: spacing.md, minHeight: 108, justifyContent: 'space-between', overflow: 'hidden' },
   bars: { position: 'absolute', right: spacing.md, top: spacing.md + 4, height: 46, flexDirection: 'row', gap: 2 },
   barSlot: { width: 4, height: 46 },
-  factNoteNarrow: { maxWidth: '58%' },
   factLabel: { color: colors.muted, fontFamily: font.semibold, ...type.eyebrow },
   factValue: { color: colors.text, fontFamily: font.black, fontVariant: ['tabular-nums'], fontSize: 30, letterSpacing: -1 },
-  factNote: { color: colors.faint, fontFamily: font.regular, ...type.micro },
-  periodHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: -spacing.xs, marginBottom: -spacing.sm },
+  // Was faint at 11.5 clamped to 58% of the card, so the one line saying what
+  // the big number counts broke over two lines of the smallest grey on the
+  // screen. The bars it was making room for are 46 points tall at the top of
+  // the card; this line sits at the bottom of it and never met them.
+  factNote: { color: colors.muted, fontFamily: font.regular, ...type.small },
+  period: { gap: spacing.sm },
+  periodHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   partial: { color: colors.pending, fontFamily: font.medium, ...type.micro },
-  tiles: { flexDirection: 'row', gap: spacing.md },
-  railPanel: { padding: spacing.md },
-  railBody: { marginTop: spacing.md },
-  listHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: -spacing.sm },
+  queue: { padding: spacing.md, gap: spacing.md },
+  queueHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   listCount: { color: colors.muted, fontFamily: font.regular, ...type.small },
-  list: { paddingHorizontal: spacing.md },
+  totals: { paddingVertical: spacing.md, gap: spacing.sm },
+  total: { gap: 2 },
+  totalDivided: { borderTopWidth: 1, borderTopColor: colors.line, paddingTop: spacing.sm },
+  totalHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  // The same mark the rows below wear, so the total and the queue it counts
+  // read as one thing.
+  totalMark: { width: 3, height: 16, borderRadius: 2 },
+  totalLabel: { flex: 1, color: colors.muted, fontFamily: font.semibold, ...type.eyebrow, textTransform: 'uppercase' },
+  // type.figure with the file's own tabular-nums: the `numeric` token is
+  // declared `as const`, and a readonly fontVariant tuple is not assignable to
+  // a style, so spreading it here does not compile.
+  totalValue: { fontFamily: font.bold, ...type.figure, fontVariant: ['tabular-nums'] },
+  totalNote: { color: colors.faint, fontFamily: font.regular, ...type.small, marginLeft: 3 + spacing.sm },
+  horizon: { gap: spacing.sm },
+  horizonHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs },
+  horizonBody: { paddingVertical: spacing.md },
+  caret: { color: colors.faint, fontFamily: font.medium, fontSize: 17, lineHeight: 20 },
+  caretOpen: { color: colors.accent, transform: [{ rotate: '90deg' }] },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
   rowDivided: { borderTopWidth: 1, borderTopColor: colors.line },
   rowMark: { width: 3, height: 26, borderRadius: 2 },
@@ -477,8 +580,14 @@ const styles = StyleSheet.create({
   empty: { color: colors.muted, fontFamily: font.regular, ...type.body, paddingVertical: spacing.lg },
   more: { paddingVertical: spacing.md, alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.line },
   moreText: { color: colors.accent, fontFamily: font.semibold, fontSize: 13 },
-  motionPanel: { padding: spacing.md },
-  motionRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  motionCopy: { flex: 1, gap: 3 },
+  motion: { gap: spacing.md, paddingTop: spacing.xs },
+  motionCopy: { gap: 3 },
   motionNote: { color: colors.muted, fontFamily: font.regular, ...type.small },
+  motionOptions: { flexDirection: 'row', justifyContent: 'space-between' },
+  motionOption: { flex: 1, alignItems: 'center', gap: 6, paddingVertical: spacing.sm },
+  motionPressed: { opacity: 0.7 },
+  motionWord: { color: colors.faint, fontFamily: font.monoBold, fontSize: 11, letterSpacing: 0.8 },
+  motionWordOn: { color: colors.accent },
+  motionUnderline: { height: 2, borderRadius: 1, alignSelf: 'stretch', marginHorizontal: spacing.sm, backgroundColor: colors.dim, opacity: 0.5 },
+  motionUnderlineOn: { backgroundColor: colors.accent, opacity: 1 },
 });
