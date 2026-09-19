@@ -11,7 +11,7 @@ import { prefValue } from '../prefs';
 import { readSessionAddress } from '../session';
 import { colors, font, gold, radius, spacing, type } from '../theme';
 import type { TopList, TopMe, TopPage, TopRow, TopTier } from '../types';
-import { Button, Eyebrow } from './kit';
+import { Button, Eyebrow, Mark } from './kit';
 import { RADAR_SCENE_HTML } from './radarSceneHtml';
 
 // Top: everybody who stakes, in order, and where you stand among them.
@@ -171,6 +171,38 @@ function RadarSheet({ page, onClose }: { page: TopPage; onClose: () => void }) {
   );
 }
 
+
+// The first three of forty-six thousand get architecture, not just a row:
+// two shoulders and a gold centre. Gold is spent nowhere else in the list,
+// so the one place it appears is the one place it means something.
+function Podium({ rows, onFind }: { rows: TopRow[]; onFind: (row: TopRow) => void }) {
+  const first = rows[0];
+  const second = rows[1];
+  const third = rows[2];
+  if (!first || !second || !third) return null;
+  const shoulder = (row: TopRow, rank: string) => (
+    <Pressable accessibilityRole="button" onPress={() => onFind(row)} style={({ pressed }) => [styles.shoulder, pressed && { opacity: 0.8 }]}>
+      <Text style={styles.podiumRank}>{rank}</Text>
+      <Text numberOfLines={1} style={styles.podiumName}>{who(row)}</Text>
+      <Text numberOfLines={1} style={styles.podiumValue}>{compact(row.staked)}</Text>
+      <Text style={styles.podiumUnit}>SKR</Text>
+    </Pressable>
+  );
+  return (
+    <View style={styles.podium}>
+      {shoulder(second, '#2')}
+      <Pressable accessibilityRole="button" onPress={() => onFind(first)} style={({ pressed }) => [styles.throne, pressed && { opacity: 0.85 }]}>
+        <Mark size={20} tone={colors.metal} />
+        <Text style={[styles.podiumRank, { color: colors.metal }]}>#1</Text>
+        <Text numberOfLines={1} style={[styles.podiumName, styles.throneName]}>{who(first)}</Text>
+        <Text numberOfLines={1} style={styles.throneValue}>{compact(first.staked)}</Text>
+        <Text style={styles.podiumUnit}>SKR · {tierLabel(first.tier)}</Text>
+      </Pressable>
+      {shoulder(third, '#3')}
+    </View>
+  );
+}
+
 export function TopLab() {
   const [wallet, setWallet] = useState<string | null>(null);
   const [list, setList] = useState<TopList>('stake');
@@ -273,7 +305,7 @@ export function TopLab() {
     if (list !== 'stake') setList('stake');
     const index = have?.rows.findIndex((row) => row.wallet === meFound.wallet) ?? -1;
     if (index >= 0) {
-      listRef.current?.scrollToIndex({ index, viewPosition: 0.3, animated: true });
+      listRef.current?.scrollToIndex({ index: Math.max(0, index - (list === 'stake' && !query.trim() ? 3 : 0)), viewPosition: 0.3, animated: true });
       setFlash(meFound.wallet);
       setTimeout(() => setFlash(null), 1_600);
       return;
@@ -288,7 +320,7 @@ export function TopLab() {
     }
     setTimeout(() => {
       const again = loaded.stake?.rows.findIndex((row) => row.wallet === meFound.wallet) ?? -1;
-      if (again >= 0) listRef.current?.scrollToIndex({ index: again, viewPosition: 0.3, animated: true });
+      if (again >= 0) listRef.current?.scrollToIndex({ index: Math.max(0, again - 3), viewPosition: 0.3, animated: true });
     }, 250);
   }, [list, load, loaded.stake, meFound]);
 
@@ -315,6 +347,9 @@ export function TopLab() {
   // Whether yesterday's snapshot exists at all; the server says so.
   const moversKnown = page?.movers.available === true;
   const total = loaded[list]?.total ?? 0;
+  // The podium stands only over the stake order, only unsearched, only once
+  // the first page is really here.
+  const podium = list === 'stake' && !query.trim() && (loaded.stake?.rows.length ?? 0) >= 3;
 
   const header = (
     <View onLayout={(event) => { youHeight.current = event.nativeEvent.layout.height; }}>
@@ -355,6 +390,8 @@ export function TopLab() {
         })}
       </View>
       <Text style={styles.tabNote}>{t(note)}</Text>
+
+      {podium ? <Podium rows={loaded.stake!.rows} onFind={(row) => { setFlash(row.wallet); const index = rows.findIndex((item) => item.wallet === row.wallet); if (index >= 0) listRef.current?.scrollToIndex({ index: Math.max(0, index - 3), viewPosition: 0.3, animated: true }); setTimeout(() => setFlash(null), 1_600); }} /> : null}
 
       {meFound ? (
         <View style={styles.you}>
@@ -465,7 +502,7 @@ export function TopLab() {
     <View style={styles.screen}>
       <FlatList
         ref={listRef}
-        data={rows}
+        data={podium ? rows.slice(3) : rows}
         keyExtractor={(row) => row.wallet}
         renderItem={renderRow}
         ListHeaderComponent={header}
@@ -514,6 +551,15 @@ const styles = StyleSheet.create({
   tabText: { color: colors.muted, fontFamily: font.monoBold, fontSize: 11, letterSpacing: 0.5 },
   tabTextOn: { color: colors.accent },
   tabNote: { color: colors.muted, fontFamily: font.regular, ...type.micro, textAlign: 'center', marginTop: spacing.sm, paddingHorizontal: spacing.md },
+  podium: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, marginTop: spacing.lg },
+  shoulder: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: spacing.md, paddingHorizontal: 6, borderTopLeftRadius: 14, borderTopRightRadius: 14, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, backgroundColor: colors.panel, borderWidth: 1, borderColor: '#111B24' },
+  throne: { flex: 1.16, alignItems: 'center', gap: 3, paddingVertical: spacing.lg, paddingHorizontal: 6, borderTopLeftRadius: 16, borderTopRightRadius: 16, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, backgroundColor: colors.metalWash, borderWidth: 1, borderColor: colors.metalDim },
+  podiumRank: { color: colors.muted, fontFamily: font.monoBold, fontSize: 12, fontVariant: ['tabular-nums'] },
+  podiumName: { maxWidth: '100%', fontFamily: font.monoSemibold, fontSize: 12.5, ...gold },
+  throneName: { fontSize: 13.5 },
+  podiumValue: { color: colors.text, fontFamily: font.bold, fontSize: 15, fontVariant: ['tabular-nums'] },
+  throneValue: { color: colors.text, fontFamily: font.black, fontSize: 19, letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
+  podiumUnit: { color: colors.muted, fontFamily: font.medium, fontSize: 11 },
   you: { marginTop: spacing.md, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.md, padding: spacing.md, borderRadius: radius.card, borderWidth: 1, borderColor: colors.metalDim, backgroundColor: '#0E0D09' },
   youCopy: { flex: 1, gap: 4, minWidth: 180 },
   youRankRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },

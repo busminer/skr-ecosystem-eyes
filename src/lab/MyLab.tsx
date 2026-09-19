@@ -320,7 +320,7 @@ export function MyLab() {
       {claimed ? (
         <>
           {connected
-            ? <Button label={t('Stake SKR')} onPress={() => { void Haptics.selectionAsync(); setSixteen(false); setStaking(true); }} />
+            ? <Button hero label={t('Stake SKR')} onPress={() => { void Haptics.selectionAsync(); setSixteen(false); setStaking(true); }} />
             : (
               <>
                 <Text style={styles.lead}>{t('This position is being looked at, not signed for. Connect the wallet that holds it to stake from it.')}</Text>

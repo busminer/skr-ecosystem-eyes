@@ -1,202 +1,198 @@
-import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { Buffer } from 'buffer';
-import { ComputeBudgetProgram, PublicKey, TransactionInstruction, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
-import { transact } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
-import { base64ToUint8Array } from '@solana-mobile/mobile-wallet-adapter-protocol/encoding';
+import QRCode from 'react-native-qrcode-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { t } from '../i18n';
-import { playCue } from '../sound';
-import { colors, font, gold, radius, spacing, type } from '../theme';
+import { colors, font, radius, spacing, type } from '../theme';
 import { Button, Eyebrow, Panel } from './kit';
-import { fetchBlockhash, fetchStatus, fetchWalletBalance } from './stake/gateway';
-import { MINT, TOKEN_DECIMALS, deriveTokenAccount, fromRaw, toRaw, tooPrecise } from './stake/stakeTx';
+import { MINT } from './stake/stakeTx';
 
-// A tip in SKR, sent straight from the person's wallet to kosa.skr.
+// A donation, in whatever coin the person actually has.
 //
-// It is a plain token transfer, not a stake: the wallet signs it, the wallet
-// broadcasts it, and nothing of it passes through our server except the
-// blockhash before and the signature status after — the same two doors the
-// stake uses. Everything that arrives is staked right away; the line on the
-// sheet says so, and a tip changes nothing about anyone's position.
+// The old sheet took SKR only, built the transfer itself and sent it through
+// Mobile Wallet Adapter — which is exactly the door the Seeker wallet slammed
+// on our domain ("Scam site detected"). This one hands the wallet a Solana Pay
+// link instead: recipient, amount and token already filled in, and the wallet
+// does its own building, its own signing and its own sending. No app identity,
+// no domain to distrust, and it works from any wallet on the phone — or from
+// a different phone entirely, over the code.
+//
+// Solana first, because everyone on this chain holds at least some of it.
+// SKR and USDC one tap away, and "any coin" shows the bare address for
+// everything else the wallet can send.
 
-const RECIPIENT = new PublicKey('BmJaEmaEURBDpj91GUTvJcpKy2MAu8ZtRFRPaMpEuuax');
+const RECIPIENT = 'BmJaEmaEURBDpj91GUTvJcpKy2MAu8ZtRFRPaMpEuuax';
 const RECIPIENT_NAME = 'kosa.skr';
-const TOKEN_PROGRAM = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
-const ASSOCIATED_TOKEN_PROGRAM = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
-const SYSTEM_PROGRAM = new PublicKey('11111111111111111111111111111111');
-const APP_IDENTITY = { name: 'SKR Eyes', uri: 'https://skr.alexkosa.dev', icon: 'favicon.ico' };
+const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
-// The recipient's token account is created if it does not exist yet, and left
-// alone if it does: the idempotent form of the instruction, one byte of data.
-function createAtaIdempotent(payer: PublicKey, owner: PublicKey): TransactionInstruction {
-  return new TransactionInstruction({
-    programId: ASSOCIATED_TOKEN_PROGRAM,
-    data: Buffer.from([1]),
-    keys: [
-      { pubkey: payer, isSigner: true, isWritable: true },
-      { pubkey: deriveTokenAccount(owner), isSigner: false, isWritable: true },
-      { pubkey: owner, isSigner: false, isWritable: false },
-      { pubkey: MINT, isSigner: false, isWritable: false },
-      { pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
-      { pubkey: TOKEN_PROGRAM, isSigner: false, isWritable: false },
-    ],
-  });
+type Coin = { key: string; unit: string; mint: string | null; quick: string[] };
+const COINS: Coin[] = [
+  { key: 'SOL', unit: 'SOL', mint: null, quick: ['0.1', '0.5', '1', '5'] },
+  { key: 'SKR', unit: 'SKR', mint: MINT.toBase58(), quick: ['10', '100', '500', '1000'] },
+  { key: 'USDC', unit: 'USDC', mint: USDC_MINT, quick: ['1', '5', '10', '50'] },
+];
+
+// The mark on each coin pill: drawn, not downloaded. The three bars and the
+// dollar say "which coin" without copying anyone's exact logo; SKR wears the
+// eye it always wears here.
+function CoinMark({ coin, on }: { coin: string; on: boolean }) {
+  const dim = on ? 1 : 0.55;
+  if (coin === 'SOL') {
+    return (
+      <Svg width={24} height={24} viewBox="0 0 24 24" opacity={dim}>
+        <Circle cx={12} cy={12} r={12} fill="#0E1721" />
+        <Path d="M7.4 8.6h7.9l1.7-1.8H9.1Z" fill={colors.accent} />
+        <Path d="M7.4 13h7.9l1.7 1.8H9.1Z" fill={colors.positive} />
+        <Path d="M7.4 17.4h7.9l1.7-1.8H9.1Z" fill={colors.accent} fillOpacity={0.7} />
+      </Svg>
+    );
+  }
+  if (coin === 'SKR') {
+    return (
+      <Svg width={24} height={24} viewBox="0 0 100 100" opacity={dim}>
+        <Circle cx={50} cy={50} r={50} fill="#131007" />
+        <Path d="M16 50 C25 33 36 28 50 28 C64 28 75 33 84 50 C75 67 64 72 50 72 C36 72 25 67 16 50 Z" fill="none" stroke={colors.metal} strokeWidth={6} />
+        <Circle cx={50} cy={50} r={9} fill={colors.metal} />
+      </Svg>
+    );
+  }
+  if (coin === 'USDC') {
+    return (
+      <Svg width={24} height={24} viewBox="0 0 24 24" opacity={dim}>
+        <Circle cx={12} cy={12} r={12} fill="#0E1721" />
+        <Path d="M14.8 9.3c-.2-1.2-1.1-1.9-2.6-1.9-1.6 0-2.6.8-2.6 2 0 1 .6 1.5 2 1.8l1.3.3c2.2.5 3.2 1.3 3.2 2.9 0 1.9-1.5 3.1-3.8 3.1-2.3 0-3.8-1.1-4-3h1.5c.2 1.1 1.2 1.7 2.6 1.7 1.5 0 2.4-.7 2.4-1.7 0-.9-.6-1.4-1.9-1.7l-1.5-.4c-2-.5-3-1.4-3-2.9 0-1.9 1.6-3.2 3.9-3.2 2.2 0 3.7 1.2 3.9 3z" fill="#8296A8" />
+        <Path d="M12 4.6v2M12 17.4v2" stroke="#8296A8" strokeWidth={1.4} strokeLinecap="round" />
+      </Svg>
+    );
+  }
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" opacity={dim}>
+      <Circle cx={12} cy={12} r={12} fill="#0E1721" />
+      <Circle cx={7} cy={12} r={1.6} fill="#8296A8" /><Circle cx={12} cy={12} r={1.6} fill="#8296A8" /><Circle cx={17} cy={12} r={1.6} fill="#8296A8" />
+    </Svg>
+  );
 }
-
-// TransferChecked: the amount and the decimals both travel with it, so a
-// wrong mint or a wrong scale is refused by the token program itself.
-function transferChecked(user: PublicKey, amountRaw: bigint): TransactionInstruction {
-  const data = Buffer.alloc(10);
-  data[0] = 12;
-  new DataView(data.buffer, data.byteOffset, data.byteLength).setBigUint64(1, amountRaw, true);
-  data[9] = TOKEN_DECIMALS;
-  return new TransactionInstruction({
-    programId: TOKEN_PROGRAM,
-    data,
-    keys: [
-      { pubkey: deriveTokenAccount(user), isSigner: false, isWritable: true },
-      { pubkey: MINT, isSigner: false, isWritable: false },
-      { pubkey: deriveTokenAccount(RECIPIENT), isSigner: false, isWritable: true },
-      { pubkey: user, isSigner: true, isWritable: false },
-    ],
-  });
-}
-
-export function buildTipTransaction(user: PublicKey, amountRaw: bigint, blockhash: string): VersionedTransaction {
-  const message = new TransactionMessage({
-    payerKey: user,
-    recentBlockhash: blockhash,
-    instructions: [
-      ComputeBudgetProgram.setComputeUnitLimit({ units: 60_000 }),
-      createAtaIdempotent(user, RECIPIENT),
-      transferChecked(user, amountRaw),
-    ],
-  }).compileToV0Message();
-  return new VersionedTransaction(message);
-}
-
-type Phase = 'idle' | 'signing' | 'confirming' | 'done' | 'error';
 
 export function TipSheet({ onClose }: { onClose: () => void }) {
-  // No suggested amounts on purpose: the person names the number themselves.
+  const [coin, setCoin] = useState<Coin | null>(COINS[0]!);
   const [amount, setAmount] = useState('');
-  const [phase, setPhase] = useState<Phase>('idle');
-  const [signature, setSignature] = useState<string | null>(null);
-  const [checked, setChecked] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [held, setHeld] = useState<string | null>(null);
-  const raw = useMemo(() => toRaw(amount), [amount]);
-  const overPrecise = tooPrecise(amount);
-  const ready = raw > 0n && !overPrecise && phase === 'idle';
+  const [status, setStatus] = useState<string | null>(null);
 
-  const send = useCallback(async () => {
-    setPhase('signing');
-    setError(null);
-    try {
-      const { blockhash, slot } = await fetchBlockhash();
-      const sent = await transact(async (adapter) => {
-        const authorization = await adapter.authorize({ chain: 'solana:mainnet', identity: APP_IDENTITY });
-        const account = authorization.accounts[0];
-        if (!account) throw new Error(t('The wallet did not return an account.'));
-        const user = new PublicKey(base64ToUint8Array(account.address));
-        // A tip from the app's own wallet to itself moves nothing: the wallet
-        // shows a transfer with no net change and the person wonders what
-        // broke. Say it instead of sending it.
-        if (user.equals(RECIPIENT)) throw new Error(t('This is {name} itself. A tip to your own wallet moves nothing; try from another wallet.', { name: RECIPIENT_NAME }));
-        // The balance is read for the message only; the chain is the judge.
-        void fetchWalletBalance(user.toBase58()).then((balance) => setHeld((balance.balance).toFixed(2))).catch(() => undefined);
-        const transaction = buildTipTransaction(user, raw, blockhash);
-        const signatures = await adapter.signAndSendTransactions({ transactions: [transaction], minContextSlot: slot }) as string[];
-        return signatures[0];
-      });
-      if (typeof sent !== 'string' || !sent) throw new Error(t('The wallet returned no signature.'));
-      setSignature(sent);
-      setPhase('confirming');
-      // Ask the chain a few times, then stop: the signature is on the sheet
-      // either way, and Solscan can answer the rest.
-      // A poll that fails looks the same as one that says 'not yet'; neither
-      // is a confirmation, so the sheet only says 'checked' when it really did.
-      let checked = false;
-      for (let attempt = 0; attempt < 10; attempt += 1) {
-        await new Promise((resolve) => setTimeout(resolve, 1_500));
-        const status = await fetchStatus(sent).catch(() => null);
-        if (status?.err) throw new Error(t('The chain rejected the transfer.'));
-        if (status?.confirmationStatus === 'confirmed' || status?.confirmationStatus === 'finalized') { checked = true; break; }
-      }
-      setChecked(checked);
-      setPhase('done');
-      playCue('coin', 0.5);
-    } catch (caught) {
-      setPhase('error');
-      const message = caught instanceof Error ? caught.message : String(caught);
-      // The chain's own rejection carries our wording and must not be read as
-      // the wallet declining: by then the wallet has signed and a fee may be paid.
-      const chainRejected = message === t('The chain rejected the transfer.');
-      setError(!chainRejected && /cancel|declin|reject/i.test(message) ? t('The wallet declined. Nothing was sent.') : message);
-    }
-  }, [raw]);
+  const clean = amount.trim().replace(',', '.');
+  const parsed = Number(clean);
+  const good = Number.isFinite(parsed) && parsed > 0;
+
+  // The Solana Pay link: everything filled in, nothing signed by us.
+  const link = useMemo(() => {
+    const params: string[] = [];
+    if (coin && good) params.push(`amount=${encodeURIComponent(clean)}`);
+    if (coin?.mint) params.push(`spl-token=${coin.mint}`);
+    params.push('label=SKR%20Eyes');
+    return `solana:${RECIPIENT}?${params.join('&')}`;
+  }, [coin, good, clean]);
+
+  const pay = () => {
+    void Haptics.selectionAsync();
+    setStatus(null);
+    Linking.openURL(link).catch(() => setStatus(t('No wallet answered. Scan the code or copy the address by hand.')));
+  };
+
+  const pick = (next: Coin | null) => {
+    void Haptics.selectionAsync();
+    setCoin(next);
+    setAmount('');
+    setStatus(null);
+  };
 
   return (
     <Animated.View entering={FadeIn.duration(180)} style={styles.screen}>
+      {/* The gold light behind the sheet: this screen is the thank-you room. */}
+      <View pointerEvents="none" style={styles.glow} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.head}>
-          <View>
+          <View style={styles.headCopy}>
             <Eyebrow tone={colors.metal}>{t('Support SKR Eyes')}</Eyebrow>
-            <Text style={styles.title}>{t('A tip in SKR')}</Text>
+            <Text style={styles.title}>{t('Send a thank you')}</Text>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={phase === 'signing' || phase === 'confirming' ? undefined : onClose} style={[styles.close, (phase === 'signing' || phase === 'confirming') && { opacity: 0.3 }]}><Text style={styles.closeText}>×</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={onClose} style={styles.close}><Text style={styles.closeText}>×</Text></Pressable>
         </View>
 
-        {/* The sheet used to open with a paragraph repeating the very panel
-            the person just tapped to get here, in a box the same weight as
-            the work below it. The amount is the first thing now; the
-            reassurances stand together at the foot, where reassurances go. */}
-        {phase === 'done' && signature ? (
-          <Panel style={styles.panel} tone={colors.positive}>
-            <Eyebrow tone={colors.positive}>{t('Thank you')}</Eyebrow>
-            <Text style={styles.doneTitle}>{t('{amount} SKR on its way to {name}', { amount: fromRaw(raw), name: RECIPIENT_NAME })}</Text>
-            <Text style={styles.mono}>{`signature  ${signature.slice(0, 8)}…${signature.slice(-8)}\ncommitment ${checked ? 'confirmed by the wallet, checked by the app' : 'sent by the wallet, not yet seen by the app · check Solscan'}`}</Text>
-            <Button label={t('Done')} onPress={onClose} tone={colors.metal} />
-            <Button quiet label={t('Open on Solscan')} onPress={() => void Linking.openURL(`https://solscan.io/tx/${signature}`)} />
-          </Panel>
-        ) : (
+        {/* The coins. Solana first because everyone has it. */}
+        <View style={styles.coins}>
+          {COINS.map((option) => {
+            const on = coin?.key === option.key;
+            return (
+              <Pressable key={option.key} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => pick(option)} style={[styles.coin, on && styles.coinOn]}>
+                <CoinMark coin={option.key} on={on} />
+                <Text style={[styles.coinLabel, on && styles.coinLabelOn]}>{option.key}</Text>
+              </Pressable>
+            );
+          })}
+          <Pressable accessibilityRole="button" accessibilityState={{ selected: coin == null }} onPress={() => pick(null)} style={[styles.coin, coin == null && styles.coinOn]}>
+            <CoinMark coin="ANY" on={coin == null} />
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.coinLabel, coin == null && styles.coinLabelOn]}>{t('Any coin')}</Text>
+          </Pressable>
+        </View>
+
+        {coin ? (
           <>
-            <Panel style={styles.panel}>
-              <Eyebrow>{t('How much')}</Eyebrow>
+            {/* The amount, one big figure. */}
+            <View style={styles.amountBlock}>
               <View style={styles.amountRow}>
                 <TextInput
-                  autoFocus
                   keyboardType="decimal-pad"
                   placeholder="0"
                   placeholderTextColor={colors.faint}
                   value={amount}
-                  onChangeText={setAmount}
+                  onChangeText={(next) => { setAmount(next); setStatus(null); }}
                   style={styles.amountInput}
                 />
-                <Text style={styles.amountUnit}>SKR</Text>
+                <Text style={styles.amountUnit}>{coin.unit}</Text>
               </View>
-              <Text style={[styles.note, styles.helper, overPrecise && styles.warn]}>
-                {overPrecise ? t('SKR has six decimal places. Shorten the amount.') : held ? t('You hold {held} SKR.', { held }) : t('Any amount you like. Goes to {name}, the wallet behind this app.', { name: RECIPIENT_NAME })}
-              </Text>
-            </Panel>
+              <View style={styles.quicks}>
+                {coin.quick.map((preset) => {
+                  const on = clean === preset;
+                  return (
+                    <Pressable key={preset} accessibilityRole="button" onPress={() => { void Haptics.selectionAsync(); setAmount(preset); }} style={[styles.quick, on && styles.quickOn]}>
+                      <Text style={[styles.quickText, on && styles.quickTextOn]}>{preset}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
 
-            {phase === 'confirming' ? <ActivityIndicator color={colors.metal} /> : null}
             <Button
-              label={phase === 'signing' ? t('Approve in your wallet') : phase === 'confirming' ? t('Landing on chain…') : raw > 0n ? t('Send {amount} SKR to {name}', { amount: fromRaw(raw), name: RECIPIENT_NAME }) : t('Send a tip')}
-              onPress={() => void send()}
-              disabled={!ready}
+              hero
               tone={colors.metal}
+              label={good ? t('Donate {amount} {coin}', { amount: clean, coin: coin.unit }) : t('Send a tip')}
+              onPress={pay}
+              disabled={!good}
             />
-            {phase === 'error' && error ? <Pressable onPress={() => setPhase('idle')}><Text style={styles.error}>{error}</Text></Pressable> : null}
-            {phase === 'error' && signature ? <Text style={styles.mono}>{`signature  ${signature.slice(0, 8)}…${signature.slice(-8)}`}</Text> : null}
+            <Text style={styles.how}>{t('Your wallet opens with everything already filled in. Check it there and press send.')}</Text>
           </>
+        ) : (
+          <Text style={styles.how}>{t('Send any coin to this address.')}</Text>
         )}
 
+        {status ? <Text style={styles.status}>{status}</Text> : null}
+
+        {/* The receipt: who gets it, and a code any phone can read. */}
+        <Panel style={styles.receipt}>
+          <View style={styles.qrBox}>
+            <QRCode value={coin ? link : `solana:${RECIPIENT}`} size={104} backgroundColor="#F2F7FB" color="#131007" />
+          </View>
+          <View style={styles.receiptCopy}>
+            <Text style={styles.receiptName}>{RECIPIENT_NAME}</Text>
+            <Text style={styles.receiptAddr} numberOfLines={coin ? 1 : 3}>{coin ? `${RECIPIENT.slice(0, 4)}…${RECIPIENT.slice(-4)}` : RECIPIENT}</Text>
+            <Text style={styles.receiptHint}>{t('Or scan it from another phone.')}</Text>
+          </View>
+        </Panel>
+
         <View style={styles.footer}>
-          {phase === 'done' ? null : <Text style={styles.foot}>{t('A tip changes nothing about your position and nothing about any airdrop. It is a thank you, not a fee.')}</Text>}
-          <Text style={styles.foot}>{t('Your wallet signs and sends it. The app only fetches a blockhash before and reads the status after.')}</Text>
+          <Text style={styles.foot}>{t('A tip changes nothing about your position and nothing about any airdrop. It is a thank you, not a fee.')}</Text>
+          <Text style={styles.foot}>{t('Free and open source, built by one Seeker. Tips in SKR go to kosa.skr and are staked right away, all of them.')}</Text>
         </View>
       </ScrollView>
     </Animated.View>
@@ -205,23 +201,35 @@ export function TipSheet({ onClose }: { onClose: () => void }) {
 
 const styles = StyleSheet.create({
   screen: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: colors.bg, zIndex: 30 },
+  glow: { position: 'absolute', top: -170, alignSelf: 'center', width: 480, height: 360, borderRadius: 240, backgroundColor: colors.metalWash },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },
-  head: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  title: { color: colors.text, fontFamily: font.bold, fontSize: 22, marginTop: spacing.xs },
-  close: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, borderWidth: 1, borderColor: colors.lineStrong },
+  head: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.md },
+  headCopy: { gap: 3, flexShrink: 1 },
+  title: { color: colors.text, fontFamily: font.black, fontSize: 26, letterSpacing: -0.6 },
+  close: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, borderWidth: 1, borderColor: colors.lineStrong },
   closeText: { color: colors.text, fontSize: 20, lineHeight: 22 },
-  panel: { padding: spacing.md, gap: spacing.sm },
-  note: { color: colors.muted, fontFamily: font.regular, ...type.small },
-  // Three different sentences take turns down here; the tallest of them sets
-  // the height for all three so the input never hops.
-  helper: { minHeight: 36 },
-  warn: { color: colors.pending },
-  amountRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
-  amountInput: { flex: 1, minHeight: 50, borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.inner, paddingHorizontal: spacing.lg, color: colors.text, backgroundColor: colors.bg, fontFamily: font.mono, fontSize: 18 },
-  amountUnit: { color: colors.muted, fontFamily: font.semibold, fontSize: 14 },
-  doneTitle: { color: colors.text, fontFamily: font.bold, fontSize: 18 },
-  mono: { color: colors.muted, fontFamily: font.mono, ...type.micro },
-  error: { color: colors.negative, fontFamily: font.medium, ...type.small },
+  coins: { flexDirection: 'row', gap: spacing.sm },
+  coin: { flex: 1, alignItems: 'center', gap: 7, paddingVertical: 13, paddingHorizontal: 4, borderRadius: 14, backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.line },
+  coinOn: { backgroundColor: colors.accentWash, borderWidth: 1.5, borderColor: colors.accent },
+  coinLabel: { color: colors.muted, fontFamily: font.bold, fontSize: 12.5 },
+  coinLabelOn: { color: colors.accent },
+  amountBlock: { alignItems: 'center', gap: spacing.lg, paddingTop: spacing.sm },
+  amountRow: { flexDirection: 'row', alignItems: 'baseline', gap: 10, justifyContent: 'center' },
+  amountInput: { minWidth: 90, maxWidth: 240, textAlign: 'center', color: colors.text, fontFamily: font.black, fontSize: 56, letterSpacing: -2.4, padding: 0, fontVariant: ['tabular-nums'] },
+  amountUnit: { color: colors.muted, fontFamily: font.semibold, fontSize: 17 },
+  quicks: { flexDirection: 'row', gap: spacing.sm, justifyContent: 'center' },
+  quick: { minWidth: 60, alignItems: 'center', paddingVertical: 9, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line },
+  quickOn: { borderColor: colors.accent, backgroundColor: colors.accentWash },
+  quickText: { color: colors.muted, fontFamily: font.semibold, fontSize: 13, fontVariant: ['tabular-nums'] },
+  quickTextOn: { color: colors.accent },
+  how: { color: colors.muted, fontFamily: font.regular, ...type.small, textAlign: 'center', paddingHorizontal: spacing.md },
+  status: { color: colors.pending, fontFamily: font.medium, ...type.small, textAlign: 'center' },
+  receipt: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, padding: spacing.md },
+  qrBox: { backgroundColor: '#F2F7FB', borderRadius: 12, padding: 8 },
+  receiptCopy: { flex: 1, gap: 4 },
+  receiptName: { color: '#E8CF95', fontFamily: font.monoSemibold, fontSize: 15, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2.5 },
+  receiptAddr: { color: colors.faint, fontFamily: font.mono, fontSize: 11 },
+  receiptHint: { color: colors.muted, fontFamily: font.regular, ...type.micro },
   footer: { gap: spacing.sm },
   foot: { color: colors.muted, fontFamily: font.regular, ...type.micro },
 });

@@ -253,7 +253,7 @@ export function Pill({ label, tone = colors.positive, filled = false }: { label:
 // session. Ghost was the only step down from filled, so everything secondary
 // became a bordered rectangle. Quiet drops the box entirely and leaves a word
 // with a touch target, which is what those three always were.
-export function Button({ label, onPress, tone = colors.accent, ghost = false, quiet = false, disabled = false, fill = false }: { label: string; onPress?: () => void; tone?: string; ghost?: boolean; quiet?: boolean; disabled?: boolean; fill?: boolean }) {
+export function Button({ label, onPress, tone = colors.accent, ghost = false, quiet = false, disabled = false, fill = false, hero = false }: { label: string; onPress?: () => void; tone?: string; ghost?: boolean; quiet?: boolean; disabled?: boolean; fill?: boolean; hero?: boolean }) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -262,6 +262,7 @@ export function Button({ label, onPress, tone = colors.accent, ghost = false, qu
       style={({ pressed }) => [
         styles.button,
         fill && styles.buttonFill,
+        hero && styles.buttonHero,
         quiet ? styles.buttonQuiet : ghost ? styles.buttonGhost : { backgroundColor: tone },
         disabled && styles.buttonDisabled,
         pressed && styles.buttonPressed,
@@ -321,6 +322,9 @@ const styles = StyleSheet.create({
   // reading as something you press.
   button: { minHeight: 50, borderRadius: radius.button, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   buttonFill: { flexGrow: 1, flexShrink: 1, flexBasis: 128 },
+  // The screen's one main action: taller, and it throws its own light. On
+  // Android the coloured shadow rides on elevation and stays subtle.
+  buttonHero: { minHeight: 56, borderRadius: 14, shadowColor: colors.accent, shadowOpacity: 0.45, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
   buttonGhost: { borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: 'transparent' },
   buttonQuiet: { minHeight: 44, backgroundColor: 'transparent', paddingHorizontal: spacing.sm },
   buttonDisabled: { opacity: 0.4 },

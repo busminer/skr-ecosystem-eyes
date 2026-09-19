@@ -6,9 +6,8 @@ import { useReducedMotion } from '../useReducedMotion';
 import { t } from '../i18n';
 import { compact, integer, relativeTime, shortAddress } from '../format';
 import { prefValue, usePref } from '../prefs';
-import { Carousel } from './Carousel';
 import { SESSION_KEY } from '../session';
-import { colors, font, gold, spacing, type } from '../theme';
+import { colors, font, gold, numeric, spacing, type } from '../theme';
 import type { EcosystemState } from '../types';
 import { DayHeat } from './DayHeat';
 import { FlipNumber } from './FlipNumber';
@@ -53,43 +52,6 @@ function remaining(seconds: number): string {
   if (hours > 0) return `${hours}h ${String(minutes).padStart(2, '0')}m`;
   return `${minutes}m ${String(safe % 60).padStart(2, '0')}s`;
 }
-
-// The right half of a fact card is the same figure drawn hour by hour: twenty
-// four bars in the card's own colour, the last one the hour we are in. A net
-// series has its baseline in the middle, inflow up, outflow down.
-function HourBars({ series, tone, bipolar }: { series: number[]; tone: string; bipolar?: boolean }) {
-  const peak = series.reduce((top, item) => Math.max(top, Math.abs(item)), 0);
-  if (series.length === 0 || peak <= 0) return null;
-  const height = 46;
-  return (
-    <View style={styles.bars} pointerEvents="none">
-      {series.map((item, index) => {
-        const share = Math.abs(item) / peak;
-        const size = Math.max(2, Math.round((bipolar ? height / 2 : height) * share));
-        const last = index === series.length - 1;
-        const color = bipolar ? (item >= 0 ? colors.positive : colors.negative) : tone;
-        return (
-          <View key={index} style={styles.barSlot}>
-            <View style={{ position: 'absolute', left: 0, width: 4, borderRadius: 2, backgroundColor: color, opacity: last ? 1 : 0.55,
-              height: size, bottom: bipolar ? (item >= 0 ? height / 2 : height / 2 - size) : 0 }} />
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-function FactCard({ label, value, note, tone, width, series, bipolar }: { label: string; value: string; note: string; tone?: string; width: number; series?: number[]; bipolar?: boolean }) {
-  return (
-    <Panel style={[styles.fact, { width }]} tone={tone}>
-      {series ? <HourBars series={series} tone={tone ?? colors.accent} bipolar={bipolar} /> : null}
-      <Text numberOfLines={1} style={styles.factLabel}>{label.toUpperCase()}</Text>
-      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={[styles.factValue, tone ? { color: tone } : null]}>{value}</Text>
-      <Text numberOfLines={2} style={styles.factNote}>{note}</Text>
-    </Panel>
-  );
-}
-
 
 type QueueRow = NonNullable<EcosystemState['metrics']>['queue'][number];
 
@@ -289,8 +251,6 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
   const hero = metrics ? splitCompact(metrics.activeStaked) : null;
   // The sky runs up behind the header, so the header floats over the scene
   // instead of sitting on a black band above it.
-  // The hourly series is the day's own; the week and the month have no hours to draw.
-  const hourSeries = range === '24h' && Array.isArray(state?.analytics?.hourly) ? state!.analytics.hourly : null;
   // The scene is drawn in proportions, not in pixels — the pile, the sky and
   // the horizon are all fractions of the height it is given — so it can give a
   // little back. 0.36 of the screen instead of 0.4 puts the figure and the
@@ -330,30 +290,25 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
           </View>
         )}
 
-        {/* The figure and the two lines share one row under the scene: the
-            lines on the left, the flip board on the right, in the space the
-            board left empty when it lived over the pile. */}
-        <View style={styles.under}>
-          <View style={styles.underLines}>
-            {/* The shadow under these two lines is for reading them against the
-                sky. In classic there is no sky, only the flat background, and a
-                shadow there is a smudge. */}
-            <Text numberOfLines={1} style={[styles.hudNote, !classic && styles.overScene]}>
+        {/* One number owns this tab, at full size under the sky. It used to
+            sit at 40 on the right of a row it shared with two caption lines;
+            the day's own figures now live in the band below, said once. */}
+        {classic ? (
+          <Text numberOfLines={1} style={styles.hudNote}>
+            {metrics ? t('{percent}% of all SKR is staked', { percent: metrics.stakedPercent.toFixed(2) }) : error ? t('Waiting for a finalized answer') : t('Reading the vault')}
+          </Text>
+        ) : (
+          <View style={styles.heroBlock}>
+            <Eyebrow>{t('Active stake')}</Eyebrow>
+            <View style={styles.classicRow}>
+              <FlipNumber value={hero ? hero.figure : '—'} size={56} />
+              <Text style={styles.classicUnit}>{hero ? hero.unit : 'SKR'}</Text>
+            </View>
+            <Text numberOfLines={1} style={styles.hudNote}>
               {metrics ? t('{percent}% of all SKR is staked', { percent: metrics.stakedPercent.toFixed(2) }) : error ? t('Waiting for a finalized answer') : t('Reading the vault')}
             </Text>
-            {day ? (
-              <Text numberOfLines={1} style={[styles.hudDay, !classic && styles.overScene]}>
-                <Text style={{ color: colors.positive }}>+{compact(day.staked)}</Text>{` ${t('in')} · `}<Text style={{ color: colors.negative }}>{compact(day.unstaked)}</Text>{` ${t('asked out')}`}
-              </Text>
-            ) : null}
           </View>
-          {classic ? null : (
-            <View style={styles.underFigure}>
-              <FlipNumber value={hero ? hero.figure : '—'} size={40} />
-              <Text style={styles.unit}>{hero ? hero.unit : 'SKR'}</Text>
-            </View>
-          )}
-        </View>
+        )}
       </View>
 
       {receipt ? (
@@ -387,20 +342,25 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
           <RangeSwitch value={range} options={[...RANGES]} onChange={(next) => setRange(next as Range)} />
         </View>
 
-        <Carousel width={inner} auto={!reducedMotion}>
-          <FactCard width={inner} note={note} label={t('staked')} value={period ? compact(period.staked) : '—'} tone={colors.positive} series={hourSeries?.map((hour) => hour.staked)} />
-          <FactCard width={inner} note={note} label={t('asked out')} value={period ? compact(period.unstaked) : '—'} tone={colors.negative} series={hourSeries?.map((hour) => hour.unstaked)} />
-          <FactCard
-            width={inner}
-            note={`${note} · ${t('staked minus requested out')}`}
-            label={t('net')}
-            value={period ? `${period.netFlow >= 0 ? '+' : '−'}${compact(Math.abs(period.netFlow))}` : '—'}
-            tone={(period?.netFlow ?? 0) >= 0 ? colors.positive : colors.negative}
-            series={hourSeries?.map((hour) => hour.staked - hour.unstaked)}
-            bipolar
-          />
-          <FactCard width={inner} note={note} label={t('wallets')} value={period ? integer(period.wallets) : '—'} tone={colors.metal} series={hourSeries?.map((hour) => hour.events)} />
-        </Carousel>
+        {/* Three figures parted by hairlines, where four boxed cards used
+            to take turns in a carousel nobody span. */}
+        <View style={styles.band}>
+          <View style={styles.bandCell}>
+            <Text numberOfLines={1} style={styles.bandLabel}>{t('staked').toUpperCase()}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={[styles.bandValue, { color: colors.positive }]}>{period ? `+${compact(period.staked)}` : '—'}</Text>
+          </View>
+          <View style={styles.bandRule} />
+          <View style={styles.bandCell}>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.bandLabel}>{t('asked out').toUpperCase()}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={[styles.bandValue, { color: colors.negative }]}>{period ? `−${compact(period.unstaked)}` : '—'}</Text>
+          </View>
+          <View style={styles.bandRule} />
+          <View style={styles.bandCell}>
+            <Text numberOfLines={1} style={styles.bandLabel}>{t('net').toUpperCase()}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={[styles.bandValue, { color: (period?.netFlow ?? 0) >= 0 ? colors.positive : colors.negative }]}>{period ? `${period.netFlow >= 0 ? '+' : '−'}${compact(Math.abs(period.netFlow))}` : '—'}</Text>
+          </View>
+        </View>
+        <Text style={styles.bandNote}>{period ? `${integer(period.wallets)} ${t('wallets')} · ${note}` : note}</Text>
 
         {partial ? <Text style={styles.partial}>{t('history covers {days}d', { days: Math.floor(coverageDays) })}</Text> : null}
       </View>
@@ -414,23 +374,20 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
           forty-eight hours, and the rows underneath are the queue itself: who,
           how much, how long. */}
       <View onLayout={(event) => { queueY.current = event.nativeEvent.layout.y; }}>
-        <Panel style={styles.queue}>
+        <Panel style={[styles.queue, styles.queueGold]} tone={colors.metal}>
           <View style={styles.queueHead}>
-            <Eyebrow>{t('Exits in flight, soonest first')}</Eyebrow>
+            <Eyebrow tone={colors.metal}>{t('Exits in flight, soonest first')}</Eyebrow>
             <Text style={styles.listCount}>{t('{count} shown', { count: shownQueue.length })}</Text>
           </View>
 
           <Pressable accessibilityRole="button" onPress={openQueue}>
+            {/* The queue's one figure, written in the metal the panel wears. */}
+            <View style={styles.leaving}>
+              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={styles.leavingValue}>{metrics ? compact(metrics.pendingUnstake) : '—'}<Text style={styles.leavingUnit}> SKR</Text></Text>
+              {metrics ? <Text style={styles.leavingNote}>{t('{count} positions waiting out the 48 hours', { count: integer(metrics.pendingPositions) })}</Text> : null}
+            </View>
             <Inset style={styles.totals}>
               <View style={styles.total}>
-                <View style={styles.totalHead}>
-                  <View style={[styles.totalMark, { backgroundColor: colors.pending }]} />
-                  <Text style={styles.totalLabel}>{t('In cooldown')}</Text>
-                  <Text style={[styles.totalValue, { color: colors.pending }]}>{metrics ? compact(metrics.pendingUnstake) : '—'} SKR</Text>
-                </View>
-                {metrics ? <Text style={styles.totalNote}>{t('{count} positions waiting out the 48 hours', { count: integer(metrics.pendingPositions) })}</Text> : null}
-              </View>
-              <View style={[styles.total, styles.totalDivided]}>
                 <View style={styles.totalHead}>
                   <View style={[styles.totalMark, { backgroundColor: colors.positive }]} />
                   <Text style={styles.totalLabel}>{t('Ready to exit')}</Text>
@@ -519,36 +476,33 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing.lg, paddingTop: 0, paddingBottom: 120, gap: spacing.lg },
   sceneWrap: { backgroundColor: colors.bg, overflow: 'hidden' },
   top: { gap: spacing.sm },
+  heroBlock: { gap: 4, paddingTop: spacing.xs },
   classicHero: { gap: spacing.sm, paddingTop: spacing.sm },
   classicRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
   classicUnit: { color: colors.muted, fontFamily: font.semibold, fontSize: 14, letterSpacing: 1 },
-  under: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  underLines: { flex: 1, gap: 2 },
-  underFigure: { alignItems: 'flex-end', gap: 3 },
-  unit: { color: colors.muted, fontFamily: font.semibold, fontSize: 11, letterSpacing: 0.8 },
   hudNote: { color: colors.text, fontFamily: font.medium, fontSize: 15, lineHeight: 21 },
-  hudDay: { color: colors.muted, fontFamily: font.semibold, fontSize: 14.5, lineHeight: 20 },
-  overScene: { textShadowColor: '#000', textShadowRadius: 6 },
   receipt: { padding: spacing.md, gap: spacing.xs },
   receiptHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   close: { color: colors.faint, fontSize: 20, lineHeight: 22 },
   receiptTitle: { color: colors.text, fontFamily: font.bold, fontSize: 18 },
   receiptWho: { fontFamily: font.semibold, fontSize: 13, ...gold },
   receiptMono: { color: colors.muted, fontFamily: font.mono, ...type.micro, marginTop: spacing.xs, marginBottom: spacing.sm },
-  fact: { padding: spacing.md, minHeight: 108, justifyContent: 'space-between', overflow: 'hidden' },
-  bars: { position: 'absolute', right: spacing.md, top: spacing.md + 4, height: 46, flexDirection: 'row', gap: 2 },
-  barSlot: { width: 4, height: 46 },
-  factLabel: { color: colors.muted, fontFamily: font.semibold, ...type.eyebrow },
-  factValue: { color: colors.text, fontFamily: font.black, fontVariant: ['tabular-nums'], fontSize: 30, letterSpacing: -1 },
-  // Was faint at 11.5 clamped to 58% of the card, so the one line saying what
-  // the big number counts broke over two lines of the smallest grey on the
-  // screen. The bars it was making room for are 46 points tall at the top of
-  // the card; this line sits at the bottom of it and never met them.
-  factNote: { color: colors.muted, fontFamily: font.regular, ...type.small },
   period: { gap: spacing.sm },
+  band: { flexDirection: 'row', alignItems: 'stretch', paddingVertical: spacing.sm },
+  bandCell: { flex: 1, gap: 3 },
+  bandRule: { width: 1, backgroundColor: colors.line, marginHorizontal: spacing.md, marginVertical: 2 },
+  bandLabel: { color: colors.muted, fontFamily: font.semibold, ...type.eyebrow },
+  bandValue: { fontFamily: font.bold, fontSize: 21, letterSpacing: -0.5, ...numeric },
+  bandNote: { color: colors.faint, fontFamily: font.regular, ...type.micro },
   periodHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   partial: { color: colors.pending, fontFamily: font.medium, ...type.micro },
   queue: { padding: spacing.md, gap: spacing.md },
+  // The one panel on the tab that wears the metal: money on its way out.
+  queueGold: { backgroundColor: colors.metalWash, borderColor: colors.metalDim },
+  leaving: { gap: 2, paddingBottom: spacing.xs },
+  leavingValue: { color: colors.text, fontFamily: font.black, fontSize: 30, letterSpacing: -1, ...numeric },
+  leavingUnit: { color: colors.metal, fontFamily: font.semibold, fontSize: 13, letterSpacing: 0 },
+  leavingNote: { color: colors.muted, fontFamily: font.regular, ...type.small },
   queueHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   listCount: { color: colors.muted, fontFamily: font.regular, ...type.small },
   totals: { paddingVertical: spacing.md, gap: spacing.sm },
