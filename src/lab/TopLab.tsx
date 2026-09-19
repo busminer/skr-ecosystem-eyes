@@ -43,7 +43,7 @@ function tierLabel(tier: string): string {
 }
 
 // ▲74 / ▼1 / — / new: how a place moved since yesterday.
-function Delta({ row, size = 10, known = true }: { row: { prevRank: number | null; rank: number }; size?: number; known?: boolean }) {
+function Delta({ row, size = 11, known = true }: { row: { prevRank: number | null; rank: number }; size?: number; known?: boolean }) {
   // Before the first daily snapshot there is nothing to compare against, so the
   // column stays empty instead of calling forty six thousand people new.
   if (!known) return null;
@@ -321,7 +321,9 @@ export function TopLab() {
       <View style={styles.head}>
         <View style={styles.headCopy}>
           <Text style={styles.title}>{t('Top stakers')}</Text>
-          <Text style={styles.subtitle}>{page ? t('{people} people · ranked among people', { people: integer(page.people) }) : t('counting…')}</Text>
+          {/* Once the You card is up it says "of N people" itself; the same
+              number twice in one screenful taught people to skim past both. */}
+          {meFound ? null : <Text style={styles.subtitle}>{page ? t('{people} people · ranked among people', { people: integer(page.people) }) : t('counting…')}</Text>}
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel={t('Search')} onPress={() => { void Haptics.selectionAsync(); setSearching((on) => { if (on) setQuery(''); return !on; }); }} style={({ pressed }) => [styles.searchBtn, searching && styles.searchBtnOn, pressed && { opacity: 0.7 }]}>
           <Svg width={18} height={18} viewBox="0 0 24 24"><Circle cx={10.5} cy={10.5} r={6.5} stroke={searching ? colors.accent : colors.muted} strokeWidth={2.2} fill="none" /><Line x1={15.5} y1={15.5} x2={21} y2={21} stroke={searching ? colors.accent : colors.muted} strokeWidth={2.2} strokeLinecap="round" /></Svg>
@@ -347,7 +349,7 @@ export function TopLab() {
           const on = item.key === list;
           return (
             <Pressable key={item.key} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => pick(item.key)} style={({ pressed }) => [styles.tab, on && styles.tabOn, pressed && { opacity: 0.7 }]}>
-              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[styles.tabText, on && styles.tabTextOn]}>{t(item.label)}</Text>
+              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={[styles.tabText, on && styles.tabTextOn]}>{t(item.label)}</Text>
             </Pressable>
           );
         })}
@@ -355,7 +357,7 @@ export function TopLab() {
       <Text style={styles.tabNote}>{t(note)}</Text>
 
       {meFound ? (
-        <Pressable accessibilityRole="button" onPress={() => { void Haptics.selectionAsync(); setRadar(true); }} style={({ pressed }) => [styles.you, pressed && { opacity: 0.85 }]}>
+        <View style={styles.you}>
           <View style={styles.youCopy}>
             <Eyebrow tone={colors.metal}>{t('You')}</Eyebrow>
             <View style={styles.youRankRow}>
@@ -364,7 +366,7 @@ export function TopLab() {
             </View>
             <View style={styles.youFacts}>
               <Text style={[styles.youFact, styles.youFactGold]}>{tierLabel(meFound.tier).toUpperCase()}</Text>
-              {moversKnown ? <Text style={styles.youFact}>{meFound.prevRank == null ? t('NEW') : meFound.prevRank === meFound.rank ? '— 24H' : `${meFound.prevRank > meFound.rank ? '▲' : '▼'}${Math.abs(meFound.prevRank - meFound.rank)} 24H`}</Text> : null}
+              {moversKnown ? <Text style={[styles.youFact, meFound.prevRank != null && meFound.prevRank !== meFound.rank && { color: meFound.prevRank > meFound.rank ? colors.positive : colors.negative }]}>{meFound.prevRank == null ? t('NEW') : meFound.prevRank === meFound.rank ? '— 24H' : `${meFound.prevRank > meFound.rank ? '▲' : '▼'}${Math.abs(meFound.prevRank - meFound.rank)} 24H`}</Text> : null}
               <Text style={styles.youFact}>{`${compact(meFound.staked)} SKR`}</Text>
               <Text style={[styles.youFact, { color: colors.positive }]}>{`+${compact(meFound.earned)} ${t('EARNED')} · #${integer(meFound.earnedRank)}`}</Text>
             </View>
@@ -380,7 +382,7 @@ export function TopLab() {
           <View style={styles.youShare}>
             <Button label={`${t('Share my place')} ↗`} tone={colors.metal} onPress={() => { void Haptics.selectionAsync(); requestTab({ tab: 'me', share: true }); }} />
           </View>
-        </Pressable>
+        </View>
       ) : page && !wallet ? (
         <View style={styles.connect}>
           <Text style={styles.connectText}>{t('Connect on Me to see your place.')}</Text>
@@ -417,7 +419,7 @@ export function TopLab() {
     const first = (list === 'earned' ? item.earnedRank : item.rank) === 1;
     const lit = flash === item.wallet;
     return (
-      <View style={[styles.row, top3 && styles.rowTop3, mine && styles.rowMe, lit && styles.rowLit]}>
+      <View style={[styles.row, mine && styles.rowMe, lit && styles.rowLit]}>
         <View style={styles.rank}>
           <Text style={[styles.rankNo, top3 && { color: colors.accent }, first && { color: colors.metal }, mine && { color: colors.metal }]}>{`#${integer(list === 'earned' ? item.earnedRank : item.rank)}`}</Text>
           {list === 'movers'
@@ -494,7 +496,9 @@ export function TopLab() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: 140 },
+  // Room for the floating Me chip over the last rows, nothing more. The old
+  // 140 was a guess made for a full-width bar that no longer exists.
+  content: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: 96 },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.xs, paddingTop: spacing.xs },
   headCopy: { flex: 1, gap: 2 },
   title: { color: colors.text, fontFamily: font.black, fontSize: 24, letterSpacing: -0.8 },
@@ -503,35 +507,34 @@ const styles = StyleSheet.create({
   searchBtnOn: { borderColor: colors.accentDim, backgroundColor: colors.panelHi },
   searchRow: { marginTop: spacing.md, gap: spacing.xs },
   searchInput: { minHeight: 44, borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.inner, paddingHorizontal: spacing.md, color: colors.text, backgroundColor: colors.panel, fontFamily: font.mono, fontSize: 13 },
-  searchCount: { color: colors.faint, fontFamily: font.mono, fontSize: 10.5, paddingHorizontal: spacing.xs },
+  searchCount: { color: colors.muted, fontFamily: font.mono, fontSize: 11, paddingHorizontal: spacing.xs },
   tabs: { flexDirection: 'row', gap: 4, marginTop: spacing.md, backgroundColor: 'rgba(4,7,11,0.72)', borderWidth: 1, borderColor: colors.line, borderRadius: radius.pill, padding: 3 },
   tab: { flex: 1, paddingVertical: 8, paddingHorizontal: 4, borderRadius: radius.pill, alignItems: 'center' },
   tabOn: { backgroundColor: colors.panelHi },
-  tabText: { color: colors.faint, fontFamily: font.monoBold, fontSize: 10, letterSpacing: 0.8 },
+  tabText: { color: colors.muted, fontFamily: font.monoBold, fontSize: 11, letterSpacing: 0.5 },
   tabTextOn: { color: colors.accent },
-  tabNote: { color: colors.faint, fontFamily: font.mono, fontSize: 9.5, letterSpacing: 0.4, textAlign: 'center', marginTop: spacing.sm, paddingHorizontal: spacing.md },
+  tabNote: { color: colors.muted, fontFamily: font.regular, ...type.micro, textAlign: 'center', marginTop: spacing.sm, paddingHorizontal: spacing.md },
   you: { marginTop: spacing.md, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.md, padding: spacing.md, borderRadius: radius.card, borderWidth: 1, borderColor: colors.metalDim, backgroundColor: '#0E0D09' },
   youCopy: { flex: 1, gap: 4, minWidth: 180 },
   youRankRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
   youRank: { color: colors.text, fontFamily: font.black, fontSize: 30, letterSpacing: -1, fontVariant: ['tabular-nums'] },
   youOf: { color: colors.muted, fontFamily: font.regular, ...type.small },
   youFacts: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: 2 },
-  youFact: { color: colors.muted, fontFamily: font.monoBold, fontSize: 9.5, letterSpacing: 0.6 },
+  youFact: { color: colors.muted, fontFamily: font.monoBold, fontSize: 11, letterSpacing: 0.5 },
   youFactGold: { color: colors.metal },
   youDial: { alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 10, borderRadius: radius.card, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: 'rgba(4,7,11,0.5)' },
   youDialOn: { borderColor: colors.accentDim, backgroundColor: colors.panelHi },
   youDialFace: { width: 56, height: 56, borderRadius: 28, overflow: 'hidden' },
-  youDialLabel: { color: colors.accent, fontFamily: font.monoBold, fontSize: 9.5, letterSpacing: 0.4 },
+  youDialLabel: { color: colors.accent, fontFamily: font.monoBold, fontSize: 11, letterSpacing: 0.4 },
   youShare: { width: '100%' },
   connect: { marginTop: spacing.md, padding: spacing.md, borderRadius: radius.card, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.panel, gap: spacing.md },
   connectText: { color: colors.muted, fontFamily: font.regular, ...type.body },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 10, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.line, borderRadius: radius.card, backgroundColor: colors.panel, marginTop: spacing.sm },
-  rowTop3: { borderColor: colors.accentDim },
-  rowMe: { borderColor: colors.metalDim, backgroundColor: '#100F09' },
-  rowLit: { borderColor: colors.metal },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.line },
+  rowMe: { backgroundColor: colors.metalWash, borderRadius: radius.inner, borderBottomColor: 'transparent', paddingHorizontal: spacing.md },
+  rowLit: { backgroundColor: colors.accentWash, borderRadius: radius.inner, borderBottomColor: 'transparent' },
   rank: { width: 44, gap: 1 },
-  rankNo: { color: colors.faint, fontFamily: font.monoBold, fontSize: 12, fontVariant: ['tabular-nums'] },
-  delta: { color: colors.faint, fontFamily: font.mono, fontSize: 10 },
+  rankNo: { color: colors.muted, fontFamily: font.monoBold, fontSize: 12, fontVariant: ['tabular-nums'] },
+  delta: { color: colors.muted, fontFamily: font.mono, fontSize: 11 },
   phone: { width: 14, height: 24, borderRadius: 3, backgroundColor: '#2a3f4c', borderWidth: 1, borderColor: '#5f8494', padding: 2 },
   phoneMe: { backgroundColor: '#6b5630', borderColor: '#e8cf95' },
   phoneScreen: { flex: 1, borderRadius: 2, backgroundColor: '#9ff6d2' },
@@ -539,23 +542,23 @@ const styles = StyleSheet.create({
   nameCell: { flex: 1, gap: 2 },
   name: { fontFamily: font.monoSemibold, fontSize: 13.5, ...gold },
   nameAddr: { color: colors.muted, fontFamily: font.mono, textShadowColor: 'transparent' },
-  sub: { color: colors.faint, fontFamily: font.regular, fontSize: 10.5 },
+  sub: { color: colors.muted, fontFamily: font.regular, ...type.micro },
   amount: { alignItems: 'flex-end' },
   amountValue: { color: colors.text, fontFamily: font.bold, fontSize: 14, fontVariant: ['tabular-nums'] },
-  amountUnit: { color: colors.muted, fontFamily: font.semibold, fontSize: 10.5 },
+  amountUnit: { color: colors.muted, fontFamily: font.semibold, fontSize: 11 },
   foot: { paddingVertical: spacing.lg, gap: spacing.md, alignItems: 'center' },
-  footText: { color: colors.faint, fontFamily: font.mono, fontSize: 10.5, textAlign: 'center', lineHeight: 16 },
+  footText: { color: colors.muted, fontFamily: font.mono, fontSize: 11, textAlign: 'center', lineHeight: 17 },
   error: { color: colors.negative, fontFamily: font.medium, ...type.small, textAlign: 'center' },
   spinner: { marginTop: spacing.xl },
-  meBar: { position: 'absolute', left: spacing.md, right: spacing.md, bottom: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: '#100F09', borderWidth: 1, borderColor: colors.metalDim, borderRadius: radius.card, paddingVertical: 10, paddingHorizontal: spacing.md },
-  meDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.metal },
-  meName: { fontFamily: font.monoSemibold, fontSize: 14, ...gold },
-  meRank: { marginLeft: 'auto', color: colors.text, fontFamily: font.black, fontSize: 20, letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
+  meBar: { position: 'absolute', right: spacing.md, bottom: spacing.md, maxWidth: '78%', flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.metalDim, borderRadius: radius.pill, paddingVertical: 9, paddingHorizontal: 14 },
+  meDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.metal },
+  meName: { flexShrink: 1, fontFamily: font.monoSemibold, fontSize: 13, ...gold },
+  meRank: { marginLeft: spacing.xs, color: colors.text, fontFamily: font.black, fontSize: 17, letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
   meRankSmall: { color: colors.muted, fontFamily: font.semibold, fontSize: 11, letterSpacing: 0 },
   radarSheet: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.bg },
   radarWeb: { flex: 1, backgroundColor: colors.bg },
   radarBack: { position: 'absolute', top: spacing.md, left: spacing.md, paddingVertical: 8, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: 'rgba(4,7,11,0.8)', borderWidth: 1, borderColor: colors.lineStrong },
   radarBackText: { color: colors.text, fontFamily: font.semibold, fontSize: 13 },
   radarHint: { position: 'absolute', left: spacing.md, right: spacing.md, top: spacing.md + 44, alignItems: 'center' },
-  radarHintText: { color: colors.faint, fontFamily: font.mono, fontSize: 10, textAlign: 'center' },
+  radarHintText: { color: colors.muted, fontFamily: font.mono, fontSize: 11, textAlign: 'center' },
 });
