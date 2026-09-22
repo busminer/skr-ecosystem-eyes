@@ -108,7 +108,7 @@ def end_card() -> None:
   <div class="glow"></div>
   {MARK}
   <h1>SKR Eyes</h1>
-  <p class="tag">Stake SKR. See everything.</p>
+  <p class="tag">Watch the SKR vault.</p>
   <p class="ver mono">VERSION 1.2</p>
   <div class="rule"></div>
   <p class="by mono">BY ALEX KOSA · SKR-EYES.ALEXKOSA.DEV</p>

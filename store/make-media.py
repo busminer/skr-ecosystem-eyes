@@ -98,7 +98,7 @@ def banner():
   </div>
   <div class="copy">
     <div class="wordmark">SKR EYES</div>
-    <div class="tag">Stake SKR. See everything.</div>
+    <div class="tag">Watch the SKR vault.</div>
     <div class="line"></div>
     <div class="sub">The vault, alive: every stake falls in with its .skr name, every exit hangs and cools. Your card beside it.</div>
   </div>

@@ -44,25 +44,24 @@
   <ul>
     <li>The public address of the wallet you connected, and the name the wallet reported for it, so the app does not ask you to reconnect on every launch.</li>
     <li>Your alert settings and any unlock reminders scheduled with the Android notification system.</li>
-    <li>An unfinished stake run, if one was interrupted: the transaction signatures already produced, so the app can ask the blockchain what happened to them instead of creating new transactions.</li>
+    <li>The authorization token your wallet issued, so the app can reconnect quietly instead of asking for approval on every launch. <strong>Disconnect erases it.</strong></li>
   </ul>
 
   <h2>How to delete it</h2>
-  <p>Open <strong>Me</strong> and tap <strong>Disconnect</strong>. That erases the stored address, the wallet name and any saved run. Uninstalling the app removes everything else, including scheduled notifications. There is no server-side copy to request, because there is no account.</p>
+  <p>Open <strong>Me</strong> and tap <strong>Disconnect</strong>. That erases the stored address, the wallet name, the saved card and the wallet authorization token. Uninstalling the app removes everything else, including scheduled notifications. There is no server-side copy to request, because there is no account.</p>
 
   <h2>What leaves your phone</h2>
   <p>To show your position, the app sends the <em>public</em> wallet address you chose to our server at <code>skr.alexkosa.dev</code>, which reads publicly available Solana blockchain data for that address and answers. A public address is not secret: it is visible to anyone on the blockchain by design.</p>
-  <p>The app also asks our server for a recent blockhash before preparing a stake, and asks it whether a given transaction signature has confirmed.</p>
-  <p>When you stake, the transactions are approved and broadcast by your wallet application through its own infrastructure. SKR Eyes does not transmit your transactions itself and cannot alter what your wallet signs.</p>
+  <p>Nothing else leaves the phone. SKR Eyes builds no transactions and never asks your wallet to sign anything, so there is nothing of yours to send anywhere.</p>
 
   <h2>Server logs</h2>
-  <p>Like any website, our server and the Cloudflare network in front of it process the IP address of a request in order to deliver a response. We do not build profiles from this, do not sell it, and do not connect it to wallet addresses. The staking route identifies clients only through a salted in-memory counter used for rate limiting; it is never written to disk.</p>
+  <p>Like any website, our server and the Cloudflare network in front of it process the IP address of a request in order to deliver a response. We do not build profiles from this, do not sell it, and do not connect it to wallet addresses. Requests are counted for rate limiting through a salted in-memory counter only; it is never written to disk.</p>
 
   <h2>Third parties</h2>
   <ul>
     <li><strong>Cloudflare</strong> delivers this site and the app's API.</li>
     <li><strong>A Solana RPC provider</strong> is used by our server to read the blockchain. The app never contacts it directly and never holds its credentials.</li>
-    <li><strong>Your wallet application</strong> handles approval and broadcasting of transactions under its own privacy policy.</li>
+    <li><strong>Your wallet application</strong> answers the connection request, and, if you choose to leave a tip, opens on a Solana Pay link and builds, signs and sends that payment itself, under its own privacy policy.</li>
   </ul>
 
   <h2>Children</h2>

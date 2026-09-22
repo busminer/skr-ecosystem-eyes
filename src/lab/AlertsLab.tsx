@@ -333,7 +333,7 @@ export function AlertsLab() {
         <View style={styles.tipRow}>
           <View style={styles.tipCopy}>
             <Eyebrow tone={colors.metal}>{t('Support SKR Eyes')}</Eyebrow>
-            <Text style={styles.noteText}>{t('Free and open source, built by one Seeker. Tips in SKR go to kosa.skr and are staked right away, all of them.')}</Text>
+            <Text style={styles.noteText}>{t('Free and open source, built by one Seeker. Tips go straight to kosa.skr.')}</Text>
           </View>
           <Button label={t('Send a tip')} tone={colors.metal} onPress={() => { void Haptics.selectionAsync(); setTipping(true); }} />
         </View>

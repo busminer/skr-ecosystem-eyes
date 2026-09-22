@@ -266,9 +266,9 @@ export function MyLab() {
 
   // Disconnect erases everything this app kept about the wallet, because that
   // is exactly what the privacy page promises: the stored session, the saved
-  // stake run, and the unlock alerts — which are stored under a key named
-  // after the address and carry it in their payload. Leaving any of those
-  // behind would make the promise untrue.
+  // card, the wallet's own authorization token, and the unlock alerts — which
+  // are stored under a key named after the address and carry it in their
+  // payload. Leaving any of those behind would make the promise untrue.
   useEffect(() => {
     const wallet = profile?.wallet;
     if (!wallet) return;
@@ -476,9 +476,6 @@ export function MyLab() {
       {busy ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
       {error ? <Pressable onPress={() => setError(null)}><Text style={styles.error}>{error}</Text></Pressable> : null}
     </ScrollView>
-    {/* Outside the scroll view: the sheet used to be absolute inside the
-        content, so opening it from the daily-sixteen button, far down the
-        page, showed its empty lower half and nothing else. */}
     </View>
   );
 }

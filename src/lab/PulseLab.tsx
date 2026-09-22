@@ -463,7 +463,9 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
           `commitment  finalized · ${state?.status.phase ?? 'syncing'}`,
           `vault read  ${relativeTime(metrics?.updatedAt ?? null)}`,
           `guardians   ${metrics ? `${metrics.guardians.count}, top pool ${metrics.guardians.topConcentrationPercent.toFixed(1)}%` : '—'}`,
-          'scene       every phone is a finalized move · last 60 replayed on open',
+          // Classic mounts no scene at all, so the line explaining the scene
+          // would be explaining something that is not on the screen.
+          ...(classic ? [] : ['scene       every phone is a finalized move · last 60 replayed on open']),
           error ? `last error  ${error}` : 'source      skr.alexkosa.dev · own indexer',
         ]}
       />

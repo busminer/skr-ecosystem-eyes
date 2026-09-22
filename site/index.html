@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SKR Eyes — see the whole picture, know your position</title>
-<meta name="description" content="An independent Android app for SKR stakers on Solana Mobile Seeker: the living vault where every stake falls in with its .skr name, the live event floor, your own card with its real age and what it has earned, unlock alerts, and staking through your own wallet.">
+<meta name="description" content="An independent Android app for SKR stakers on Solana Mobile Seeker: the living vault where every stake falls in with its .skr name, the live event floor, your own card with its real age and what it has earned, the board of everybody who stakes, and unlock alerts. It reads the chain and signs nothing.">
 <link rel="icon" href="/img/mark.png">
 <link rel="stylesheet" href="/styles.css?v=51c1c78a">
 <link rel="stylesheet" href="/wink.css?v=c13ed2e2">
@@ -31,7 +31,7 @@
     <p class="eyebrow">Built for Solana Mobile</p>
     <h1>See the whole picture. Know your position.</h1>
     <p class="lede">SKR Eyes helps you understand what is happening across SKR staking and where you fit into it.</p>
-    <p class="lede-more">Follow network activity, stake and unstake flows and the queue of upcoming unlocks. Then connect your wallet to see your own position, how long you have held it, and your weight in the vault — in the same picture.</p>
+    <p class="lede-more">Follow network activity, stake and unstake flows and the queue of upcoming unlocks. Then connect your wallet — read-only, it is only asked for an address — to see your own position, how long you have held it, and your weight in the vault, in the same picture.</p>
     <p class="signature">Built by a Seeker for those who seek and stake.</p>
     <div class="cta">
       <a class="button" href="#screens">See the screens</a>
@@ -97,14 +97,14 @@
   </section>
 
   <section class="wrap section" id="screens">
-    <h2>Four tabs, one idea</h2>
+    <h2>Five tabs, one idea</h2>
     <p class="sub">Every number on every screen comes from the chain and carries its source. Nothing is decorative, nothing is invented to fill a gap. Every phone in the vault is a finalized move you can tap for its receipt.</p>
 
     <div class="screens">
       <article class="screen">
         <img src="/img/vault.jpg" alt="Vault: the animated scene of the staking vault, the staked total on a split-flap board, the last 24 hours drawn hour by hour">
         <h3>Vault</h3>
-        <p>The home screen. Stakes fall into the pile of what stays, larger ones larger and slower, a 100K stake as a shower. Exits hang above it with a ring that closes over their 48 hours. Under the scene: how much is staked, the day drawn hour by hour, and the exit queue. Motion can be Live, Calm or Off.</p>
+        <p>The home screen. Stakes fall into the pile of what stays, larger ones larger and slower, a 100K stake as a shower. Exits hang above it with a ring that closes over their 48 hours. Under the scene: how much is staked, the day drawn hour by hour, and the exit queue. Motion can be Live, Calm, Off, or Classic — the old main screen with no scene at all.</p>
       </article>
 
       <article class="screen">
@@ -114,9 +114,15 @@
       </article>
 
       <article class="screen">
-        <img src="/img/me.jpg" alt="Me: earned on staking, the Stake button, the daily Sixteen, two privacy switches for the card">
+        <img src="/img/top.jpg" alt="Top: everybody who stakes in order, the top three on a podium, your own place with a radar dial">
+        <h3>Top</h3>
+        <p>Everybody who stakes, in order: by stake, by what their position has earned, and by places moved since yesterday. Places are counted among people, with the treasury-size wallets set aside. Search any .skr name. Your own place sits on a card with a dial, and behind it the whole vault on one radar: six rings, one per tier, and your phone in gold among them.</p>
+      </article>
+
+      <article class="screen">
+        <img src="/img/me.jpg" alt="Me: your card, your weight in the vault, your place among stakers and what the position has earned">
         <h3>Me</h3>
-        <p>Your position, what it has earned, read from the chain, and staking without leaving the app: one approval covers up to sixteen parts, or tap Sixteen for 16 parts of 1 SKR as a small daily habit. The app checks your balance first and says plainly what you can afford.</p>
+        <p>Your position and what it has earned, read from the chain. Your weight in the vault, your place among stakers and how many hold less than you, the exit queue and the countdown to your unlock. Connect a wallet or paste any public address — the app only ever looks.</p>
       </article>
 
       <article class="screen">
@@ -126,9 +132,9 @@
       </article>
 
       <article class="screen">
-        <img src="/img/alerts.jpg" alt="Alerts: the thresholds behind the sounds, eleven languages, a test notification, tips in SKR">
+        <img src="/img/alerts.jpg" alt="Alerts: the thresholds behind the sounds, eleven languages, a test notification">
         <h3>Alerts</h3>
-        <p>An alarm at the exact on-chain unlock time, set on the phone itself. Sound and buzz switches, the language of the app, and a tip in SKR to kosa.skr that is staked right away, all of it.</p>
+        <p>An alarm at the exact on-chain unlock time, set on the phone itself. Sound and buzz switches, the language of the app, and a tip to kosa.skr if you want to say thank you.</p>
       </article>
     </div>
   </section>
@@ -140,7 +146,7 @@
     <dl class="rows">
       <div class="row">
         <dt>your keys</dt>
-        <dd>The app cannot read your seed phrase or private key. <strong>Seed Vault holds them, your wallet approves every transaction, and the wallet — not this app — broadcasts it.</strong></dd>
+        <dd>The app cannot read your seed phrase or private key. <strong>It builds no transactions and never asks your wallet to sign anything — connecting one only tells the app which address to show.</strong></dd>
       </div>
       <div class="row">
         <dt>your data</dt>
@@ -172,15 +178,11 @@
     <dl class="rows">
       <div class="row">
         <dt>do I need SKR?</dt>
-        <dd>No. Vault, Flow and Alerts work with no wallet at all, and you can look up any public address on Me. SKR is needed only to stake.</dd>
+        <dd>No. Vault, Flow and Top work with no wallet at all, and you can look up any public address on Me. Holding SKR only changes whether your own card has anything to show.</dd>
       </div>
       <div class="row">
-        <dt>what does staking cost?</dt>
-        <dd>The network fee, a few thousand lamports per transaction. A wallet's first stake also pays rent for its position account, which stays with the account. The app takes nothing.</dd>
-      </div>
-      <div class="row">
-        <dt>why several transactions?</dt>
-        <dd>Because each one is a separate on-chain stake. The app can send up to sixteen from a single approval, and each needs at least 1 SKR.</dd>
+        <dt>can I stake from the app?</dt>
+        <dd>No. SKR Eyes only reads the chain: it builds no transactions and signs nothing. Stake, unstake and withdraw are done wherever you normally do them, and this app shows you what happened.</dd>
       </div>
       <div class="row">
         <dt>which languages?</dt>

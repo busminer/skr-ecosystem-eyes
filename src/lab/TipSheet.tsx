@@ -192,7 +192,7 @@ export function TipSheet({ onClose }: { onClose: () => void }) {
 
         <View style={styles.footer}>
           <Text style={styles.foot}>{t('A tip changes nothing about your position and nothing about any airdrop. It is a thank you, not a fee.')}</Text>
-          <Text style={styles.foot}>{t('Free and open source, built by one Seeker. Tips in SKR go to kosa.skr and are staked right away, all of them.')}</Text>
+          <Text style={styles.foot}>{t('Free and open source, built by one Seeker. Tips go straight to kosa.skr.')}</Text>
         </View>
       </ScrollView>
     </Animated.View>

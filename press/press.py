@@ -111,15 +111,14 @@ spaced(d, (142, 382), "NOW ON THE SOLANA dAPP STORE", mono("600SemiBold", 27), A
 d.text((136, 434), "SKR", font=geist("900Black", 142), fill=TEXT)
 d.text((136, 570), "EYES", font=geist("900Black", 142), fill=TEXT)
 d.line((146, 736, 146 + 96, 736), fill=METAL, width=5)
-d.text((140, 770), "Stake SKR. See everything.", font=geist("500Medium", 50), fill=TEXT)
+d.text((140, 770), "Watch the SKR vault.", font=geist("500Medium", 50), fill=TEXT)
 
 rows = [
-    ("PULSE",  "the whole vault at a glance", ACCENT),
+    ("VAULT",  "the whole vault at a glance", ACCENT),
     ("FLOW",   "every finalized move, as it lands", ACCENT),
+    ("TOP",    "everybody who stakes, in order", ACCENT),
     ("ME",     "your position, and how long you held it", ACCENT),
-    ("QUEUE",  "what is leaving, and when it frees", ACCENT),
-    ("ALERTS", "this phone wakes you at your unlock", ACCENT),
-    ("STAKE",  "approve once, up to sixteen at a time", METAL),
+    ("ALERTS", "this phone wakes you at your unlock", METAL),
 ]
 label_f = mono("600SemiBold", 27)
 body_f  = geist("400Regular", 32)
