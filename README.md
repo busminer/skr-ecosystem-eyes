@@ -1,8 +1,7 @@
 # SKR Ecosystem Eyes
 
 Independent intelligence for the SKR staking ecosystem on Solana: a read-only
-web service and API, and **SKR Eyes**, an Android app for Seeker that also stakes
-through your own wallet.
+web service and API, and **SKR Eyes**, a read-only Android app for Seeker.
 
 **Live community beta:** [skr.alexkosa.dev](https://skr.alexkosa.dev/)
 
@@ -10,13 +9,15 @@ through your own wallet.
 
 ## SKR Eyes — the Android app
 
-The Solana dApp Store build lives on the [`skr-eyes-app`](../../tree/skr-eyes-app)
-branch, and the submitted APK is attached to the [`v1.0.0`](../../releases/tag/v1.0.0)
-release.
+The Solana dApp Store build lives on the [`design-1.3`](../../tree/design-1.3)
+branch.
 
-Unlike this web service, the app can also **stake**. It prepares the transactions
-and your own wallet signs and broadcasts them through the Mobile Wallet Adapter.
-It never asks for a seed phrase, never holds keys and never takes custody of funds.
+The app reads the chain and nothing else. It does not stake, unstake or
+withdraw, and it builds no transaction of any kind: connecting a wallet through
+the Mobile Wallet Adapter only tells the app which address to show, and any
+public address can be pasted instead. Staking was removed in 1.3.0, on
+22 September 2026, at Solana Mobile's request. It never asks for a seed phrase,
+never holds keys and never takes custody of funds.
 
 SKR Eyes is not affiliated with, endorsed by or sponsored by Solana Foundation or
 Solana Mobile.
