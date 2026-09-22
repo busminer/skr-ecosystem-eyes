@@ -214,7 +214,7 @@ export function AlertsLab() {
           label={t('Large moves, heard and felt')}
           open={peek === 'large'}
           onPeek={() => toggle('large')}
-          note={t('From 100K SKR only: a stake rings like an old phone, an exit lands with a low boom, a withdrawal closes a door. On every screen while the app is open, each with a short buzz.')}
+          note={t('From 100K SKR only: a stake arrives on a rising note, an exit on a low tone that bends down, a withdrawal on a short fall. On every screen while the app is open, each with a short buzz.')}
           control={(
             <Switch
               value={largeAlerts}

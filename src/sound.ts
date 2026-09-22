@@ -6,13 +6,14 @@ import { prefValue } from './prefs';
 // start, so a click costs nothing after the first one.
 //
 // Three voices for three moves, all from a hundred thousand SKR: a large stake
-// is an old phone ringing twice, a large exit is the tudum, a large withdrawal
-// is a door closing. The rest of the set serves the opening and the tip sheet.
+// arrives on a fifth going up, a large exit is one low tone bending down, a
+// large withdrawal is a short dry fall. The rest of the set serves the opening
+// and the tip sheet.
 //
-// The door was rebuilt on 06.09: the old one had a hiss above five kilohertz
-// that read as cheap. The new one is the leaf meeting the frame and the weight
-// of it settling, nothing above two kilohertz, and a third of a second rather
-// than two thirds. Alex picked it by ear from two candidates.
+// The three were rewritten on 22.09. The old set was literal — an old phone
+// ringing, a cinematic tudum, a door closing — which is a lot of character for
+// what is really a number crossing a line. These are instruments instead: one
+// soft mallet on metal, three intervals. Alex picked them by ear on the phone.
 //
 // The audio mode is set to mix: none of this may pause the
 // music the person is already listening to.
@@ -22,10 +23,10 @@ const sources = {
   surge: require('../assets/sound/surge.wav'),
   stake: require('../assets/sound/stake.wav'),
   drop: require('../assets/sound/drop.wav'),
-  tudum: require('../assets/sound/tudum.wav'),
   coin: require('../assets/sound/coin.wav'),
-  door: require('../assets/sound/door.wav'),
-  ring: require('../assets/sound/ring.wav'),
+  in: require('../assets/sound/in.wav'),
+  out: require('../assets/sound/out.wav'),
+  gone: require('../assets/sound/gone.wav'),
 } as const;
 
 export type Cue = keyof typeof sources;
@@ -49,9 +50,10 @@ export function cueHaptic(cue: Cue): void {
   };
   switch (cue) {
     case 'surge': impact(Haptics.ImpactFeedbackStyle.Heavy); impact(Haptics.ImpactFeedbackStyle.Medium, 160); break;
-    case 'tudum': impact(Haptics.ImpactFeedbackStyle.Medium); impact(Haptics.ImpactFeedbackStyle.Heavy, 300); break;
-    case 'door': impact(Haptics.ImpactFeedbackStyle.Medium); break;
-    case 'ring': impact(Haptics.ImpactFeedbackStyle.Light); impact(Haptics.ImpactFeedbackStyle.Light, 420); break;
+    // Each buzz follows its own sound: two notes get two taps, one tone gets one.
+    case 'in': impact(Haptics.ImpactFeedbackStyle.Light); impact(Haptics.ImpactFeedbackStyle.Light, 85); break;
+    case 'out': impact(Haptics.ImpactFeedbackStyle.Medium); break;
+    case 'gone': impact(Haptics.ImpactFeedbackStyle.Medium); impact(Haptics.ImpactFeedbackStyle.Light, 100); break;
     case 'coin': impact(Haptics.ImpactFeedbackStyle.Light); impact(Haptics.ImpactFeedbackStyle.Light, 90); break;
     case 'stake': impact(Haptics.ImpactFeedbackStyle.Light); break;
     case 'drop': impact(Haptics.ImpactFeedbackStyle.Light); break;

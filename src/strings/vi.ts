@@ -174,7 +174,7 @@ export const vi: Record<string, string> = {
   'One hour before, and again the moment the cooldown ends. Scheduled by this phone from the exact on-chain time.': 'Một giờ trước, và một lần nữa đúng lúc hết thời gian chờ. Do chính máy này đặt theo giờ chính xác trên chuỗi.',
   'Nothing of yours is unlocking, so there is nothing to wake you for yet.': 'Bạn không có gì đang mở khoá, nên chưa có lý do để đánh thức bạn.',
   'Large moves, heard and felt': 'Biến động lớn, nghe thấy và cảm thấy',
-  'From 100K SKR only: a stake rings like an old phone, an exit lands with a low boom, a withdrawal closes a door. On every screen while the app is open, each with a short buzz.': 'Chỉ từ 100K SKR: stake reo như điện thoại cũ, lệnh xin rút dội một tiếng trầm, rút tiền đóng một cánh cửa. Ở mọi màn hình khi ứng dụng đang mở, mỗi lần kèm một rung ngắn.',
+  'From 100K SKR only: a stake arrives on a rising note, an exit on a low tone that bends down, a withdrawal on a short fall. On every screen while the app is open, each with a short buzz.': 'Chỉ từ 100K SKR: một lần stake đến bằng nốt đi lên, một lần rút đăng ký bằng tông trầm đi xuống, một lần rút về bằng tiếng rơi ngắn. Trên mọi màn hình khi ứng dụng đang mở, mỗi tiếng kèm một rung ngắn.',
   "Other people's moves do not wake the phone while the app is closed. Only your own unlock does.": 'Biến động của người khác không đánh thức máy khi ứng dụng đã đóng. Chỉ lần mở khoá của chính bạn mới làm vậy.',
   'What counts as large': 'Thế nào là lớn',
   'Built-in thresholds behind the bell and the boom, until the server publishes its own.': 'Ngưỡng cài sẵn đứng sau tiếng chuông và tiếng trầm, cho tới khi máy chủ công bố ngưỡng của mình.',

@@ -175,7 +175,7 @@ export const tr: Record<string, string> = {
   'One hour before, and again the moment the cooldown ends. Scheduled by this phone from the exact on-chain time.': 'Bir saat önce, bir de bekleme süresinin bittiği anda. Zincirdeki tam saate göre bu telefon kurar.',
   'Nothing of yours is unlocking, so there is nothing to wake you for yet.': 'Açılan bir şeyin yok, yani şimdilik seni uyandıracak bir sebep de yok.',
   'Large moves, heard and felt': 'Büyük hareketler, duyulur ve hissedilir',
-  'From 100K SKR only: a stake rings like an old phone, an exit lands with a low boom, a withdrawal closes a door. On every screen while the app is open, each with a short buzz.': 'Yalnızca 100K SKR ve üstü: stake eski bir telefon gibi çalar, çıkış derin bir gümbürtüyle iner, çekim bir kapı kapatır. Uygulama açıkken her ekranda, her biri kısa bir titreşimle.',
+  'From 100K SKR only: a stake arrives on a rising note, an exit on a low tone that bends down, a withdrawal on a short fall. On every screen while the app is open, each with a short buzz.': 'Yalnızca 100K SKR ve üzeri: bir stake yükselen bir notayla, bir çıkış aşağı inen kalın bir tonla, bir çekim kısa bir düşüşle duyulur. Uygulama açıkken her ekranda çalar, her birinde kısa bir titreşim olur.',
   'Other people\'s moves do not wake the phone while the app is closed. Only your own unlock does.': 'Uygulama kapalıyken başkalarının hareketleri telefonu uyandırmaz. Yalnızca senin açılışın uyandırır.',
   'What counts as large': 'Ne büyük sayılır',
   'Built-in thresholds behind the bell and the boom, until the server publishes its own.': 'Sunucu kendi eşiklerini yayınlayana kadar çanın ve gümbürtünün arkasındaki gömülü eşikler.',

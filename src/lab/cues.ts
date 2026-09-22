@@ -31,13 +31,13 @@ export function useEventCues() {
     // say how a move is felt, this one says whether it is felt at all.
     const stamp = Date.now();
     if (stamp - lastCue.current < GAP_MS) return;
-    // Three moves, three voices, and only from a hundred thousand: an exit is
-    // the boom, a withdrawal the door, a stake the old phone ringing.
+    // Three moves, three voices, and only from a hundred thousand: an exit
+    // bends down, a withdrawal falls, a stake arrives.
     const heavy = (type: string) => arrived.some((item) => item.type === type && (item.amount ?? 0) >= BIG);
-    const cue: Cue | null = heavy('unstake') ? 'tudum' : heavy('withdraw') ? 'door' : heavy('stake') ? 'ring' : null;
+    const cue: Cue | null = heavy('unstake') ? 'out' : heavy('withdraw') ? 'gone' : heavy('stake') ? 'in' : null;
     if (!cue) return;
     lastCue.current = stamp;
-    if (prefValue('sound', true)) playCue(cue, cue === 'ring' ? 0.5 : 0.6);
+    if (prefValue('sound', true)) playCue(cue, 0.6);
     else if (prefValue('buzz', true)) cueHaptic(cue);
   });
   }, [wanted]);

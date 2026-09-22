@@ -170,7 +170,7 @@ export const id: Record<string, string> = {
   'One hour before, and again the moment the cooldown ends. Scheduled by this phone from the exact on-chain time.': 'Satu jam sebelumnya, lalu sekali lagi tepat saat masa tunggu berakhir. Dipasang oleh ponsel ini memakai waktu persis dari rantai.',
   'Nothing of yours is unlocking, so there is nothing to wake you for yet.': 'Tidak ada milikmu yang akan terbuka, jadi belum ada alasan untuk membangunkanmu.',
   'Large moves, heard and felt': 'Pergerakan besar, terdengar dan terasa',
-  'From 100K SKR only: a stake rings like an old phone, an exit lands with a low boom, a withdrawal closes a door. On every screen while the app is open, each with a short buzz.': 'Hanya dari 100K SKR: stake berdering seperti telepon lama, keluar mendarat dengan dentum rendah, penarikan menutup pintu. Di setiap layar selama aplikasi terbuka, masing-masing dengan getaran singkat.',
+  'From 100K SKR only: a stake arrives on a rising note, an exit on a low tone that bends down, a withdrawal on a short fall. On every screen while the app is open, each with a short buzz.': 'Hanya dari 100K SKR: stake datang dengan nada naik, keluar dengan nada rendah yang turun, penarikan dengan jatuh pendek. Di layar mana pun selama aplikasi terbuka, masing-masing dengan getaran singkat.',
   'Other people\'s moves do not wake the phone while the app is closed. Only your own unlock does.': 'Pergerakan orang lain tidak membangunkan ponsel saat aplikasi tertutup. Hanya pembukaan posisimu sendiri yang bisa.',
   'What counts as large': 'Apa yang dihitung besar',
   'Built-in thresholds behind the bell and the boom, until the server publishes its own.': 'Ambang bawaan di balik lonceng dan dentum, sampai server menerbitkan ambangnya sendiri.',
