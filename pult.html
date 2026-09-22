@@ -1,0 +1,189 @@
+<title>Пульт SKR Eyes 2.0</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
+<style>
+  :root{
+    --paper:#EDEAE6; --card:#F6F4F1; --ink:#1A1719; --ink-soft:#5E5854;
+    --rule:#CFC8C1; --stamp:#B23127; --go:#1F6B5E; --warn:#A6731C; --idle:#9A938D;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#141215; --card:#1D1A1E; --ink:#EDE8E4; --ink-soft:#A29A96;
+      --rule:#353034; --stamp:#E0655A; --go:#4FB39F; --warn:#D9A648; --idle:#6B645F;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#141215; --card:#1D1A1E; --ink:#EDE8E4; --ink-soft:#A29A96;
+    --rule:#353034; --stamp:#E0655A; --go:#4FB39F; --warn:#D9A648; --idle:#6B645F;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:"Newsreader",Georgia,serif;font-size:17px;line-height:1.55;margin:0}
+  .wrap{max-width:940px;margin:0 auto;padding-inline:20px;padding-block:34px 70px}
+  .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft)}
+  h1{font-family:"Archivo",sans-serif;font-weight:800;font-size:clamp(30px,6vw,46px);line-height:1.04;letter-spacing:-.02em;margin:.2em 0 0}
+  h2{font-family:"Archivo",sans-serif;font-weight:700;font-size:20px;margin:0}
+  h3{font-family:"Archivo",sans-serif;font-weight:600;font-size:16px;margin:0}
+  p{margin:0}
+  .sub{color:var(--ink-soft)}
+
+  .topline{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between;margin-top:14px}
+  .oneline{font-size:19px;color:var(--ink-soft);max-width:54ch}
+  .clock{border:1.5px solid var(--stamp);padding:10px 16px;text-align:center;flex:0 0 auto}
+  .clock .n{font-family:"Archivo",sans-serif;font-weight:800;font-size:40px;line-height:1;color:var(--stamp);font-variant-numeric:tabular-nums}
+  .clock .c{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-top:5px}
+
+  section{margin-top:44px}
+  .sechead{display:flex;align-items:baseline;gap:12px;border-bottom:1.5px solid var(--ink);padding-bottom:7px;margin-bottom:20px}
+  .sechead .num{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--stamp);letter-spacing:.1em}
+
+  /* почему выигрываем */
+  .why{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+  .why div{border-top:2px solid var(--go);padding-top:11px}
+  .why .n{font-family:"Archivo",sans-serif;font-weight:800;font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+  .why p{font-size:15px;color:var(--ink-soft);margin-top:4px}
+
+  /* стройка */
+  .build{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+  .task{background:var(--paper);padding:15px 17px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center}
+  .pip{width:11px;height:11px;border-radius:50%;background:var(--idle);flex:0 0 auto}
+  .task.work .pip{background:var(--warn)}
+  .task.done .pip{background:var(--go)}
+  .task .t p{font-size:15px;color:var(--ink-soft);margin-top:2px}
+  .badge{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--idle);white-space:nowrap}
+  .task.work .badge{color:var(--warn)}
+  .task.done .badge{color:var(--go)}
+
+  /* seed vault */
+  .sv{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+  .sv div{background:var(--paper);padding:14px 17px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:16px;align-items:baseline}
+  .sv .l{font-weight:600;font-family:"Archivo",sans-serif;font-size:15.5px}
+  .sv .r{font-size:15px;color:var(--ink-soft)}
+  @media (max-width:560px){ .sv div{grid-template-columns:1fr;gap:3px} .task{grid-template-columns:auto 1fr;gap:12px} .task .badge{grid-column:2} }
+
+  /* не делаем */
+  .no{display:flex;flex-wrap:wrap;gap:10px}
+  .no span{font-family:"IBM Plex Mono",monospace;font-size:12px;border:1px solid var(--rule);padding:7px 12px;color:var(--ink-soft);text-decoration:line-through;text-decoration-color:var(--stamp)}
+
+  /* вопрос */
+  .q{border:1.5px solid var(--stamp);background:var(--card);padding:20px 22px;display:grid;gap:10px}
+  .q .tag{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--stamp);border:1px solid var(--stamp);padding:3px 8px;justify-self:start}
+  .q p{max-width:62ch;color:var(--ink-soft)}
+  .q strong{color:var(--ink)}
+
+  /* журнал */
+  .log{display:grid;gap:0}
+  .log div{display:grid;grid-template-columns:76px 1fr;gap:16px;padding:11px 0;border-bottom:1px solid var(--rule)}
+  .log .d{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-soft);letter-spacing:.06em;padding-top:3px}
+  .log .x{font-size:15.5px}
+  .log .x em{font-style:normal;color:var(--stamp)}
+
+  footer{margin-top:52px;border-top:1px solid var(--rule);padding-top:14px}
+  a{color:var(--stamp)}
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Пульт проекта · обновлён 15 сентября 2026</p>
+  <h1>SKR Eyes 2.0</h1>
+
+  <div class="topline">
+    <p class="oneline">Приложение, которое следит за стейкингом SKR, учится ещё и действовать: выводить, будить в нужный час и считать, сколько ты выстоял.</p>
+    <div class="clock"><p class="n">23</p><p class="c">дня до подачи</p></div>
+  </div>
+
+  <section>
+    <div class="sechead"><span class="num">01</span><h2>Почему мы в хорошей позиции</h2></div>
+    <div class="why">
+      <div><p class="n">4,5 ★</p><p>112 отзывов, приложение уже живёт в магазине. Судьи оценивают, возвращаются ли люди — это четверть оценки, и её нельзя сделать за месяц с нуля.</p></div>
+      <div><p class="n">0</p><p>конкурентов. Никто не показывает человеку его собственную позицию: ни портал, ни официальный кошелёк, ни трекеры.</p></div>
+      <div><p class="n">$10 000</p><p>отдельный приз за лучшую работу с SKR. Мы и есть приложение про SKR.</p></div>
+      <div><p class="n">71 %</p><p>всего SKR стоит в стейке. Это не ниша, это почти все, у кого есть монета.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="num">02</span><h2>Что строим</h2></div>
+    <div class="build">
+      <div class="task">
+        <span class="pip"></span>
+        <div class="t"><h3>Проверка телефона</h3><p>Убедиться, что Seeker умеет доказать, что он Seeker. Полдня, и от этого зависит справка.</p></div>
+        <span class="badge">первое</span>
+      </div>
+      <div class="task">
+        <span class="pip"></span>
+        <div class="t"><h3>Выход из стейка</h3><p>Сейчас из приложения можно только зайти. Выйти и забрать — уходят наружу.</p></div>
+        <span class="badge">не начато</span>
+      </div>
+      <div class="task">
+        <span class="pip"></span>
+        <div class="t"><h3>Будильник</h3><p>Разбудить в тот час, когда 48 часов вышли. Этого не делает никто.</p></div>
+        <span class="badge">не начато</span>
+      </div>
+      <div class="task">
+        <span class="pip"></span>
+        <div class="t"><h3>Счётчик стажа</h3><p>Сколько дней подряд ты стоишь. Не сколько у тебя денег.</p></div>
+        <span class="badge">не начато</span>
+      </div>
+      <div class="task">
+        <span class="pip"></span>
+        <div class="t"><h3>Справка о выслуге</h3><p>Карточка, подписанная твоим кошельком. Показать можно, деньги в ней не видны.</p></div>
+        <span class="badge">не начато</span>
+      </div>
+      <div class="task">
+        <span class="pip"></span>
+        <div class="t"><h3>Ролик и дек</h3><p>Четверть оценки — это подача. Живое демо, без озвучки нейросетью.</p></div>
+        <span class="badge">не начато</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="num">03</span><h2>Наш уклон: Seed Vault с четырёх сторон</h2></div>
+    <div class="sv">
+      <div><p class="l">Ключ живёт в железе и не выходит наружу</p><p class="r">Деньги двигаются только после твоего пальца</p></div>
+      <div><p class="l">Подписывает не только переводы, а любой текст</p><p class="r">Из этого сделана справка о выслуге</p></div>
+      <div><p class="l">Подпись всегда получается одна и та же</p><p class="r">Поэтому личность работает без сид-фразы</p></div>
+      <div><p class="l">Три подписи на одно касание</p><p class="r">Забрать и сразу вернуть в стейк — один палец</p></div>
+    </div>
+    <p class="sub" style="margin-top:14px;font-size:15px;max-width:62ch">Всё четыре штуки мы уже умеем — проверено на FLOP. Изобретать нечего, надо показать.</p>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="num">04</span><h2>Чего не делаем</h2></div>
+    <div class="no">
+      <span>гильдии</span>
+      <span>командный стейк</span>
+      <span>лотерея SKRIGS</span>
+      <span>слово TEEPIN</span>
+      <span>рейтинг по размеру</span>
+      <span>обещание платить за стаж</span>
+      <span>смена названия приложения</span>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="num">05</span><h2>Ждёт твоего слова</h2></div>
+    <div class="q">
+      <span class="tag">одно решение</span>
+      <h2>Кран: делаем или нет</h2>
+      <p>Мы нашли, что чужой созревший вывод может дожать кто угодно, и деньги при этом физически уходят только хозяину. <strong>24 миллиона SKR лежат мёртвыми</strong>, потому что люди забыли вернуться через двое суток. Можем дать людям возвращать это друг другу — одной кнопкой, за полкопейки.</p>
+      <p>Это самое сильное, что у нас есть. И это же первое, обо что нас будут бить: мы трогаем чужой аккаунт без спроса, пусть и строго ему в плюс.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="num">06</span><h2>Что уже решено</h2></div>
+    <div class="log">
+      <div><p class="d">15 сен</p><p class="x">Подаём на хакатон <em>SKR Eyes 2.0</em>. Seeker Key и $PRESS припаркованы до 8 октября</p></div>
+      <div><p class="d">15 сен</p><p class="x">Ребрендинга нет. В магазине приложение как называлось SKR Eyes, так и называется</p></div>
+      <div><p class="d">15 сен</p><p class="x">Главный уклон — <em>Seed Vault</em>, показать его с четырёх сторон</p></div>
+      <div><p class="d">15 сен</p><p class="x">Поймана ошибка в наших записях: выход считается в долях, а не в токенах. Написали бы кнопку, выводящую не ту сумму</p></div>
+      <div><p class="d">15 сен</p><p class="x">Лотерея снята: не помещается в срок и задевает правила магазина</p></div>
+      <div><p class="d">09 сен</p><p class="x">Sonar снят с заявки: сбор каталога задевает правила магазина. Живёт отдельно как продукт</p></div>
+    </div>
+  </section>
+
+  <footer>
+    <p class="eyebrow">Эта страница — пульт. Меняется работа — меняется она.</p>
+  </footer>
+
+</div>

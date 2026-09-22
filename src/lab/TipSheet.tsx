@@ -7,7 +7,6 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { t } from '../i18n';
 import { colors, font, radius, spacing, type } from '../theme';
 import { Button, Eyebrow, Panel } from './kit';
-import { MINT } from './stake/stakeTx';
 
 // A donation, in whatever coin the person actually has.
 //
@@ -25,12 +24,13 @@ import { MINT } from './stake/stakeTx';
 
 const RECIPIENT = 'BmJaEmaEURBDpj91GUTvJcpKy2MAu8ZtRFRPaMpEuuax';
 const RECIPIENT_NAME = 'kosa.skr';
+const SKR_MINT = 'SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3';
 const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
 type Coin = { key: string; unit: string; mint: string | null; quick: string[] };
 const COINS: Coin[] = [
   { key: 'SOL', unit: 'SOL', mint: null, quick: ['0.1', '0.5', '1', '5'] },
-  { key: 'SKR', unit: 'SKR', mint: MINT.toBase58(), quick: ['10', '100', '500', '1000'] },
+  { key: 'SKR', unit: 'SKR', mint: SKR_MINT, quick: ['10', '100', '500', '1000'] },
   { key: 'USDC', unit: 'USDC', mint: USDC_MINT, quick: ['1', '5', '10', '50'] },
 ];
 

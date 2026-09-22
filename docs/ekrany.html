@@ -1,0 +1,330 @@
+<title>Табель стейкера</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
+<style>
+  :root{
+    --paper:#EDEAE6; --card:#F6F4F1; --ink:#1A1719; --ink-soft:#5E5854;
+    --rule:#CFC8C1; --stamp:#B23127; --go:#1F6B5E; --warn:#A6731C;
+    /* экран приложения — один и тот же в обеих темах, это макет устройства */
+    --s-bg:#0E1113; --s-panel:#171B1E; --s-line:#252B2F; --s-text:#E9EDEF;
+    --s-dim:#8A959B; --s-on:#3FD3A8; --s-cool:#E8B04B; --s-burn:#FF6B5A;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#141215; --card:#1D1A1E; --ink:#EDE8E4; --ink-soft:#A29A96;
+      --rule:#353034; --stamp:#E0655A; --go:#4FB39F; --warn:#D9A648;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#141215; --card:#1D1A1E; --ink:#EDE8E4; --ink-soft:#A29A96;
+    --rule:#353034; --stamp:#E0655A; --go:#4FB39F; --warn:#D9A648;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:"Newsreader",Georgia,serif;font-size:17px;line-height:1.6;margin:0}
+  .wrap{max-width:1000px;margin:0 auto;padding-inline:20px;padding-block:40px 72px}
+  .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft)}
+  h1{font-family:"Archivo",sans-serif;font-weight:800;font-size:clamp(32px,6.5vw,52px);line-height:1.04;letter-spacing:-.02em;margin:.25em 0 0;text-wrap:balance}
+  h2{font-family:"Archivo",sans-serif;font-weight:700;font-size:clamp(20px,3.4vw,26px);margin:0;text-wrap:balance}
+  h3{font-family:"Archivo",sans-serif;font-weight:600;font-size:17px;margin:0}
+  p{margin:0}
+  .lede{font-size:19px;color:var(--ink-soft);max-width:62ch;margin-top:14px}
+  section{margin-top:54px}
+  .sechead{display:flex;align-items:baseline;gap:12px;border-bottom:1.5px solid var(--ink);padding-bottom:8px;margin-bottom:24px}
+  .sechead .num{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--stamp);letter-spacing:.1em}
+
+  .thesis{border-left:3px solid var(--stamp);padding:4px 0 4px 18px;display:grid;gap:10px;margin-top:26px}
+  .thesis p{max-width:62ch;color:var(--ink-soft)}
+  .thesis strong{color:var(--ink)}
+
+  /* screens */
+  .screens{display:grid;gap:30px;grid-template-columns:repeat(auto-fit,minmax(288px,1fr))}
+  .unit{display:grid;gap:14px;align-content:start}
+  .cap{display:grid;gap:5px}
+  .cap .tag{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stamp)}
+  .cap p{font-size:15.5px;color:var(--ink-soft)}
+
+  .phone{
+    background:var(--s-bg);color:var(--s-text);
+    border:1px solid #2C3337;border-radius:26px;padding:14px 13px 18px;
+    font-family:"Archivo",sans-serif;max-width:100%;
+    box-shadow:0 1px 0 rgba(255,255,255,.04) inset;
+  }
+  .bar{display:flex;justify-content:space-between;font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--s-dim);letter-spacing:.06em;padding:0 4px 12px}
+  .app{display:grid;gap:11px}
+  .lbl{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--s-dim)}
+  .panel{background:var(--s-panel);border:1px solid var(--s-line);border-radius:12px;padding:13px 14px;display:grid;gap:7px}
+  .big{font-size:38px;font-weight:800;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .big small{font-size:15px;font-weight:600;color:var(--s-dim);margin-left:5px;letter-spacing:0}
+  .mid{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+  .sub{font-size:12.5px;color:var(--s-dim);line-height:1.45}
+  .state{display:inline-flex;align-items:center;gap:6px;font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--s-on);display:inline-block}
+  .state.on{color:var(--s-on)}
+  .state.cool{color:var(--s-cool)} .state.cool .dot{background:var(--s-cool)}
+  .state.burn{color:var(--s-burn)} .state.burn .dot{background:var(--s-burn)}
+  .btn{border-radius:10px;padding:12px;text-align:center;font-weight:700;font-size:14.5px;border:1px solid transparent}
+  .btn.primary{background:var(--s-on);color:#06231B}
+  .btn.ghost{background:transparent;border-color:var(--s-line);color:var(--s-text)}
+  .btn.danger{background:transparent;border-color:var(--s-burn);color:var(--s-burn)}
+  .row{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:13px}
+  .row span:last-child{font-variant-numeric:tabular-nums;font-weight:600}
+  .track{height:6px;border-radius:3px;background:#22292D;overflow:hidden}
+  .track i{display:block;height:100%;background:var(--s-cool)}
+  .warnbox{border:1px solid rgba(255,107,90,.45);border-radius:10px;padding:11px 12px;display:grid;gap:5px;background:rgba(255,107,90,.07)}
+  .warnbox .t{font-size:13px;font-weight:700;color:var(--s-burn)}
+  .warnbox .d{font-size:12px;color:var(--s-dim);line-height:1.45}
+  .list{display:grid;gap:8px}
+  .item{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border-bottom:1px solid var(--s-line);padding-bottom:8px}
+  .item:last-child{border-bottom:0;padding-bottom:0}
+  .item .who{font-family:"IBM Plex Mono",monospace;font-size:12px}
+  .item .amt{font-size:11.5px;color:var(--s-dim);font-variant-numeric:tabular-nums}
+  .push{border:1px solid var(--s-on);color:var(--s-on);border-radius:8px;padding:6px 11px;font-size:11.5px;font-weight:700}
+  .stampcard{border:1px dashed #3A4348;border-radius:12px;padding:15px;display:grid;gap:9px;text-align:center}
+  .sig{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--s-dim);word-break:break-all;line-height:1.5}
+  .chip{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--s-line);border-radius:999px;padding:4px 9px;color:var(--s-dim)}
+  .chip.ok{color:var(--s-on);border-color:rgba(63,211,168,.4)}
+
+  /* findings */
+  .finds{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+  .finds > div{background:var(--paper);padding:16px 18px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start}
+  .finds .idx{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--stamp);padding-top:4px}
+  .finds p{color:var(--ink-soft);font-size:16px;margin-top:4px;max-width:66ch}
+
+  .numbers{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-top:6px}
+  .nbox{border-top:2px solid var(--ink);padding-top:10px}
+  .nbox .n{font-family:"Archivo",sans-serif;font-weight:800;font-size:27px;font-variant-numeric:tabular-nums;line-height:1.1}
+  .nbox .c{font-size:14px;color:var(--ink-soft);margin-top:3px}
+
+  .ask{border:1.5px solid var(--ink);padding:20px 22px;display:grid;gap:12px}
+  .ask ol{margin:0;padding-left:20px;display:grid;gap:11px}
+  .ask li::marker{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--stamp)}
+  .note{font-size:15px;color:var(--ink-soft);margin-top:18px;max-width:64ch}
+  footer{margin-top:60px;border-top:1px solid var(--rule);padding-top:16px}
+  .src{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-soft);line-height:1.9;margin-top:8px}
+  a{color:var(--stamp)}
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">SKR Eyes 2.0 · релиз «Стаж» · 15 сентября 2026</p>
+  <h1>Табель стейкера</h1>
+  <p class="lede">Четыре экрана, собранные после четырёх линий ресерча. Приложение перестаёт показывать сеть и начинает показывать твою смену.</p>
+
+  <div class="thesis">
+    <p><strong>Стейк — это смена.</strong> Встал в стейк — заступил. Вышел — снялся. Сорок восемь часов остывания — отработка. Компаунд — отметился и остался на следующую. Стаж — отработанные часы.</p>
+    <p>Хакатон называется CLOCK IN. Мы единственные, у кого продукт отвечает на это название по существу, а не подмигивает ему в деке.</p>
+  </div>
+
+  <section>
+    <div class="sechead"><span class="num">01</span><h2>Экраны</h2></div>
+    <div class="screens">
+
+      <!-- 1 -->
+      <div class="unit">
+        <div class="phone">
+          <div class="bar"><span>SKR EYES</span><span>9:41</span></div>
+          <div class="app">
+            <p class="lbl">твоя смена</p>
+            <div class="panel">
+              <span class="state on"><i class="dot"></i>на посту</span>
+              <p class="big">96<small>дней подряд</small></p>
+              <p class="sub">Заступил 11 июня. Ни одного перерыва.</p>
+            </div>
+            <div class="panel">
+              <div class="row"><span>В стейке</span><span>8 314 SKR</span></div>
+              <div class="row"><span>Цена доли</span><span>1,138725</span></div>
+              <div class="row"><span>Заработано</span><span>+1 153 SKR</span></div>
+              <div class="row"><span>Темп сейчас</span><span>16,1 % год.</span></div>
+              <p class="sub">Считаем по цене доли, а не по обещанию. В их FAQ написано 25,8 % — это не то, что происходит на самом деле.</p>
+            </div>
+            <div class="panel">
+              <p class="lbl">на посту вместе с тобой</p>
+              <p class="mid">46 350</p>
+              <p class="sub">Ты заступил в один день с 312 людьми. Двенадцать из них стоят до сих пор.</p>
+            </div>
+            <div class="btn ghost">Снять смену</div>
+          </div>
+        </div>
+        <div class="cap">
+          <p class="tag">экран 1 · табель</p>
+          <h3>Время вместо денег</h3>
+          <p>Крупно — дни, а не сумма. Медианная позиция 8 314 SKR, в рейтинге по размеру человек двадцатичетырёхтысячный и делиться этим не станет. Днями делятся.</p>
+        </div>
+      </div>
+
+      <!-- 2 -->
+      <div class="unit">
+        <div class="phone">
+          <div class="bar"><span>СНЯТЬ СМЕНУ</span><span>9:42</span></div>
+          <div class="app">
+            <div class="panel">
+              <p class="lbl">выводится</p>
+              <p class="mid">8 314 SKR</p>
+              <p class="sub">7 302,41 доли. Программа считает в долях, не в токенах.</p>
+            </div>
+            <div class="warnbox">
+              <p class="t">Сгорит 96 дней стажа</p>
+              <p class="d">Знак выслуги гаснет в момент выхода и начинается заново с нуля.</p>
+            </div>
+            <div class="warnbox">
+              <p class="t">Награды остановятся сразу</p>
+              <p class="d">Все 48 часов очереди деньги не зарабатывают ничего.</p>
+            </div>
+            <div class="warnbox">
+              <p class="t">Второй выход обнулит таймер</p>
+              <p class="d">Если добавишь к очереди ещё сумму, 48 часов начнутся заново для всей позиции. Об этом не предупреждает никто.</p>
+            </div>
+            <div class="btn danger">Всё равно снять смену</div>
+            <div class="btn primary">Остаться на посту</div>
+          </div>
+        </div>
+        <div class="cap">
+          <p class="tag">экран 2 · съём</p>
+          <h3>Три предупреждения, которых нет нигде</h3>
+          <p>Люди и так передумывают: 868 отмен за тридцать дней. Мы просто показываем, что именно они теряют, до нажатия, а не после.</p>
+        </div>
+      </div>
+
+      <!-- 3 -->
+      <div class="unit">
+        <div class="phone">
+          <div class="bar"><span>КРАН</span><span>9:44</span></div>
+          <div class="app">
+            <div class="panel">
+              <span class="state cool"><i class="dot"></i>застряли</span>
+              <p class="mid">24,3 млн SKR</p>
+              <p class="sub">2 356 позиций отстояли очередь, созрели и лежат мёртвым грузом. Люди не вернулись через двое суток.</p>
+            </div>
+            <p class="lbl">можно дожать прямо сейчас</p>
+            <div class="panel list">
+              <div class="item"><div><p class="who">bonfire.skr</p><p class="amt">созрело 6 дней назад · 412 000</p></div><span class="push">Дожать</span></div>
+              <div class="item"><div><p class="who">7fQx…k29p</p><p class="amt">созрело 2 дня назад · 51 400</p></div><span class="push">Дожать</span></div>
+              <div class="item"><div><p class="who">masha.skr</p><p class="amt">созрело 19 часов назад · 8 900</p></div><span class="push">Дожать</span></div>
+            </div>
+            <div class="panel">
+              <p class="sub">Деньги физически не могут уйти никуда, кроме счёта хозяина. Тебе это стоит 0,000005 SOL и отметку в табеле.</p>
+            </div>
+            <div class="row" style="padding:0 2px"><span class="sub">Сегодня дожали друг за друга</span><span style="font-size:13px">41 раз</span></div>
+          </div>
+        </div>
+        <div class="cap">
+          <p class="tag">экран 3 · кран</p>
+          <h3>Жест, который нельзя монетизировать</h3>
+          <p>Withdraw не требует подписи владельца — проверено симуляцией с чужим плательщиком, ошибок ноль. Любой может вернуть незнакомому человеку его деньги в его же карман. На посту прикрывают своих.</p>
+        </div>
+      </div>
+
+      <!-- 4 -->
+      <div class="unit">
+        <div class="phone">
+          <div class="bar"><span>СПРАВКА</span><span>9:47</span></div>
+          <div class="app">
+            <div class="stampcard">
+              <p class="lbl">выслуга подтверждена</p>
+              <p class="big">96<small>дней</small></p>
+              <p class="sub">Непрерывно в стейке SKR<br>с 11 июня 2026 года</p>
+              <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+                <span class="chip ok">подписано кошельком</span>
+                <span class="chip ok">сделано на Seeker</span>
+              </div>
+              <p class="sig">ed25519:4f8a…c31d<br>attest: SEEKER · StrongBox · verified boot</p>
+            </div>
+            <div class="panel">
+              <p class="sub">Сумма здесь не написана и не выводится. Проверить справку может кто угодно, узнать твои деньги — никто.</p>
+            </div>
+            <div class="btn primary">Поделиться</div>
+            <div class="btn ghost">Как это проверяют</div>
+          </div>
+        </div>
+        <div class="cap">
+          <p class="tag">экран 4 · справка</p>
+          <h3>Статус, за который не стыдно</h3>
+          <p>Кошелёк подписывает «кто», цепочка сертификатов телефона — «на чём». Первый статус в этой экосистеме, которым можно похвастаться, не раздевшись.</p>
+        </div>
+      </div>
+
+    </div>
+    <p class="note">Это макет расстановки и смысла, не финальная отделка. Радар и живое хранилище остаются — их хвалят, и лицо приложения мы не меняем.</p>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="num">02</span><h2>Что ресерч поменял в плане</h2></div>
+    <div class="finds">
+      <div>
+        <span class="idx">01</span>
+        <div>
+          <h3>Мы чуть не написали кнопку, выводящую не ту сумму</h3>
+          <p>В наших собственных записях у инструкции выхода стоял аргумент «количество токенов». В распакованном с цепочки коде программы там <em>доли</em>, и тип другой. На живых деньгах живых людей. Поймали за три недели до подачи.</p>
+        </div>
+      </div>
+      <div>
+        <span class="idx">02</span>
+        <div>
+          <h3>Ловушка с очередью оказалась двойной</h3>
+          <p>Во время остывания повторный выход обнуляет таймер всей позиции. А после созревания выход вообще запрещён — программа отвечает «сначала забери». Человек в этот момент думает, что всё сломалось: такая жалоба лежит в открытом виде с января.</p>
+        </div>
+      </div>
+      <div>
+        <span class="idx">03</span>
+        <div>
+          <h3>Стаж мы считали неправильно</h3>
+          <p>После полного выхода позиция не закрывается — таких пустых аккаунтов 1 494. Значит «дата первого входа» врёт всем, кто уходил и возвращался. Считаем от последнего перехода из нуля в плюс.</p>
+        </div>
+      </div>
+      <div>
+        <span class="idx">04</span>
+        <div>
+          <h3>Железо даёт больше, чем мы думали</h3>
+          <p>Подпись произвольных байтов кошельком работает и детерминирована — проверено на FLOP. Сверху штатная цепочка сертификатов Android без единого разрешения доказывает, что это Seeker, а не эмулятор с сотней кошельков. На живом телефоне это надо прогнать первым делом: если там сюрприз, конструкция справки меняется.</p>
+        </div>
+      </div>
+      <div>
+        <span class="idx">05</span>
+        <div>
+          <h3>Чего обещать нельзя</h3>
+          <p>TEEPIN — публичного API нет вообще, только пресс-релизы; в питче не произносим. Знак устройства не привязан к человеку намертво, поэтому честная формулировка — «один телефон, один раз», а не «один человек». И официального вознаграждения за длительный стаж не существует: мы показываем, сколько человек держит, и не намекаем, что за это заплатят.</p>
+        </div>
+      </div>
+      <div>
+        <span class="idx">06</span>
+        <div>
+          <h3>Лотерея не поместилась, и хорошо</h3>
+          <p>Пятнадцать нерешённых технических вопросов, из них два — отдельные исследования с вероятным ответом «нельзя». Плюс внутри лежал кусок, который по сути накручивает официальный рейтинг Solana Mobile: подавать такое на их же хакатон — прямой путь к снятию из магазина. Берём оттуда одну вещь: отметку стажа прямо в цепочке, без розыгрыша и без приза.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="num">03</span><h2>Земля под ногами</h2></div>
+    <div class="numbers">
+      <div class="nbox"><p class="n">71 %</p><p class="c">обращения SKR стоит в стейке. Это не ниша, это почти все</p></div>
+      <div class="nbox"><p class="n">24,3 млн</p><p class="c">SKR созрели и лежат, не зарабатывая ничего</p></div>
+      <div class="nbox"><p class="n">868</p><p class="c">раз за месяц люди передумали уходить</p></div>
+      <div class="nbox"><p class="n">0</p><p class="c">статей про стейкинг SKR в справке официального кошелька</p></div>
+      <div class="nbox"><p class="n">8 314</p><p class="c">SKR — медианная позиция. Размером хвастаться нечем</p></div>
+      <div class="nbox"><p class="n">1</p><p class="c">гардиан, 100 % долей. Гильдии строить пока не на чем</p></div>
+    </div>
+    <p class="note">Уведомления о созревании не делает никто — ни портал, ни официальный кошелёк, ни сторонние трекеры. Конкурента, который показывает человеку его собственную позицию, в экосистеме нет.</p>
+  </section>
+
+  <section>
+    <div class="sechead"><span class="num">04</span><h2>Что нужно от тебя</h2></div>
+    <div class="ask">
+      <ol>
+        <li><strong>Кран — делаем?</strong> Мы трогаем чужие аккаунты без спроса, пусть и строго в плюс. Я бы делал открыто: видно, кто кому дожал, и человек может отказаться. Это главный ход всей подачи и первое, о чём спросят судьи.</li>
+        <li><strong>Табель как лицо релиза — заходит?</strong> Если да, я разворачиваю вокруг него всё: экраны, ролик, дек, тексты в магазине.</li>
+        <li><strong>Порядок работ.</strong> Первым днём — проверка цепочки сертификатов на живом Seeker. Это блокер: если она там не такая, справка переделывается. Запаса по времени нет вообще, пятнадцать дней работы на пятнадцать рабочих.</li>
+      </ol>
+    </div>
+  </section>
+
+  <footer>
+    <p class="eyebrow">Откуда цифры</p>
+    <p class="src">
+      Четыре отчёта ресерча: <code>skr-control\research\stazh-2026-09-15\</code> — механика, дыры, железо, социальное<br>
+      Механика и симуляции — распакованный с цепочки код программы стейкинга, наш индексатор, 15.09.2026<br>
+      Условия хакатона — <a href="https://solanamobile.radiant.nexus/">solanamobile.radiant.nexus</a>, дословная копия в <code>next-project-research\streams\</code>
+    </p>
+  </footer>
+
+</div>

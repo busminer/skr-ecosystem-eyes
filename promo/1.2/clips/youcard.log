@@ -1,0 +1,9 @@
+scrcpy 4.1 <https://github.com/Genymobile/scrcpy>
+No video mirroring, SDK mouse disabled
+INFO: ADB device found:
+INFO:     -->   (usb)  SM02E4072810627                 device  Seeker
+C:\Users\Alex Kosa\AppData\Local\Microsoft\WinGet\Packages\Genymobile.scrcpy_Microsoft.Winget.Source_8wekyb3d8bbwe\scrcpy-win64-v4.1\scrcpy-server: 1 file pushed, 0 skipped. 199.3 MB/s (733706 bytes in 0.004s)
+[server] INFO: Device: [Solana Mobile Inc.] solanamobile Seeker (Android 16)
+INFO: Recording started to mp4 file: C:/skrx/promo/1.2/clips/youcard.mp4
+INFO: Time limit reached
+INFO: Recording complete to mp4 file: C:/skrx/promo/1.2/clips/youcard.mp4

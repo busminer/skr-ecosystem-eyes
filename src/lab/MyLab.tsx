@@ -7,7 +7,7 @@ import { ApiError, fetchEcosystemState, fetchTop, fetchWalletProfile } from '../
 import { requestTab, takeTabRequest } from '../nav';
 import { t } from '../i18n';
 import { compact, integer, shortAddress } from '../format';
-import { connectReadOnlyWallet } from '../mwa';
+import { connectReadOnlyWallet, forgetWalletAuthorization } from '../mwa';
 import { clearStoredSchedule, scheduleUnlockAlerts } from '../notifications';
 import { SESSION_KEY } from '../session';
 import { usePref } from '../prefs';
@@ -15,13 +15,11 @@ import { Switch } from 'react-native';
 import { colors, font, radius, spacing, type } from '../theme';
 import type { TopMe, WalletProfile } from '../types';
 import { fetchWalletAge, type PositionAge } from './age';
-import { forgetStakeRun } from './stake/useStakeRun';
 import { Button, Chevron, Evidence, Eyebrow, Inset, Meter, Panel } from './kit';
 import { StakerCard, cardFacts } from './StakerCard';
 import type { CardFacts } from './cardArt';
 import { CardExporter, shareCardPng } from './shareCard';
 import type { CardHandle } from './cardArt';
-import { StakeSheet } from './stake/StakeSheet';
 
 // The card is the reason to open the app daily, so the phone remembers who
 // you are. Only the public address and the name the wallet gave us are stored.
@@ -74,9 +72,6 @@ export function MyLab() {
   // and drawn immediately on the next launch, then replaced by the live ones.
   const [remembered, setRemembered] = useState<CardFacts | null>(null);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1_000));
-  const [staking, setStaking] = useState(false);
-  // The daily sixteen: the stake sheet opened with one SKR in sixteen parts.
-  const [sixteen, setSixteen] = useState(false);
   // What the shared picture leaves out. Remembered between launches, and
   // applied to the card on this screen too, so what is seen is what is sent.
   const [hideName, setHideName] = usePref('card:hideName', false);
@@ -288,7 +283,9 @@ export function MyLab() {
     await AsyncStorage.removeItem(SESSION_KEY).catch(() => undefined);
     await AsyncStorage.removeItem(CARD_KEY).catch(() => undefined);
     setRemembered(null);
-    await forgetStakeRun().catch(() => undefined);
+    // The wallet permission goes with the session: the next person to open
+    // this phone must be asked, not silently handed the last wallet.
+    await forgetWalletAuthorization();
     if (previous) await clearStoredSchedule(previous).catch(() => undefined);
     setProfile(null);
     setAge(null);
@@ -319,29 +316,10 @@ export function MyLab() {
 
       {claimed ? (
         <>
-          {connected
-            ? <Button hero label={t('Stake SKR')} onPress={() => { void Haptics.selectionAsync(); setSixteen(false); setStaking(true); }} />
-            : (
-              <>
-                <Text style={styles.lead}>{t('This position is being looked at, not signed for. Connect the wallet that holds it to stake from it.')}</Text>
-                <Button label={t('Connect Solana Mobile')} onPress={() => void connect()} disabled={busy} />
-              </>
-            )}
+          {/* A pasted address is somebody being looked at. Connecting turns
+              this card into your own, which is what the alerts hang on. */}
+          {connected ? null : <Button label={t('Connect Solana Mobile')} onPress={() => void connect()} disabled={busy} />}
 
-          {/* The sixteen is a stake too: only the wallet that can sign gets
-              the door. It was a whole panel with its own gold button and a
-              paragraph; the sheet it opens says everything the paragraph did. */}
-          {connected ? (
-            <Pressable accessibilityRole="button" onPress={() => { void Haptics.selectionAsync(); setSixteen(true); setStaking(true); }} style={({ pressed }) => [styles.sixteenRow, pressed && { opacity: 0.7 }]}>
-              <View style={styles.sixteenCopy}>
-                <Eyebrow tone={colors.metal}>{t('The daily sixteen')}</Eyebrow>
-                {/* The price named up front. It used to say "one approval",
-                    which the Seed Vault makes untrue past three parts. */}
-                <Text style={styles.sixteenNote}>{t('16 SKR · 16 transactions · ≈6 approvals')}</Text>
-              </View>
-              <Chevron tone={colors.metal} />
-            </Pressable>
-          ) : null}
 
           <Panel style={styles.sharePanel}>
             <View style={styles.shareHead}>
@@ -469,17 +447,19 @@ export function MyLab() {
         <>
           <Text style={styles.lead}>
             {profile && !profile.found
-              ? connected ? t('This wallet holds no SKR position yet. The first stake opens one; the position account costs a little rent once.') : t('This address holds no SKR position right now.')
+              ? t('This address holds no SKR position right now.')
               : t('Connect the wallet that holds your stake, or paste any public address. Nothing is signed.')}
           </Text>
-          {profile && !profile.found && connected
-            ? <Button label={t('Stake SKR')} onPress={() => { void Haptics.selectionAsync(); setSixteen(false); setStaking(true); }} />
-            : <Button label={t('Connect Solana Mobile')} onPress={() => void connect()} disabled={busy} />}
-          <View style={styles.orRow}>
-            <View style={styles.orLine} />
-            <Text style={styles.or}>{t('OR')}</Text>
-            <View style={styles.orLine} />
-          </View>
+          {/* Already connected and holding nothing: no button to offer, so
+              the OR divider goes too and the paste field stands alone. */}
+          {profile && !profile.found && connected ? null : (<>
+            <Button label={t('Connect Solana Mobile')} onPress={() => void connect()} disabled={busy} />
+            <View style={styles.orRow}>
+              <View style={styles.orLine} />
+              <Text style={styles.or}>{t('OR')}</Text>
+              <View style={styles.orLine} />
+            </View>
+          </>)}
           <TextInput
             autoCapitalize="none"
             autoCorrect={false}
@@ -499,7 +479,6 @@ export function MyLab() {
     {/* Outside the scroll view: the sheet used to be absolute inside the
         content, so opening it from the daily-sixteen button, far down the
         page, showed its empty lower half and nothing else. */}
-    {staking && profile ? <StakeSheet wallet={profile.wallet} hasPosition={profile.positions.length > 0} presetAmount={sixteen ? '1' : undefined} presetSplit={sixteen ? 16 : undefined} onClose={() => { setStaking(false); void inspect(profile.wallet); }} /> : null}
     </View>
   );
 }
@@ -507,9 +486,6 @@ export function MyLab() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 130, gap: spacing.lg },
-  sixteenRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, minHeight: 44, paddingHorizontal: spacing.sm },
-  sixteenCopy: { gap: 2, flexShrink: 1 },
-  sixteenNote: { color: colors.muted, fontFamily: font.regular, ...type.micro, fontVariant: ['tabular-nums'] },
   privacyPanel: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
   privacyHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.md, minHeight: 52 },
   privacyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
