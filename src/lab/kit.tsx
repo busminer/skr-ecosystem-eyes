@@ -1,4 +1,4 @@
-import type { PropsWithChildren, ReactNode } from 'react';
+import { useEffect, useState, type PropsWithChildren, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, G, Path, Rect } from 'react-native-svg';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -42,6 +42,26 @@ export function Mark({ size = 26, tone = colors.accent, open = 1 }: { size?: num
       {gap < 0.3 ? <Path d="M12 50 C30 50 70 50 88 50" fill="none" stroke={lidTone} strokeWidth={5} strokeLinecap="round" /> : null}
     </Svg>
   );
+}
+
+// The mark, alive: it blinks every few seconds (shut fast, a beat, open a
+// little slower), on top of whatever openness the caller gives it.
+export function LiveMark({ size = 22, tone = colors.accent, open = 1, every = 6_500 }: { size?: number; tone?: string; open?: number; every?: number }) {
+  const [lid, setLid] = useState(1);
+  useEffect(() => {
+    let raf = 0;
+    const timer = setInterval(() => {
+      const start = Date.now();
+      const step = () => {
+        const e = Date.now() - start;
+        setLid(e < 110 ? 1 - e / 110 : e < 170 ? 0 : e < 360 ? (e - 170) / 190 : 1);
+        if (e < 360) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    }, every);
+    return () => { clearInterval(timer); cancelAnimationFrame(raf); };
+  }, [every]);
+  return <Mark size={size} tone={tone} open={Math.max(0.02, open * lid)} />;
 }
 
 // The five tabs, drawn.

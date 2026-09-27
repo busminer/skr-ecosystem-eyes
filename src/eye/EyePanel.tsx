@@ -43,7 +43,9 @@ const step = (from: number, to: number) => Math.min(to, from + Math.max(1, Math.
 // `openRequest` is how that walk-through's last button reaches this one: each
 // new number is one press of Open my Eye. `nextSerial` is the number the next
 // Eye will carry, for the line that says how many are left at this price.
-export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen, onHowItWorks, openRequest = 0, nextSerial = null, connecting = false, connectError = null }: { wallet: string | null; onStatus?: (status: EyeStatus) => void; onBlinked?: () => void; onConnect?: () => void; onBeforeOpen?: () => Promise<boolean>; onHowItWorks?: () => void; openRequest?: number; nextSerial?: number | null; connecting?: boolean; connectError?: string | null }) {
+// `onOpenCard` shows the Eye's full card; the panel itself keeps it small, so
+// the Iris and the other Eyes are on screen too.
+export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen, onHowItWorks, onOpenCard, openRequest = 0, nextSerial = null, connecting = false, connectError = null }: { wallet: string | null; onStatus?: (status: EyeStatus) => void; onBlinked?: () => void; onConnect?: () => void; onBeforeOpen?: () => Promise<boolean>; onHowItWorks?: () => void; onOpenCard?: () => void; openRequest?: number; nextSerial?: number | null; connecting?: boolean; connectError?: string | null }) {
   const [status, setStatus] = useState<EyeStatus | null>(null);
   const [reading, setReading] = useState(false);
   const [unreachable, setUnreachable] = useState(false);
@@ -292,34 +294,39 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
         <Eyebrow>{t('Your Eye')}</Eyebrow>
         <Text numberOfLines={1} style={styles.serial}>{eye.name}</Text>
       </View>
-      <EyePicture uri={eyeImageUrl(eye.image)} label={eye.name} motion={motion} onSettled={settle} />
-      <Text style={styles.line}>
-        {eye.blinks === 1
-          ? t('Streak {streak} · 1 Blink', { streak: eye.streak })
-          : t('Streak {streak} · {blinks} Blinks', { streak: eye.streak, blinks: eye.blinks })}
-      </Text>
-      {blink && paced ? (
-        <>
-          <Text style={styles.clock}>
-            {blink.ready
-              ? t('Your Blink is ready')
-              : t('Next Blink in {time}', { time: remaining != null ? clock(Math.max(0, remaining)) : '—' })}
-            {blink.event?.label ? <Text style={styles.event}>{`  ${blink.event.label}`}</Text> : null}
+      <View style={styles.eyeRow}>
+        <Pressable style={styles.thumb} onPress={onOpenCard} disabled={!onOpenCard} accessibilityRole="imagebutton" accessibilityLabel={eye.name}>
+          <EyePicture uri={eyeImageUrl(eye.image)} label={eye.name} motion={motion} onSettled={settle} />
+        </Pressable>
+        <View style={styles.eyeInfo}>
+          <Text style={styles.streak}>{eye.streak === 1 ? t('1 day') : t('{count} days', { count: eye.streak })}</Text>
+          <Text style={styles.line}>
+            {eye.blinks === 1
+              ? t('Streak {streak} · 1 Blink', { streak: eye.streak })
+              : t('Streak {streak} · {blinks} Blinks', { streak: eye.streak, blinks: eye.blinks })}
           </Text>
-          {!blink.doneToday ? <Text style={styles.hint}>{t('Blink today to keep the streak')}</Text> : null}
-          <Text style={styles.lead}>{t('{count} blinked today', { count })}</Text>
-        </>
-      ) : blink ? (
-        <>
-          <Text style={styles.clock}>
-            {blink.open
-              ? t('Blink is open · closes in {time}', { time: remaining != null ? clock(remaining) : '—' })
-              : t('Next Blink in {time}', { time: remaining != null ? clock(remaining) : '—' })}
-            {blink.event?.label ? <Text style={styles.event}>{`  ${blink.event.label}`}</Text> : null}
-          </Text>
-          <Text style={styles.lead}>{t('{count} blinked today', { count })}</Text>
-        </>
-      ) : null}
+          {blink && paced ? (
+            <>
+              <Text style={[styles.clock, blink.ready && styles.clockReady]}>
+                {blink.ready
+                  ? t('Your Blink is ready')
+                  : t('Next Blink in {time}', { time: remaining != null ? clock(Math.max(0, remaining)) : '—' })}
+              </Text>
+              {!blink.doneToday ? <Text style={styles.hint}>{t('Blink today to keep the streak')}</Text> : null}
+              <Text style={styles.lead}>{t('{count} blinked today', { count })}</Text>
+            </>
+          ) : blink ? (
+            <>
+              <Text style={styles.clock}>
+                {blink.open
+                  ? t('Blink is open · closes in {time}', { time: remaining != null ? clock(remaining) : '—' })
+                  : t('Next Blink in {time}', { time: remaining != null ? clock(remaining) : '—' })}
+              </Text>
+              <Text style={styles.lead}>{t('{count} blinked today', { count })}</Text>
+            </>
+          ) : null}
+        </View>
+      </View>
       <View style={styles.button}>
         <Button label={blinkLabel} onPress={() => void act('blink')} disabled={!canBlink || move != null} tone={colors.metal} />
       </View>
@@ -342,6 +349,12 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontFamily: font.bold, fontSize: 18, letterSpacing: -0.3 },
   line: { color: colors.text, fontFamily: font.medium, ...type.small, fontVariant: ['tabular-nums'] },
   clock: { color: colors.text, fontFamily: font.semibold, ...type.body, fontVariant: ['tabular-nums'] },
+  clockReady: { color: colors.positive },
+  // The Eye small on the left, what it has done and what is next on the right.
+  eyeRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
+  thumb: { width: 124 },
+  eyeInfo: { flex: 1, gap: 3 },
+  streak: { color: colors.metal, fontFamily: font.bold, fontSize: 22, lineHeight: 27, letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
   event: { color: colors.muted, fontFamily: font.regular, ...type.small },
   lead: { color: colors.muted, fontFamily: font.regular, ...type.small, fontVariant: ['tabular-nums'] },
   micro: { color: colors.faint, fontFamily: font.regular, ...type.micro },

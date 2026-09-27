@@ -20,7 +20,7 @@ import { useEventCues } from './src/lab/cues';
 import { colors, font, radius, spacing, type } from './src/theme';
 import type { Freshness, FreshnessDetail } from './src/types';
 import { FlowLab } from './src/lab/FlowLab';
-import { Mark, TabIcon } from './src/lab/kit';
+import { LiveMark, Mark, TabIcon } from './src/lab/kit';
 import { Splash } from './src/lab/Splash';
 import { SplashTurn } from './src/lab/SplashTurn';
 import { MyLab } from './src/lab/MyLab';
@@ -226,7 +226,7 @@ export default function App() {
       <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <View style={[styles.topBar, tab === 'pulse' && { zIndex: 3, backgroundColor: vaultAtTop ? 'transparent' : colors.bg }]}>
-          <Mark size={22} open={freshness ? freshnessOpen[freshness] : 1} />
+          <LiveMark size={22} open={freshness ? freshnessOpen[freshness] : 1} />
           <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.wordmark}>SKR EYES</Text>
           {/* One answer, said once.
               This corner used to say the same thing three ways at the same

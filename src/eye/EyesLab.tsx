@@ -13,6 +13,7 @@ import { EyeApiError, fetchEyeNetwork, sendGaze, type EyeNetwork, type EyeStatus
 import { EYE_BASE_URL, EYE_FINGER_ENABLED } from './config';
 import { EyePanel } from './EyePanel';
 import { EyeOnboarding } from './EyeOnboarding';
+import { PortalEye } from './PortalEye';
 import { WitnessWalkthrough, getWitnessState } from './WitnessWalkthrough';
 import { IrisScene, type IrisHandle } from './IrisScene';
 import { openEyeStream } from './stream';
@@ -55,45 +56,27 @@ const hh = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
 
 const serialName = (serial: number) => `EYE #${String(serial).padStart(4, '0')}`;
 
-// What the pupil counts: your own next Blink when you have an Eye, the
-// word Ready when it is due, and otherwise the end of the Blink day (UTC
-// midnight), when every streak is settled.
-type PupilClock = { eyebrow: string; at: number | null; fixed: string | null };
-
-// The next UTC midnight after a Blink day (YYYY-MM-DD).
-function dayEnd(day: string | null | undefined): number | null {
-  const [year = NaN, month = NaN, date = NaN] = String(day ?? '').split('-').map(Number);
-  if (![year, month, date].every(Number.isFinite)) return null;
-  return Date.UTC(year, month - 1, date + 1);
+// The pupil: the Eye itself, the NFT's portal, over the centre of the Iris.
+// It blinks when anybody on the network blinks, and on its own every few
+// seconds so the tab is never a still picture.
+function PupilEye({ size, blink }: { size: number; blink: number }) {
+  const [idle, setIdle] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => { if (AppState.currentState === 'active') setIdle((count) => count + 1); }, 6_500);
+    return () => clearInterval(timer);
+  }, []);
+  return <PortalEye size={size} open blink={blink + idle} />;
 }
 
-// The pupil's own clock. It is the one thing on the tab that changes every
-// second, so it is the one thing redrawn every second.
-function Pupil({ clock: face, label, size, onEdge }: { clock: PupilClock; label: string | null; size: number; onEdge: () => void }) {
-  const [now, setNow] = useState(() => Date.now());
-  const crossed = useRef<number | null>(null);
-  const edge = face.at;
-  useEffect(() => {
-    if (edge == null) return;
-    setNow(Date.now());
-    const timer = setInterval(() => { if (AppState.currentState === 'active') setNow(Date.now()); }, 1_000);
-    return () => clearInterval(timer);
-  }, [edge]);
-  const remaining = edge != null ? edge - now : null;
-  // The clock ran out under us: ask once, a second late so the server has
-  // turned too.
-  useEffect(() => {
-    if (edge == null || remaining == null || remaining > -1_000 || crossed.current === edge) return;
-    crossed.current = edge;
-    onEdge();
-  }, [edge, remaining, onEdge]);
-  return (
-    <View pointerEvents="none" style={[styles.pupil, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text numberOfLines={1} style={styles.pupilEyebrow}>{face.eyebrow.toUpperCase()}</Text>
-      <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.pupilTime, face.fixed ? { color: colors.positive } : null]}>{face.fixed ?? (remaining != null ? clock(Math.max(0, remaining)) : '--:--:--')}</Text>
-      {label ? <Text numberOfLines={1} style={styles.pupilLabel}>{label}</Text> : null}
-    </View>
-  );
+// What each ring of the Iris stands for: the streak an Eye needs to stand
+// on it, innermost first (the service's src/iris.mjs).
+const RING_FLOOR = [30, 21, 14, 10, 7, 5, 3, 2, 0];
+function ringDays(index: number): string {
+  if (index === 0) return `${t('Perfect Eye')} · 30+`;
+  const from = RING_FLOOR[index] ?? 0;
+  const to = (RING_FLOOR[index - 1] ?? 1) - 1;
+  if (from <= 1) return t('New, or 1 day');
+  return from === to ? t('{count} days', { count: from }) : t('{from} to {to} days', { from, to });
 }
 
 // One Eye, opened from its ring: the card, the facts, and the Gaze.
@@ -197,6 +180,8 @@ export function EyesLab() {
   // title; the scene lights the rings itself.
   const [liveBlinks, setLiveBlinks] = useState(0);
   const [picked, setPicked] = useState<NetworkEye | null>(null);
+  // Every blink heard, yours included: the pupil blinks with it.
+  const [pupilBlink, setPupilBlink] = useState(0);
   const scene = useRef<IrisHandle>(null);
   const ticket = useRef(0);
   const reading = useRef(false);
@@ -269,6 +254,7 @@ export function EyesLab() {
       close = openEyeStream((message) => {
         if (message.event === 'blink') {
           scene.current?.push({ type: 'blink', items: [message.data] });
+          setPupilBlink((count) => count + 1);
           if (!blinked.current.has(message.data.serial)) {
             blinked.current.add(message.data.serial);
             setLiveBlinks((count) => count + 1);
@@ -324,7 +310,6 @@ export function EyesLab() {
     setNetwork((current) => current ? { ...current, gazes: { ...current.gazes, sentToday, limit } } : current);
   }, []);
 
-  const onEdge = useCallback(() => { void read(); }, [read]);
 
   const onStatus = useCallback((next: EyeStatus) => setStatus(next), []);
 
@@ -379,6 +364,7 @@ export function EyesLab() {
   // arriving, and the count under the title moves with it.
   const onBlinked = useCallback(() => {
     const me = network?.me;
+    setPupilBlink((count) => count + 1);
     if (!me) return;
     scene.current?.push({ type: 'blink', items: [{ serial: me.serial, ring: me.ring }] });
     if (!blinked.current.has(me.serial)) {
@@ -388,23 +374,10 @@ export function EyesLab() {
   }, [network]);
 
   const size = width;
-  const pupil = Math.round(size * 0.165 * 2);
+  // The portal's glowing ring sits just inside the innermost rail.
+  const pupil = Math.round(size * 0.39);
   const watching = network?.totals.watching ?? network?.totals.eyes ?? status?.network?.watching ?? status?.network?.eyes ?? null;
-  // One object per face, not per render: the pupil restarts its clock on a
-  // new one. Your own Eye, when the server paces Blinks: Ready, or the time
-  // to the next one. Otherwise the end of the Blink day.
-  const mine = status?.eye ? status.blink : null;
-  const blinkDay = network?.day ?? status?.blink?.day ?? null;
-  const pupilClock = useMemo<PupilClock>(() => {
-    if (mine && typeof mine.ready === 'boolean') {
-      if (mine.ready) return { eyebrow: t('Your Blink'), at: null, fixed: t('Ready') };
-      return { eyebrow: t('Next Blink'), at: mine.nextAt ? epochMs(mine.nextAt) : null, fixed: null };
-    }
-    const end = dayEnd(blinkDay);
-    return end != null ? { eyebrow: t('New day in'), at: end, fixed: null } : { eyebrow: t('The Iris'), at: null, fixed: null };
-  }, [mine?.ready, mine?.nextAt, blinkDay]);
   const nextSerial = network ? network.totals.eyes + 1 : status ? status.network.eyes + 1 : null;
-  const eventLabel = network?.event?.label ?? status?.blink?.event?.label ?? null;
   const blinkedToday = network ? network.totals.blinkedToday + liveBlinks : null;
   const received = network?.gazes.received ?? [];
   const circles = network?.circles ?? [];
@@ -425,6 +398,15 @@ export function EyesLab() {
   const percentile = network?.me?.percentile ?? null;
   const streaks = network?.leaders?.streaks?.slice(0, 3) ?? [];
   const newest = network?.leaders?.newest?.slice(-5) ?? [];
+  // The Eyes themselves, as their cards: the ones that blinked today first,
+  // then the ones nearest the pupil. Yours among them.
+  const gallery = useMemo(() => {
+    if (!network) return [];
+    return [...network.eyes]
+      .sort((a, b) => Number(b.blinkedToday) - Number(a.blinkedToday) || a.ring - b.ring || a.serial - b.serial)
+      .slice(0, 40);
+  }, [network]);
+  const myEye = network?.me ? network.eyes.find((eye) => eye.serial === network.me?.serial) ?? null : null;
 
   return (
     <View style={styles.screen}>
@@ -433,7 +415,7 @@ export function EyesLab() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void read(true)} tintColor={colors.accent} />}
       >
-        <EyePanel wallet={wallet} onStatus={onStatus} onBlinked={onBlinked} onConnect={() => void connect()} onBeforeOpen={beforeOpen} onHowItWorks={showIntro} openRequest={openRequest} nextSerial={nextSerial} connecting={connecting} connectError={connectError} />
+        <EyePanel wallet={wallet} onStatus={onStatus} onBlinked={onBlinked} onConnect={() => void connect()} onBeforeOpen={beforeOpen} onHowItWorks={showIntro} onOpenCard={myEye ? () => setPicked(myEye) : undefined} openRequest={openRequest} nextSerial={nextSerial} connecting={connecting} connectError={connectError} />
 
         <View style={styles.head}>
           <Eyebrow>{t('The Iris')}</Eyebrow>
@@ -456,9 +438,27 @@ export function EyesLab() {
         <View style={[styles.sceneWrap, { height: size, marginHorizontal: -spacing.lg }]}>
           <IrisScene ref={scene} size={size} onTap={onTap} />
           <View pointerEvents="none" style={[styles.pupilWrap, { top: (size - pupil) / 2, left: (size - pupil) / 2 }]}>
-            <Pupil clock={pupilClock} label={eventLabel} size={pupil} onEdge={onEdge} />
+            <PupilEye size={pupil} blink={pupilBlink} />
           </View>
         </View>
+
+        {gallery.length > 0 ? (
+          <View style={styles.section}>
+            <Eyebrow>{t('Eyes on the Iris')}</Eyebrow>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -spacing.lg }} contentContainerStyle={styles.gallery}>
+              {gallery.map((eye) => {
+                const me = network?.me?.serial === eye.serial;
+                return (
+                  <Pressable key={eye.serial} onPress={() => { void Haptics.selectionAsync(); setPicked(eye); }} style={styles.galleryItem} accessibilityRole="button" accessibilityLabel={serialName(eye.serial)}>
+                    <Image source={{ uri: `${EYE_BASE_URL}/eye/${eye.serial}.png` }} style={[styles.galleryImage, me && styles.galleryMine, !eye.blinkedToday && styles.galleryShut]} />
+                    <Text numberOfLines={1} style={[styles.galleryName, me && styles.galleryNameMine]}>{me ? t('you') : eye.name}</Text>
+                    <Text numberOfLines={1} style={styles.galleryMeta}>{`${serialName(eye.serial)} · ${eye.streak === 1 ? t('1 day') : t('{count} days', { count: integer(eye.streak) })}`}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        ) : null}
 
         {network?.me ? (
           <View style={styles.gazes}>
@@ -500,12 +500,13 @@ export function EyesLab() {
         {ladder ? (
           <View style={styles.section}>
             <Eyebrow>{t('The ladder')}</Eyebrow>
+            <Text style={styles.sectionLine}>{t('Each ring is a streak. A Blink every day moves your Eye one ring closer to the pupil.')}</Text>
             {ladder.map((count, index) => {
               const mine = myRing === index;
               return (
                 <View key={index} style={styles.rung}>
                   <View style={styles.circleRow}>
-                    <Text numberOfLines={1} style={[styles.rungName, mine && styles.rungMine]}>{t('ring {ring}', { ring: index + 1 })}</Text>
+                    <Text numberOfLines={1} style={[styles.rungName, mine && styles.rungMine]}>{ringDays(index)}</Text>
                     <Text numberOfLines={1} style={[styles.circleCount, mine && styles.rungMine]}>{count === 1 ? t('1 eye') : t('{count} eyes', { count: integer(count) })}</Text>
                   </View>
                   <Meter percent={ladderPeak > 0 ? (count / ladderPeak) * 100 : 0} tone={mine ? colors.metal : colors.positive} height={3} />
@@ -603,6 +604,15 @@ const styles = StyleSheet.create({
   sub: { color: colors.muted, fontFamily: font.regular, ...type.body, fontVariant: ['tabular-nums'] },
   sceneWrap: { backgroundColor: colors.bg },
   pupilWrap: { position: 'absolute' },
+  // The Eyes as cards, in a row that scrolls sideways.
+  gallery: { paddingHorizontal: spacing.lg, gap: spacing.md },
+  galleryItem: { width: 96, gap: 3 },
+  galleryImage: { width: 96, height: 96, borderRadius: radius.inner, backgroundColor: colors.inset },
+  galleryMine: { borderWidth: 1.5, borderColor: colors.metal },
+  galleryShut: { opacity: 0.55 },
+  galleryName: { color: colors.text, fontFamily: font.semibold, ...type.micro },
+  galleryNameMine: { color: colors.metal },
+  galleryMeta: { color: colors.faint, fontFamily: font.regular, fontSize: 10.5, lineHeight: 14, fontVariant: ['tabular-nums'] },
   pupil: { alignItems: 'center', justifyContent: 'center', gap: 2 },
   pupilEyebrow: { color: colors.muted, fontFamily: font.semibold, ...type.eyebrow },
   pupilTime: { color: colors.text, fontFamily: font.black, fontSize: 24, lineHeight: 30, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },

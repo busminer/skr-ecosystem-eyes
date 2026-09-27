@@ -11,6 +11,8 @@ import { getSeekerWitness, WITNESS_ERROR } from '../../modules/seeker-witness';
 import { ensureWitness, isFingerCancel } from './finger';
 import { readWitness, WitnessError, type WitnessRecord, type WitnessStage } from './witness';
 import { BEAT_MS, Stepper, keyFingerprint, shorten, usePaced, type Failure, type StepModel } from './Stepper';
+import { PortalEye } from './PortalEye';
+import { ritual } from '../sound';
 
 // Verifying the Seeker, as something a person is walked through rather than
 // something that happens to them.
@@ -69,7 +71,7 @@ function when(iso: string): string {
 }
 
 function buzz() {
-  if (prefValue('buzz', true)) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  ritual('chime', 0.3);
 }
 
 // What went wrong, in words the person can act on. The attestor's own reason
@@ -308,6 +310,9 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.eyeTop}>
+        <PortalEye size={132} open={false} instant />
+      </View>
       <Eyebrow>{t('Your Eye')}</Eyebrow>
       <Text style={styles.title}>{phase === 'landing' && record ? t('Device verified') : t('Verify this Seeker')}</Text>
 
@@ -365,4 +370,5 @@ const styles = StyleSheet.create({
   monoDim: { color: colors.faint, fontFamily: font.mono, ...type.micro, letterSpacing: 0.3 },
   pills: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
   actions: { gap: spacing.sm, marginTop: spacing.sm, borderRadius: radius.card },
+  eyeTop: { alignItems: 'center', marginTop: spacing.sm },
 });

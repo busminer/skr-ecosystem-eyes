@@ -13,6 +13,8 @@ import { isFingerCancel } from './finger';
 import { intentFresh, runMove, stepFor, type MoveKind, type MoveResume, type MoveStage, type MoveStep } from './move';
 import { BEAT_MS, Stepper, keyFingerprint, shorten, usePaced, type Failure, type StepModel } from './Stepper';
 import { epochMs } from './time';
+import { PortalEye } from './PortalEye';
+import { ritual } from '../sound';
 
 // The sheet that shows a move as it happens: opening the Eye, or one Blink.
 //
@@ -33,8 +35,13 @@ import { epochMs } from './time';
 type Key = MoveStep | 'eye';
 type Sub = 'challenge' | 'finger' | 'intent' | 'wallet';
 
+// Every step that lands is struck like glass, with its touch.
 function buzz() {
-  if (prefValue('buzz', true)) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  ritual('chime', 0.3);
+}
+
+function thud() {
+  if (prefValue('buzz', true)) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
 }
 
 function describe(error: unknown): Failure {
@@ -72,6 +79,10 @@ export function MoveSheet({ kind, wallet, onDone, onClose }: { kind: MoveKind; w
   const [signed, setSigned] = useState<string | null>(null);
   const [result, setResult] = useState<EyeSubmitResult | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
+  // The Eye on top of the sheet: shut until an open lands, blinking when a
+  // Blink does.
+  const [eyeOpen, setEyeOpen] = useState(kind === 'blink');
+  const [eyeBlink, setEyeBlink] = useState(0);
   // Each run has its own ticket; an unmount moves it on and drops the answer.
   const ticket = useRef(0);
   const stage = useRef<MoveStage['stage'] | null>(null);
@@ -137,10 +148,13 @@ export function MoveSheet({ kind, wallet, onDone, onClose }: { kind: MoveKind; w
       if (mine !== ticket.current) return;
       push(() => { setResult(answer); setDone(idx('network') + 1); buzz(); });
       if (kind === 'open') {
-        push(() => setActive(idx('eye')));
-        push(() => { setDone(keys.length); setActive(-1); buzz(); });
+        push(() => { setActive(idx('eye')); ritual('heart', 0.5); });
+        push(() => { setDone(keys.length); setActive(-1); setEyeOpen(true); thud(); });
+        // A beat to watch the lids part before the sheet gives way.
+        push(() => undefined);
+        push(() => undefined);
       } else {
-        push(() => setActive(-1));
+        push(() => { setActive(-1); setEyeBlink((count) => count + 1); });
       }
       // The lids are the panel's to move; the sheet is gone before they do.
       push(() => handlers.current.onDone(answer));
@@ -241,6 +255,9 @@ export function MoveSheet({ kind, wallet, onDone, onClose }: { kind: MoveKind; w
       <View style={styles.sheet}>
         <View style={styles.grip} />
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.eyeTop}>
+            <PortalEye size={120} open={eyeOpen} blink={eyeBlink} instant={reduced} />
+          </View>
           <Stepper steps={steps} reduced={reduced} eyebrow={kind === 'open' ? t('Open your Eye') : t('Blink')} />
           {idle ? (
             <View style={styles.actions}>
@@ -260,6 +277,7 @@ const styles = StyleSheet.create({
   grip: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: colors.lineStrong, marginBottom: spacing.sm },
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   actions: { gap: spacing.sm, marginTop: spacing.xs },
+  eyeTop: { alignItems: 'center', marginBottom: -spacing.xs },
   line: { color: colors.muted, fontFamily: font.regular, ...type.small },
   mono: { color: colors.text, fontFamily: font.mono, ...type.small, letterSpacing: 0.3 },
   serial: { color: colors.metal, fontFamily: font.monoBold, fontSize: 12, letterSpacing: 0.8 },

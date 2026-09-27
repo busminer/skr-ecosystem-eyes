@@ -31,6 +31,12 @@ const sources = {
   // on when it is first opened, and the wink for every Blink after that.
   wake: require('../assets/sound/wake.wav'),
   wink: require('../assets/sound/wink.wav'),
+  // The walk-through of the Eye (27.09): a low fifth that swells as a page
+  // arrives, a struck glass for every step that lights, and a heartbeat, two
+  // soft knocks, just before the lids part.
+  hum: require('../assets/sound/hum.wav'),
+  chime: require('../assets/sound/chime.wav'),
+  heart: require('../assets/sound/heart.wav'),
 } as const;
 
 export type Cue = keyof typeof sources;
@@ -63,7 +69,20 @@ export function cueHaptic(cue: Cue): void {
     case 'drop': impact(Haptics.ImpactFeedbackStyle.Light); break;
     case 'flip': break; // the flip board buzzes on its own, once per change
     case 'wake': case 'wink': break; // the Eye times its own buzz to the lids
+    case 'hum': impact(Haptics.ImpactFeedbackStyle.Soft); break;
+    case 'chime': impact(Haptics.ImpactFeedbackStyle.Light); break;
+    // One knock each, on the knocks of the sound.
+    case 'heart': impact(Haptics.ImpactFeedbackStyle.Heavy); impact(Haptics.ImpactFeedbackStyle.Medium, 210); break;
   }
+}
+
+// A sound with its touch, each only if the person has left it on: the
+// Eye's moments use this, so a phone on silent still feels them.
+export function ritual(cue: Cue, volume = 0.4): void {
+  const sound = prefValue('sound', true);
+  const buzz = prefValue('buzz', true);
+  if (sound) playCue(cue, volume, buzz);
+  else if (buzz) cueHaptic(cue);
 }
 
 export function playCue(cue: Cue, volume = 0.5, buzz = true): void {

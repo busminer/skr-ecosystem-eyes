@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
-import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import Svg, { Circle, Defs, G, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { t } from '../i18n';
 import { integer, shortAddress } from '../format';
 import { prefValue } from '../prefs';
+import { ritual, type Cue } from '../sound';
 import { useReducedMotion } from '../useReducedMotion';
 import { Button } from '../lab/kit';
 import { colors, font, radius, spacing, type } from '../theme';
@@ -14,36 +15,117 @@ import { EYE_FINGER_ENABLED } from './config';
 import { cooldownHours, leftAtPrice, rentOf, sol, usd } from './money';
 import { PortalEye } from './PortalEye';
 
-// The Eye, explained before it is bought, by showing rather than telling.
+// The Eye, before it is bought: a small ritual rather than a tutorial.
 //
-// Five pages, one idea each, each with a picture that moves the way the
-// thing itself will: the Eye opening with its number under it; the road every
-// move walks (finger, wallet, network, Eye) lit one stop at a time with a
-// line saying what happens at that stop; the eight-hour dial that a Blink
-// lives on; the Iris, with one Eye climbing ring by ring toward the pupil as
-// its streak grows. The last page is the person's own: what this wallet and
-// this phone already have, what the next Eye's number is, what it costs to
-// the lamport, where the price steps up, and the one button that starts it.
+// Night sky, the same as the NFT's (stars, a green-blue aurora low down, the
+// sea catching it), and in the middle of every page the Eye itself, the
+// portal cut from the collection card, alive: it wakes, it blinks, it waits.
+// Five pages, one idea each, each told by the Eye doing the thing:
 //
-// It is shown once, the first time the Eyes tab is opened by someone without
-// an Eye, and again whenever they ask ("How it works"). Every picture is
-// still for a person who asked the phone for less motion.
+//   1. It wakes: two heartbeats, the lids part, its number rises under it.
+//   2. It is opened by you: three lights round it, one per touch (finger,
+//      wallet, network), each struck like glass, then the heartbeat and the
+//      lids part. The line under it says what that light is.
+//   3. It blinks every eight hours: a dial of three arcs round it, a hand
+//      walking it, and at each arc's end the Eye blinks.
+//   4. It is one of many: the Iris, every Eye a small eye on its ring, yours
+//      stepping ring by ring to the pupil and turning gold at thirty days.
+//   5. It is yours to open: what this wallet and this phone already have,
+//      the number it will carry, the price to the lamport, the one button.
 //
-// Nothing here is promised that the app does not do: the card does not grow
-// new rings, so no page says it does; the streak moves the Eye on the Iris,
-// and that is what the fourth page shows.
+// Every action has its sound and its touch: a low fifth swells as a page
+// arrives, glass for each light, two soft knocks before the lids part, the
+// wake note as they do, the wink on a blink. Both follow the app's own
+// switches for sound and vibration; a person who asked the phone for less
+// motion gets the pages still.
+//
+// Nothing is promised that the app does not do: the card does not grow new
+// rings, so no page says it does; the streak moves the Eye on the Iris.
 
 const PAGES = 5;
 
-function buzz() {
+// A sound with its touch, each only if the person has left it on.
+const cue = (name: Cue, volume: number) => ritual(name, volume);
+
+function tick() {
   if (prefValue('buzz', true)) void Haptics.selectionAsync().catch(() => undefined);
+}
+
+function thud() {
+  if (prefValue('buzz', true)) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
+}
+
+// ------------------------------------------------------------------- sky --
+
+// Placed the same way every time: a small hash, not Math.random.
+function hash(n: number) {
+  let x = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+const STARS = Array.from({ length: 110 }, (_, i) => ({ x: hash(i * 3 + 1), y: hash(i * 7 + 2) * 0.8, r: 0.5 + hash(i * 11 + 3) * 1.1, a: 0.2 + hash(i * 13 + 4) * 0.6 }));
+const TWINKLES = Array.from({ length: 14 }, (_, i) => ({ x: hash(i * 17 + 5), y: hash(i * 19 + 6) * 0.72, r: 1.2 + hash(i * 23 + 7) * 1.2, d: 1_400 + hash(i * 29 + 8) * 2_200, o: hash(i * 31 + 9) * 2_000 }));
+
+function Twinkle({ x, y, r, d, o, still }: { x: number; y: number; r: number; d: number; o: number; still: boolean }) {
+  const glow = useSharedValue(0.25);
+  useEffect(() => {
+    if (still) { glow.value = 0.6; return; }
+    glow.value = withDelay(o, withRepeat(withSequence(withTiming(1, { duration: d, easing: Easing.inOut(Easing.sin) }), withTiming(0.15, { duration: d, easing: Easing.inOut(Easing.sin) })), -1, false));
+  }, [still, d, o, glow]);
+  const style = useAnimatedStyle(() => ({ opacity: glow.value, transform: [{ scale: 0.7 + glow.value * 0.5 }] }));
+  return <Animated.View pointerEvents="none" style={[styles.twinkle, { left: x - r * 2, top: y - r * 2, width: r * 4, height: r * 4, borderRadius: r * 2 }, style]} />;
+}
+
+// The NFT's night: stars, an aurora low down, the sea catching it.
+function NightSky({ width, height, still }: { width: number; height: number; still: boolean }) {
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <Svg width={width} height={height}>
+        <Defs>
+          <RadialGradient id="aurora1" cx="0.22" cy="0.8" rx="0.8" ry="0.28">
+            <Stop offset="0" stopColor="#1FD6A8" stopOpacity="0.20" />
+            <Stop offset="1" stopColor="#1FD6A8" stopOpacity="0" />
+          </RadialGradient>
+          <RadialGradient id="aurora2" cx="0.85" cy="0.66" rx="0.6" ry="0.26">
+            <Stop offset="0" stopColor="#2FA8FF" stopOpacity="0.16" />
+            <Stop offset="1" stopColor="#2FA8FF" stopOpacity="0" />
+          </RadialGradient>
+          <RadialGradient id="halo" cx="0.5" cy="0.34" rx="0.6" ry="0.3">
+            <Stop offset="0" stopColor="#56E0FF" stopOpacity="0.10" />
+            <Stop offset="1" stopColor="#56E0FF" stopOpacity="0" />
+          </RadialGradient>
+          <LinearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor="#0B2A33" stopOpacity="0" />
+            <Stop offset="1" stopColor="#0B2A33" stopOpacity="0.55" />
+          </LinearGradient>
+        </Defs>
+        <Rect x={0} y={0} width={width} height={height} fill="#03060A" />
+        <Rect x={0} y={0} width={width} height={height} fill="url(#aurora1)" />
+        <Rect x={0} y={0} width={width} height={height} fill="url(#aurora2)" />
+        <Rect x={0} y={0} width={width} height={height} fill="url(#halo)" />
+        {STARS.map((star, i) => <Circle key={i} cx={star.x * width} cy={star.y * height} r={star.r} fill="#D8F4FF" opacity={star.a} />)}
+        <Rect x={0} y={height * 0.78} width={width} height={height * 0.22} fill="url(#sea)" />
+      </Svg>
+      {TWINKLES.map((star, i) => <Twinkle key={i} x={star.x * width} y={star.y * height} r={star.r} d={star.d} o={star.o} still={still} />)}
+    </View>
+  );
+}
+
+// A soft light that breathes behind the Eye.
+function Breath({ size, still, tone = colors.accent }: { size: number; still: boolean; tone?: string }) {
+  const k = useSharedValue(0.5);
+  useEffect(() => {
+    if (still) { k.value = 0.6; return; }
+    k.value = withRepeat(withSequence(withTiming(1, { duration: 2_400, easing: Easing.inOut(Easing.sin) }), withTiming(0.35, { duration: 2_400, easing: Easing.inOut(Easing.sin) })), -1, false);
+  }, [still, k]);
+  const style = useAnimatedStyle(() => ({ opacity: 0.2 + k.value * 0.35, transform: [{ scale: 0.92 + k.value * 0.12 }] }));
+  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', width: size, height: size, borderRadius: size / 2, backgroundColor: tone, shadowColor: tone, shadowOpacity: 1, shadowRadius: size / 3, elevation: 0 }, styles.breath, style]} />;
 }
 
 // ---------------------------------------------------------------- pictures --
 
-// Page one: the Eye as the NFT draws it opens, with a touch, and its number
-// comes up under it; then it blinks now and then, as it will every day.
-function EyeBirth({ active, reduced, serial, size }: { active: boolean; reduced: boolean; serial: string | null; size: number }) {
+// Page one: it wakes. Two heartbeats, the lids part, the number rises.
+function Awakening({ active, reduced, serial, size }: { active: boolean; reduced: boolean; serial: string | null; size: number }) {
   const [open, setOpen] = useState(reduced);
   const [blink, setBlink] = useState(0);
   const shown = useSharedValue(reduced ? 1 : 0);
@@ -52,27 +134,30 @@ function EyeBirth({ active, reduced, serial, size }: { active: boolean; reduced:
     if (!active) { setOpen(false); shown.value = 0; return; }
     setOpen(false);
     shown.value = 0;
-    const first = setTimeout(() => {
-      setOpen(true);
-      shown.value = withDelay(650, withTiming(1, { duration: 500 }));
-      if (prefValue('buzz', true)) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-    }, 500);
-    const loop = setInterval(() => setBlink((count) => count + 1), 3_600);
-    return () => { clearTimeout(first); clearInterval(loop); };
+    const timers = [
+      setTimeout(() => cue('heart', 0.55), 350),
+      setTimeout(() => cue('heart', 0.45), 1_250),
+      setTimeout(() => { setOpen(true); thud(); cue('wake', 0.42); shown.value = withDelay(700, withTiming(1, { duration: 700 })); }, 2_100),
+    ];
+    const loop = setInterval(() => setBlink((count) => count + 1), 4_800);
+    return () => { timers.forEach(clearTimeout); clearInterval(loop); };
   }, [active, reduced, shown]);
-  const tag = useAnimatedStyle(() => ({ opacity: shown.value, transform: [{ translateY: (1 - shown.value) * 8 }] }));
+  const tag = useAnimatedStyle(() => ({ opacity: shown.value, transform: [{ translateY: (1 - shown.value) * 12 }] }));
   return (
     <View style={{ width: size, alignItems: 'center' }}>
-      <PortalEye size={size} open={open} blink={blink} instant={reduced} />
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <Breath size={size * 0.9} still={reduced} />
+        <PortalEye size={size} open={open} blink={blink} instant={reduced} />
+      </View>
       <Animated.Text style={[styles.serial, tag]}>{serial ?? ' '}</Animated.Text>
     </View>
   );
 }
 
-// The four stops of every move, drawn small.
-function RoadIcon({ name, tone }: { name: 'finger' | 'wallet' | 'network'; tone: string }) {
+// The three touches, drawn small.
+function TouchIcon({ name, tone }: { name: 'finger' | 'wallet' | 'network'; tone: string }) {
   return (
-    <Svg width={26} height={26} viewBox="0 0 26 26">
+    <Svg width={24} height={24} viewBox="0 0 26 26">
       {name === 'finger' ? (
         <G fill="none" stroke={tone} strokeWidth={1.7} strokeLinecap="round">
           <Path d="M5.2 10.8a8 8 0 0 1 15.6 0" />
@@ -98,65 +183,7 @@ function RoadIcon({ name, tone }: { name: 'finger' | 'wallet' | 'network'; tone:
   );
 }
 
-const ROAD = ['finger', 'wallet', 'network', 'eye'] as const;
-
-// Page two: the road. A light walks the four stops, and the line under them
-// says what happens at the stop it is on.
-function Road({ active, reduced, width, finger }: { active: boolean; reduced: boolean; width: number; finger: boolean }) {
-  const stops = finger ? ROAD : ROAD.slice(1);
-  const last = stops.length - 1;
-  const [at, setAt] = useState(reduced ? last : -1);
-  useEffect(() => {
-    if (reduced) { setAt(last); return; }
-    if (!active) { setAt(-1); return; }
-    let step = -1;
-    setAt(-1);
-    // One stop a beat; the Eye stays open two beats before the road starts over.
-    const timer = setInterval(() => {
-      step = step >= last + 2 ? -1 : step + 1;
-      setAt(Math.min(step, last));
-    }, 950);
-    return () => clearInterval(timer);
-  }, [active, reduced, last]);
-
-  const captions: Record<(typeof ROAD)[number], string> = {
-    finger: t('Your fingerprint signs'),
-    wallet: t('Your wallet approves and pays'),
-    network: t('The network writes it down'),
-    eye: t('Your Eye opens'),
-  };
-  const labels: Record<(typeof ROAD)[number], string> = { finger: t('Finger'), wallet: t('Wallet'), network: t('Network'), eye: t('Eye') };
-  const node = Math.min(64, Math.floor((width - spacing.lg * 2) / (stops.length + 0.9)));
-  return (
-    <View style={{ width: width - spacing.lg * 2, alignItems: 'center', gap: spacing.lg }}>
-      <View style={styles.road}>
-        {stops.map((name, index) => {
-          const done = at > index;
-          const here = at === index;
-          const tone = here ? colors.accent : done ? colors.positive : colors.dim;
-          return (
-            <View key={name} style={styles.roadStop}>
-              <View style={styles.roadRow}>
-                {index > 0 ? <View style={[styles.roadLine, { backgroundColor: at >= index ? colors.positive : colors.line }]} /> : <View style={styles.roadLineGap} />}
-                <View style={[styles.roadNode, { width: node, height: node, borderRadius: node / 2, borderColor: tone, backgroundColor: here ? 'rgba(86, 224, 255, 0.10)' : colors.inset }]}>
-                  {name === 'eye'
-                    ? <PortalEye size={node - 6} open={at >= index} instant={reduced} />
-                    : <RoadIcon name={name} tone={tone} />}
-                </View>
-                {index < last ? <View style={[styles.roadLine, { backgroundColor: at > index ? colors.positive : colors.line }]} /> : <View style={styles.roadLineGap} />}
-              </View>
-              <Text numberOfLines={1} style={[styles.roadLabel, { color: here ? colors.text : done ? colors.positive : colors.faint }]}>{labels[name]}</Text>
-            </View>
-          );
-        })}
-      </View>
-      <Text style={styles.roadCaption}>{at >= 0 && stops[at] ? captions[stops[at]] : ' '}</Text>
-    </View>
-  );
-}
-
-// An arc of the dial, from one angle to another, in degrees clockwise from
-// twelve o'clock.
+// An arc round a centre, degrees clockwise from twelve o'clock.
 function arc(cx: number, cy: number, r: number, from: number, to: number): string {
   const point = (deg: number) => {
     const rad = ((deg - 90) * Math.PI) / 180;
@@ -166,9 +193,76 @@ function arc(cx: number, cy: number, r: number, from: number, to: number): strin
   return `M ${point(from)} A ${r} ${r} 0 ${large} 1 ${point(to)}`;
 }
 
-// Page three: the day as a dial of three eight-hour stretches. A hand walks
-// round; at the end of each stretch the Eye in the middle blinks and the next
-// stretch lights.
+const TOUCHES = ['finger', 'wallet', 'network'] as const;
+
+// Page two: opened by you. Three lights round the Eye, one per touch; the
+// line under it says what each is; then the heartbeat, and it opens.
+function Orbit({ active, reduced, size, finger, onCaption }: { active: boolean; reduced: boolean; size: number; finger: boolean; onCaption: (text: string) => void }) {
+  const stops = finger ? TOUCHES : TOUCHES.slice(1);
+  const n = stops.length;
+  const [at, setAt] = useState(reduced ? n : -1);
+  const captions = useMemo<Record<(typeof TOUCHES)[number] | 'eye', string>>(() => ({
+    finger: t('Your fingerprint signs'),
+    wallet: t('Your wallet approves and pays'),
+    network: t('Solana writes it down'),
+    eye: t('Your Eye opens'),
+  }), []);
+  useEffect(() => {
+    if (reduced) { setAt(n); onCaption(captions.eye); return; }
+    if (!active) { setAt(-1); return; }
+    let step = -1;
+    setAt(-1);
+    onCaption(' ');
+    const timer = setInterval(() => {
+      step += 1;
+      if (step > n + 2) step = -1;
+      if (step >= 0 && step < n) { cue('chime', 0.32); onCaption(captions[stops[step] ?? 'eye']); }
+      if (step === n) { cue('heart', 0.5); }
+      if (step === n + 1) { thud(); cue('wake', 0.38); onCaption(captions.eye); }
+      if (step === -1) onCaption(' ');
+      setAt(Math.min(step, n + 1));
+    }, 1_050);
+    return () => clearInterval(timer);
+  }, [active, reduced, n, stops, captions, onCaption]);
+
+  const half = size / 2;
+  const R = size * 0.42;
+  const node = Math.round(size * 0.2);
+  const angles = stops.map((_, i) => (360 / n) * i);
+  const open = at >= n + 1 || (reduced && at >= n);
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
+        <Circle cx={half} cy={half} r={R} fill="none" stroke={colors.line} strokeWidth={1.2} strokeDasharray="2 5" />
+        {angles.map((from, i) => {
+          const to = i + 1 < n ? (angles[i + 1] ?? 360) : 360;
+          const lit = at > i;
+          return <Path key={i} d={arc(half, half, R, from + 9, to - 9)} fill="none" stroke={lit ? colors.accent : 'transparent'} strokeWidth={2.4} strokeLinecap="round" opacity={0.85} />;
+        })}
+      </Svg>
+      <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
+        <Breath size={size * 0.5} still={reduced} />
+        <PortalEye size={Math.round(size * 0.56)} open={open} instant={reduced} />
+      </View>
+      {stops.map((name, i) => {
+        const rad = (((angles[i] ?? 0) - 90) * Math.PI) / 180;
+        const x = half + R * Math.cos(rad) - node / 2;
+        const y = half + R * Math.sin(rad) - node / 2;
+        const lit = at >= i;
+        const here = at === i;
+        const tone = here ? colors.accent : lit ? colors.positive : colors.dim;
+        return (
+          <View key={name} style={[styles.orb, { left: x, top: y, width: node, height: node, borderRadius: node / 2, borderColor: tone, backgroundColor: here ? 'rgba(86, 224, 255, 0.16)' : lit ? 'rgba(124, 240, 188, 0.08)' : 'rgba(7, 12, 18, 0.9)', shadowColor: tone, shadowOpacity: here ? 0.9 : 0, shadowRadius: 12 }]}>
+            <TouchIcon name={name} tone={tone} />
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+// Page three: blink every eight hours. A dial of three arcs round the Eye, a
+// hand walking it; at each arc's end the Eye blinks.
 function BlinkDial({ active, reduced, size, slots }: { active: boolean; reduced: boolean; size: number; slots: number }) {
   const [blink, setBlink] = useState(0);
   const [slot, setSlot] = useState(0);
@@ -179,12 +273,13 @@ function BlinkDial({ active, reduced, size, slots }: { active: boolean; reduced:
     turn.value = 0;
     if (reduced || !active) return;
     let ticks = 0;
-    const SLOT_MS = 1_700;
+    const SLOT_MS = 1_900;
     turn.value = withTiming(per, { duration: SLOT_MS, easing: Easing.linear });
     const timer = setInterval(() => {
       ticks += 1;
       setBlink(ticks);
       setSlot(ticks % slots);
+      cue('wink', 0.32);
       turn.value = withTiming((ticks + 1) * per, { duration: SLOT_MS, easing: Easing.linear });
     }, SLOT_MS);
     return () => clearInterval(timer);
@@ -192,11 +287,10 @@ function BlinkDial({ active, reduced, size, slots }: { active: boolean; reduced:
   const hand = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value}deg` }] }));
   const half = size / 2;
   const r = half - 10;
-  const gap = 7;
+  const gap = 8;
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
-        <Circle cx={half} cy={half} r={r - 14} fill="none" stroke={colors.line} strokeWidth={1} />
         {Array.from({ length: slots }, (_, index) => (
           <Path
             key={index}
@@ -210,10 +304,11 @@ function BlinkDial({ active, reduced, size, slots }: { active: boolean; reduced:
       </Svg>
       {reduced ? null : (
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, hand]}>
-          <View style={[styles.handDot, { left: half - 5, top: 10 - 5 }]} />
+          <View style={[styles.handDot, { left: half - 6, top: 10 - 6 }]} />
         </Animated.View>
       )}
-      <PortalEye size={Math.round(size * 0.62)} open blink={blink} instant={reduced} />
+      <Breath size={size * 0.52} still={reduced} />
+      <PortalEye size={Math.round(size * 0.66)} open blink={blink} instant={reduced} />
     </View>
   );
 }
@@ -222,32 +317,50 @@ function BlinkDial({ active, reduced, size, slots }: { active: boolean; reduced:
 // stand on each ring (src/iris.mjs in the service). Ring 0 is Perfect.
 const RING_STREAK = [30, 21, 14, 10, 7, 5, 3, 2, 1];
 
-// A handful of other Eyes on the rings, placed the same way every time.
+// The other Eyes on the rings, placed the same way every time.
 function crowd(count: number) {
-  let seed = 7;
-  const next = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-  return Array.from({ length: count }, () => {
-    const roll = next();
-    const ring = roll < 0.34 ? 8 : roll < 0.55 ? 7 : roll < 0.7 ? 6 : roll < 0.8 ? 5 : roll < 0.88 ? 4 : roll < 0.93 ? 3 : roll < 0.96 ? 2 : roll < 0.985 ? 1 : 0;
-    return { ring, angle: next() * 360, lit: next() < 0.55 };
+  return Array.from({ length: count }, (_, i) => {
+    const roll = hash(i * 41 + 3);
+    const ring = roll < 0.3 ? 8 : roll < 0.52 ? 7 : roll < 0.68 ? 6 : roll < 0.79 ? 5 : roll < 0.87 ? 4 : roll < 0.93 ? 3 : roll < 0.96 ? 2 : roll < 0.985 ? 1 : 0;
+    return { ring, angle: hash(i * 43 + 5) * 360, open: hash(i * 47 + 7) < 0.6 };
   });
 }
 
-// Page four: the Iris, and one Eye climbing it. Every day in a row moves it
-// a ring closer to the pupil; at thirty it is Perfect, and gold.
+// One small Eye, the NFT's shape: a glowing ring, a gold iris, shut if it
+// has not blinked today.
+function SmallEye({ x, y, r, open, perfect }: { x: number; y: number; r: number; open: boolean; perfect: boolean }) {
+  const tone = perfect ? colors.metal : open ? '#6EF0FF' : '#5E7890';
+  return (
+    <G>
+      {open ? <Circle cx={x} cy={y} r={r * 1.9} fill={perfect ? colors.metal : '#56E0FF'} opacity={0.12} /> : null}
+      <Circle cx={x} cy={y} r={r} fill="#050B10" stroke={tone} strokeWidth={Math.max(1, r * 0.28)} opacity={open ? 1 : 0.75} />
+      {open ? (
+        <>
+          <Circle cx={x} cy={y} r={r * 0.46} fill="#D6B56A" />
+          <Circle cx={x} cy={y} r={r * 0.21} fill="#020304" />
+        </>
+      ) : <Path d={`M ${x - r * 0.55} ${y} L ${x + r * 0.55} ${y}`} stroke="#3A5B68" strokeWidth={Math.max(0.8, r * 0.14)} />}
+    </G>
+  );
+}
+
+// Page four: one of many. The Iris, every Eye a small eye; yours steps ring
+// by ring to the pupil, a touch each ring, gold and a chime at thirty days.
 function IrisClimb({ active, reduced, size }: { active: boolean; reduced: boolean; size: number }) {
   const half = size / 2;
-  const pupil = size * 0.13;
-  const outer = half - 4;
+  const pupil = size * 0.15;
+  const outer = half - 6;
   const step = (outer - pupil) / 9;
-  const radius = (ring: number) => pupil + (ring + 0.5) * step;
+  const radiusOf = (ring: number) => pupil + (ring + 0.5) * step;
   const angle = -38;
-  const at = (ring: number) => {
+  const at = useCallback((ring: number) => {
     const rad = ((angle - 90) * Math.PI) / 180;
-    return { x: half + radius(ring) * Math.cos(rad), y: half + radius(ring) * Math.sin(rad) };
-  };
-  const others = useMemo(() => crowd(46), []);
+    return { x: half + radiusOf(ring) * Math.cos(rad), y: half + radiusOf(ring) * Math.sin(rad) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [size]);
+  const others = useMemo(() => crowd(40), []);
   const [ring, setRing] = useState(reduced ? 0 : 8);
+  const [blink, setBlink] = useState(0);
   const x = useSharedValue(at(reduced ? 0 : 8).x);
   const y = useSharedValue(at(reduced ? 0 : 8).y);
   useEffect(() => {
@@ -273,39 +386,34 @@ function IrisClimb({ active, reduced, size }: { active: boolean; reduced: boolea
       }
       current -= 1;
       place(current, 420);
-    }, 760);
+      if (current === 0) { cue('chime', 0.45); setBlink((count) => count + 1); } else tick();
+    }, 720);
     return () => clearInterval(timer);
-    // `at` is derived from size alone.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, reduced, size, x, y]);
-  const dot = useAnimatedStyle(() => ({ transform: [{ translateX: x.value - 7 }, { translateY: y.value - 7 }] }));
+  }, [active, reduced, at, x, y]);
+  const you = useAnimatedStyle(() => ({ transform: [{ translateX: x.value - 9 }, { translateY: y.value - 9 }] }));
   const perfect = ring === 0;
+  const small = Math.max(3.2, step * 0.36);
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size}>
-        <Circle cx={half} cy={half} r={outer} fill="#060B10" />
+        <Circle cx={half} cy={half} r={outer} fill="rgba(6, 12, 18, 0.72)" />
         <Circle cx={half} cy={half} r={pupil + step} fill="rgba(201, 169, 106, 0.10)" />
         {Array.from({ length: 10 }, (_, index) => (
-          <Circle key={index} cx={half} cy={half} r={pupil + index * step} fill="none" stroke={index === 1 ? 'rgba(201, 169, 106, 0.45)' : colors.line} strokeWidth={1} />
+          <Circle key={index} cx={half} cy={half} r={pupil + index * step} fill="none" stroke={index === 1 ? 'rgba(201, 169, 106, 0.5)' : 'rgba(120, 200, 230, 0.13)'} strokeWidth={1} />
         ))}
         {others.map((eye, index) => {
           const rad = ((eye.angle - 90) * Math.PI) / 180;
-          const r = radius(eye.ring);
-          return (
-            <Circle
-              key={index}
-              cx={half + r * Math.cos(rad)}
-              cy={half + r * Math.sin(rad)}
-              r={2.6}
-              fill={eye.ring === 0 ? colors.metal : eye.lit ? colors.positive : colors.dim}
-              opacity={eye.lit ? 0.85 : 0.6}
-            />
-          );
+          const r = radiusOf(eye.ring);
+          return <SmallEye key={index} x={half + r * Math.cos(rad)} y={half + r * Math.sin(rad)} r={small} open={eye.open} perfect={eye.ring === 0} />;
         })}
-        <Circle cx={half} cy={half} r={pupil} fill="#020304" stroke={colors.metal} strokeWidth={1.4} opacity={0.95} />
       </Svg>
-      <Animated.View pointerEvents="none" style={[styles.youDot, { backgroundColor: perfect ? colors.metal : colors.accent, borderColor: perfect ? '#F6E2B3' : '#D8F8FF' }, dot]} />
-      <View pointerEvents="none" style={[styles.youTag, { left: half + 6, top: 6 }]}>
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
+        <PortalEye size={Math.round(pupil * 2.3)} open blink={blink} instant={reduced} />
+      </View>
+      <Animated.View pointerEvents="none" style={[styles.youEye, { borderColor: perfect ? colors.metal : colors.accent, shadowColor: perfect ? colors.metal : colors.accent }, you]}>
+        <View style={[styles.youIris, { backgroundColor: perfect ? colors.metal : '#D6B56A' }]} />
+      </Animated.View>
+      <View pointerEvents="none" style={[styles.youTag, { left: half + 8, top: 4 }]}>
         <Text style={[styles.youTagText, { color: perfect ? colors.metal : colors.accent }]}>
           {perfect ? t('Perfect Eye') : (RING_STREAK[ring] ?? 1) === 1 ? t('day 1') : t('{count} days in a row', { count: RING_STREAK[ring] ?? 1 })}
         </Text>
@@ -316,10 +424,10 @@ function IrisClimb({ active, reduced, size }: { active: boolean; reduced: boolea
 
 // ------------------------------------------------------------------ ready --
 
-function Check({ state, label, detail }: { state: 'yes' | 'no' | 'wait' | 'later'; label: string; detail?: string | null }) {
+function Check({ state, label, detail, index, active }: { state: 'yes' | 'no' | 'wait' | 'later'; label: string; detail?: string | null; index: number; active: boolean }) {
   const tone = state === 'yes' ? colors.positive : state === 'no' ? colors.negative : colors.faint;
   return (
-    <View style={styles.check}>
+    <Animated.View key={active ? 'on' : 'off'} entering={active ? FadeInDown.delay(250 + index * 220).duration(380) : undefined} style={styles.check}>
       <View style={[styles.checkMark, { borderColor: tone, backgroundColor: state === 'yes' ? 'rgba(124, 240, 188, 0.12)' : 'transparent' }]}>
         {state === 'wait' ? <ActivityIndicator size="small" color={colors.faint} /> : (
           <Svg width={14} height={14} viewBox="0 0 14 14">
@@ -333,15 +441,15 @@ function Check({ state, label, detail }: { state: 'yes' | 'no' | 'wait' | 'later
         <Text style={styles.checkLabel}>{label}</Text>
         {detail ? <Text style={styles.checkDetail}>{detail}</Text> : null}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
-function Row({ label, value, strong = false, tone }: { label: string; value: string; strong?: boolean; tone?: string }) {
+function Row({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
   return (
     <View style={styles.row}>
       <Text style={[styles.rowLabel, strong && styles.rowStrong]}>{label}</Text>
-      <Text style={[styles.rowValue, strong && styles.rowStrong, tone ? { color: tone } : null]}>{value}</Text>
+      <Text style={[styles.rowValue, strong && styles.rowStrong]}>{value}</Text>
     </View>
   );
 }
@@ -372,10 +480,11 @@ export function EyeOnboarding({
   onOpen: () => void;
   onClose: () => void;
 }) {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const reduced = useReducedMotion();
   const pager = useRef<ScrollView>(null);
   const [page, setPage] = useState(0);
+  const [caption, setCaption] = useState(' ');
   // Prices come with the wallet's status; before a wallet, from the service's health.
   const [health, setHealth] = useState<EyePrices | null>(null);
   useEffect(() => {
@@ -385,24 +494,32 @@ export function EyeOnboarding({
   }, []);
   const prices: EyePrices | null = status?.prices ?? health;
 
+  // Every page arrives on the low fifth.
+  useEffect(() => {
+    if (reduced) return;
+    const timer = setTimeout(() => cue('hum', 0.3), 120);
+    return () => clearTimeout(timer);
+  }, [page, reduced]);
+
   const go = useCallback((next: number) => {
     const target = Math.max(0, Math.min(PAGES - 1, next));
     pager.current?.scrollTo({ x: target * width, animated: !reduced });
     setPage(target);
-    buzz();
+    tick();
   }, [width, reduced]);
 
   const onScrolled = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const next = Math.round(event.nativeEvent.contentOffset.x / Math.max(1, width));
-    if (next !== page) { setPage(next); buzz(); }
+    if (next !== page) { setPage(next); tick(); }
   }, [width, page]);
 
-  const art = Math.min(260, Math.round(width * 0.64));
+  const art = Math.min(290, Math.round(width * 0.72), Math.round(height * 0.36));
   const serial = nextSerial != null ? `EYE #${String(nextSerial).padStart(4, '0')}` : null;
   const hours = cooldownHours(prices, status?.blink?.cooldownSeconds);
   const slots = Math.max(1, Math.round(24 / Math.max(1, hours)));
   const solUsd = prices?.solUsd ?? null;
-  const blinkPrice = prices ? `${sol(prices.blinkLamports)} SOL${usd(prices.blinkLamports, solUsd) ? ` ≈ ${usd(prices.blinkLamports, solUsd)}` : ''}` : null;
+  const blinkUsd = prices ? usd(prices.blinkLamports, solUsd) : null;
+  const blinkPrice = prices ? `${sol(prices.blinkLamports)} SOL${blinkUsd ? ` ≈ ${blinkUsd}` : ''}` : null;
 
   // The last page, worked out for this wallet.
   const gates = status?.gates ?? null;
@@ -423,48 +540,43 @@ export function EyeOnboarding({
   else if (gates?.sgt === false) action = { label: t('Needs a Seeker Genesis Token'), disabled: true };
   else action = { label: EYE_FINGER_ENABLED && !verified ? t('Verify my Seeker') : t('Open my Eye'), onPress: onOpen };
 
-  const pages: Array<{ key: string; title: string; body: string; art: ReactElement }> = [
+  const pages: Array<{ key: string; title: string; body: string; art: ReactElement; foot?: ReactElement | null }> = [
     {
-      key: 'eye',
+      key: 'wake',
       title: t('This is your Eye'),
-      body: t('One Eye per wallet, a collectible that lives on Solana. It is numbered in the order Eyes open, so an early number stays early for good.'),
-      art: <EyeBirth active={page === 0} reduced={reduced} serial={serial} size={art} />,
+      body: t('An NFT that lives in your wallet, one per wallet. Its number is its place in line, and it never changes.'),
+      art: <Awakening active={page === 0} reduced={reduced} serial={serial} size={art} />,
     },
     {
-      key: 'road',
+      key: 'open',
       title: t('You open it yourself'),
-      body: EYE_FINGER_ENABLED
-        ? t('Four stops, each on screen as it happens: your fingerprint signs, your Seeker wallet approves and pays, the network writes it down, and the Eye opens.')
-        : t('Three stops, each on screen as it happens: your Seeker wallet approves and pays, the network writes it down, and the Eye opens.'),
-      art: <Road active={page === 1} reduced={reduced} width={width} finger={EYE_FINGER_ENABLED} />,
+      body: t('Nothing happens without you. Each step lights up on screen the moment it is done.'),
+      art: <Orbit active={page === 1} reduced={reduced} size={art} finger={EYE_FINGER_ENABLED} onCaption={setCaption} />,
+      foot: <Animated.Text key={caption} entering={reduced ? undefined : FadeIn.duration(260)} style={styles.caption}>{caption}</Animated.Text>,
     },
     {
       key: 'blink',
       title: t('Blink every {hours} hours', { hours }),
-      body: t('A Blink is a small record on Solana that you were here. The same road, one touch of the finger, and the Eye blinks.'),
-      art: (
-        <View style={styles.dialWrap}>
-          <BlinkDial active={page === 2} reduced={reduced} size={Math.round(art * 0.86)} slots={slots} />
-          {blinkPrice ? <Text style={styles.price}>{blinkPrice}</Text> : null}
-          <Text style={styles.priceNote}>{t('per Blink, once every {hours} hours', { hours })}</Text>
-        </View>
-      ),
+      body: t('A Blink is a small mark on Solana that says: I was here. One tap, and your Eye blinks.'),
+      art: <BlinkDial active={page === 2} reduced={reduced} size={art} slots={slots} />,
+      foot: blinkPrice ? <Text style={styles.caption}>{`${blinkPrice} · ${t('every {hours} hours', { hours })}`}</Text> : null,
     },
     {
       key: 'iris',
-      title: t('Your streak moves you in'),
-      body: t('Every day with a Blink adds one to your streak, and your Eye moves a ring closer to the pupil of the Iris. At 30 days in a row it is a Perfect Eye. Miss a day and the streak starts again.'),
-      art: <IrisClimb active={page === 3} reduced={reduced} size={Math.min(300, Math.round(width * 0.74))} />,
+      title: t('One Blink a day draws you in'),
+      body: t('The Iris is every Eye together. Each day you blink, your Eye moves one ring closer to the centre. Thirty days in a row and it turns gold. Miss a day and you start again.'),
+      art: <IrisClimb active={page === 3} reduced={reduced} size={Math.min(320, Math.round(width * 0.8), Math.round(height * 0.4))} />,
     },
   ];
 
   return (
     <View style={styles.screen}>
+      <NightSky width={width} height={height} still={reduced} />
       <View style={styles.top}>
         <View style={styles.bars}>
           {Array.from({ length: PAGES }, (_, index) => (
             <Pressable key={index} onPress={() => go(index)} style={styles.barHit} accessibilityRole="button" accessibilityLabel={`${index + 1} / ${PAGES}`}>
-              <View style={[styles.bar, { backgroundColor: index <= page ? colors.accent : colors.line, opacity: index === page ? 1 : index < page ? 0.55 : 1 }]} />
+              <View style={[styles.bar, { backgroundColor: index <= page ? colors.accent : 'rgba(120, 200, 230, 0.16)', opacity: index === page ? 1 : index < page ? 0.55 : 1 }]} />
             </Pressable>
           ))}
         </View>
@@ -481,17 +593,30 @@ export function EyeOnboarding({
         onMomentumScrollEnd={onScrolled}
         style={styles.pager}
       >
-        {pages.map((item) => (
+        {pages.map((item, index) => (
           <ScrollView key={item.key} style={{ width }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
             <View style={styles.art}>{item.art}</View>
-            <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.body}>{item.body}</Text>
+            {item.foot ?? <View style={styles.captionGap} />}
+            {page === index ? (
+              <>
+                <Animated.Text entering={reduced ? undefined : FadeInDown.delay(180).duration(420)} style={styles.title}>{item.title}</Animated.Text>
+                <Animated.Text entering={reduced ? undefined : FadeInDown.delay(420).duration(420)} style={styles.body}>{item.body}</Animated.Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.title}>{item.title}</Text>
+                <Text style={styles.body}>{item.body}</Text>
+              </>
+            )}
           </ScrollView>
         ))}
 
         <ScrollView style={{ width }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
           <View style={styles.readyHead}>
-            <PortalEye size={52} open={hasEye} instant />
+            <View style={{ width: 84, height: 84, alignItems: 'center', justifyContent: 'center' }}>
+              <Breath size={76} still={reduced} />
+              <PortalEye size={84} open={hasEye} instant />
+            </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.titleLeft}>{hasEye ? t('Your Eye is open') : t('Ready to open')}</Text>
               {serial && !hasEye ? <Text style={styles.serialLeft}>{t('Next: {serial}', { serial })}</Text> : null}
@@ -500,22 +625,30 @@ export function EyeOnboarding({
 
           <View style={styles.card}>
             <Check
+              index={0}
+              active={page === PAGES - 1}
               state={wallet ? 'yes' : 'later'}
               label={t('Wallet connected')}
-              detail={wallet ? shortAddress(wallet) : t('Your Seeker wallet, read only; nothing is signed yet')}
+              detail={wallet ? shortAddress(wallet) : t('Read only. Nothing is signed here.')}
             />
             <Check
+              index={1}
+              active={page === PAGES - 1}
               state={!wallet ? 'later' : !status ? 'wait' : gates?.sgt ? 'yes' : gates?.sgt === false ? 'no' : 'later'}
               label={t('Seeker Genesis Token')}
-              detail={!wallet ? t('One Eye per Seeker') : gates?.sgt === false ? t('Not found in this wallet') : gates?.sgt ? t('Found in your wallet') : null}
+              detail={!wallet ? t('Proves this phone is a Seeker') : gates?.sgt === false ? t('Not found in this wallet') : gates?.sgt ? t('Found in your wallet') : null}
             />
             <Check
+              index={2}
+              active={page === PAGES - 1}
               state={!wallet ? 'later' : !status ? 'wait' : staked ? 'yes' : staked === false ? 'no' : 'later'}
               label={t('Staked SKR')}
-              detail={!wallet ? t('An active SKR position') : staked && gates?.activeStaked ? `${integer(Number(gates.activeStaked))} SKR` : staked === false ? t('No active SKR position') : null}
+              detail={!wallet ? t('You need SKR in staking') : staked && gates?.activeStaked ? `${integer(Number(gates.activeStaked))} SKR` : staked === false ? t('No active SKR position') : null}
             />
             {EYE_FINGER_ENABLED ? (
               <Check
+                index={3}
+                active={page === PAGES - 1}
                 state={verified ? 'yes' : 'later'}
                 label={t('Fingerprint on this Seeker')}
                 detail={verified ? t('Already verified on this phone.') : t('Checked in the next step')}
@@ -525,8 +658,8 @@ export function EyeOnboarding({
 
           {open != null && total != null ? (
             <View style={styles.card}>
-              <Row label={t('Opening')} value={`${sol(open)} SOL`} />
-              <Row label={t('On-chain storage')} value={`≈ ${sol(rent)} SOL`} />
+              <Row label={t('Opening fee')} value={`${sol(open)} SOL`} />
+              <Row label={t('Deposit kept inside your Eye')} value={`≈ ${sol(rent)} SOL`} />
               <View style={styles.rule} />
               <Row label={t('Total')} value={`≈ ${sol(total)} SOL${usd(total, solUsd) ? ` · ${usd(total, solUsd)}` : ''}`} strong />
               {tier ? (
@@ -550,7 +683,7 @@ export function EyeOnboarding({
             <View style={styles.card}><ActivityIndicator size="small" color={colors.faint} /></View>
           )}
 
-          <Text style={styles.fine}>{t('Fees go to the maker of SKR Eyes. No token is sold here.')}</Text>
+          <Text style={styles.fine}>{t('The opening fee and every Blink go to the maker of SKR Eyes. The deposit stays inside your Eye, in your wallet. No token is sold here.')}</Text>
           {connectError ? <Text style={styles.error}>{connectError}</Text> : null}
           {blocked ? <Text style={styles.fine}>{t('An Eye opens for a wallet on a Seeker with an active SKR position.')}</Text> : null}
         </ScrollView>
@@ -571,44 +704,39 @@ export function EyeOnboarding({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
+  screen: { flex: 1, backgroundColor: '#03060A' },
+  twinkle: { position: 'absolute', backgroundColor: '#E8FBFF' },
+  breath: { alignSelf: 'center' },
   top: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm },
   bars: { flex: 1, flexDirection: 'row', gap: 6 },
   barHit: { flex: 1, paddingVertical: 8 },
   bar: { height: 3, borderRadius: 2 },
   skip: { color: colors.muted, fontFamily: font.medium, ...type.small },
   pager: { flex: 1 },
-  page: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl, gap: spacing.md },
-  art: { alignItems: 'center', justifyContent: 'center', minHeight: 300, marginBottom: spacing.sm },
-  title: { color: colors.text, fontFamily: font.bold, fontSize: 26, lineHeight: 32, letterSpacing: -0.6, textAlign: 'center' },
+  page: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xl, gap: spacing.sm },
+  art: { alignItems: 'center', justifyContent: 'center', minHeight: 250, marginTop: spacing.sm },
+  caption: { color: colors.text, fontFamily: font.semibold, fontSize: 16, lineHeight: 22, textAlign: 'center', minHeight: 22, marginTop: spacing.sm, fontVariant: ['tabular-nums'] },
+  captionGap: { height: 22 + spacing.sm },
+  title: { color: colors.text, fontFamily: font.bold, fontSize: 27, lineHeight: 33, letterSpacing: -0.6, textAlign: 'center', marginTop: spacing.md },
   titleLeft: { color: colors.text, fontFamily: font.bold, fontSize: 24, lineHeight: 30, letterSpacing: -0.5 },
-  body: { color: colors.muted, fontFamily: font.regular, ...type.body, textAlign: 'center', paddingHorizontal: spacing.sm },
-  serial: { color: colors.metal, fontFamily: font.mono, fontSize: 15, letterSpacing: 1.6, marginTop: spacing.md },
+  body: { color: '#9FB4C6', fontFamily: font.regular, fontSize: 15, lineHeight: 22, textAlign: 'center', paddingHorizontal: spacing.sm },
+  serial: { color: colors.metal, fontFamily: font.mono, fontSize: 16, letterSpacing: 2, marginTop: spacing.sm },
   serialLeft: { color: colors.metal, fontFamily: font.mono, fontSize: 13, letterSpacing: 1.2, marginTop: 2 },
-  road: { flexDirection: 'row', width: '100%' },
-  roadStop: { flex: 1, alignItems: 'center', gap: spacing.sm },
-  roadRow: { flexDirection: 'row', alignItems: 'center', width: '100%' },
-  roadLine: { flex: 1, height: 2, borderRadius: 1 },
-  roadLineGap: { flex: 1 },
-  roadNode: { alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
-  roadLabel: { fontFamily: font.semibold, ...type.micro, letterSpacing: 0.4 },
-  roadCaption: { color: colors.text, fontFamily: font.semibold, fontSize: 16, lineHeight: 22, textAlign: 'center', minHeight: 22 },
-  dialWrap: { alignItems: 'center', gap: spacing.xs },
-  handDot: { position: 'absolute', width: 10, height: 10, borderRadius: 5, backgroundColor: colors.text },
-  price: { color: colors.text, fontFamily: font.bold, fontSize: 22, lineHeight: 28, letterSpacing: -0.4, marginTop: spacing.sm, fontVariant: ['tabular-nums'] },
-  priceNote: { color: colors.faint, fontFamily: font.regular, ...type.small },
-  youDot: { position: 'absolute', left: 0, top: 0, width: 14, height: 14, borderRadius: 7, borderWidth: 2 },
+  orb: { position: 'absolute', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, elevation: 0 },
+  handDot: { position: 'absolute', width: 12, height: 12, borderRadius: 6, backgroundColor: '#E8FBFF', shadowColor: '#56E0FF', shadowOpacity: 1, shadowRadius: 8 },
+  youEye: { position: 'absolute', left: 0, top: 0, width: 18, height: 18, borderRadius: 9, borderWidth: 2.5, backgroundColor: '#050B10', alignItems: 'center', justifyContent: 'center', shadowOpacity: 1, shadowRadius: 10 },
+  youIris: { width: 7, height: 7, borderRadius: 3.5 },
   youTag: { position: 'absolute' },
   youTagText: { fontFamily: font.semibold, ...type.small, fontVariant: ['tabular-nums'] },
   readyHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.xs },
-  card: { backgroundColor: colors.panel, borderRadius: radius.card, borderWidth: 1, borderColor: '#111B24', padding: spacing.md, gap: spacing.md },
+  card: { backgroundColor: 'rgba(10, 16, 23, 0.86)', borderRadius: radius.card, borderWidth: 1, borderColor: '#13212C', padding: spacing.md, gap: spacing.md },
   check: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
   checkMark: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   checkText: { flex: 1, gap: 2 },
   checkLabel: { color: colors.text, fontFamily: font.semibold, ...type.body },
   checkDetail: { color: colors.faint, fontFamily: font.regular, ...type.small, fontVariant: ['tabular-nums'] },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md },
-  rowLabel: { color: colors.muted, fontFamily: font.regular, ...type.body },
+  rowLabel: { color: colors.muted, fontFamily: font.regular, ...type.body, flexShrink: 1 },
   rowValue: { color: colors.text, fontFamily: font.medium, ...type.body, fontVariant: ['tabular-nums'], flexShrink: 1, textAlign: 'right' },
   rowStrong: { color: colors.text, fontFamily: font.bold },
   rule: { height: 1, backgroundColor: colors.line },
@@ -620,6 +748,6 @@ const styles = StyleSheet.create({
   rungNote: { color: colors.accent, fontFamily: font.medium, ...type.micro, marginLeft: 16, fontVariant: ['tabular-nums'] },
   fine: { color: colors.faint, fontFamily: font.regular, ...type.small, textAlign: 'center', paddingHorizontal: spacing.sm },
   error: { color: colors.negative, fontFamily: font.medium, ...type.small, textAlign: 'center' },
-  bottom: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md, borderTopWidth: 1, borderTopColor: '#0C141C', backgroundColor: colors.bg },
+  bottom: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
   bottomStack: { gap: spacing.xs },
 });
