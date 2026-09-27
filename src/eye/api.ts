@@ -123,9 +123,24 @@ export type EyeNetwork = {
   rings: number;
   eyes: NetworkEye[];
   ringCounts?: number[];
-  me: { serial: number; ring: number; streak: number; moons: number } | null;
+  // `blinkHour`: the hour of the day (0..23) your Blink landed in today;
+  // `percentile`: how many of all Eyes you are ahead of, 0..100. Both
+  // optional until the server sends them.
+  me: { serial: number; ring: number; streak: number; moons: number; blinkHour?: number | null; percentile?: number | null } | null;
   gazes: { received: Array<{ serial: number; name: string }>; sentToday: number; limit: number };
   circles: Array<{ pool: string; label: string; blinked: number; eyes: number }>;
+  // The circles are drawn only when the server says there is more than one
+  // to compare; with one Guardian the section says nothing.
+  circlesShown?: boolean;
+  // The day's pulse: blinks per hour of the day, 24 numbers.
+  pulse?: { hours: number[] };
+  // The ladder: how many Eyes stand on each of the nine rings, innermost first.
+  ladder?: { rings: number[] };
+  // The longest streaks, and the Eyes opened today, newest last.
+  leaders?: {
+    streaks: Array<{ serial: number; name: string; streak: number }>;
+    newest: Array<{ serial: number; name: string }>;
+  };
 };
 
 export type GazeResult = { ok: boolean; sentToday: number; limit: number };

@@ -22,9 +22,11 @@ import { clock, epochMs } from './time';
 // and the Blink — and, with no wallet, the one button that connects. Then
 // the Iris: every open Eye is a ring on it, closer to the pupil the longer
 // its streak, lit if it blinked today, and the pupil counts down to the next
-// Blink. Under the Iris: who gazed at you today, and the Guardian circles as
-// teams. A tap on a ring opens that Eye — its card, its streak, and a Gaze,
-// five a day.
+// Blink. Under the Iris: who gazed at you today; the day's pulse, hour by
+// hour; the ladder of the nine rings; the longest streaks and the Eyes that
+// opened today. The Guardian circles are drawn only when the server says
+// there is more than one to compare. A tap on a ring opens that Eye — its
+// card, its streak, and a Gaze, five a day.
 //
 // The wallet is the one Me keeps too, from the shared store: whichever tab
 // connects, the other one knows.
@@ -42,6 +44,10 @@ import { clock, epochMs } from './time';
 
 const REFRESH_MS = 60_000;
 const RINGS = 9;
+// The tallest bar of the day's pulse.
+const PULSE_H = 34;
+
+const hh = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
 
 const serialName = (serial: number) => `EYE #${String(serial).padStart(4, '0')}`;
 
@@ -342,6 +348,17 @@ export function EyesLab() {
   const received = network?.gazes.received ?? [];
   const circles = network?.circles ?? [];
   const peak = circles.reduce((most, circle) => Math.max(most, circle.blinked), 0);
+  // The new sections, each only when the server has sent its numbers.
+  const pulse = network?.pulse?.hours && network.pulse.hours.length === 24 ? network.pulse.hours : null;
+  const pulsePeak = pulse ? pulse.reduce((most, count) => Math.max(most, count), 0) : 0;
+  const peakHour = pulse ? pulse.indexOf(pulsePeak) : -1;
+  const myHour = network?.me?.blinkHour ?? null;
+  const ladder = network?.ladder?.rings && network.ladder.rings.length > 0 ? network.ladder.rings : null;
+  const ladderPeak = ladder ? ladder.reduce((most, count) => Math.max(most, count), 0) : 0;
+  const myRing = network?.me?.ring ?? null;
+  const percentile = network?.me?.percentile ?? null;
+  const streaks = network?.leaders?.streaks?.slice(0, 3) ?? [];
+  const newest = network?.leaders?.newest?.slice(-5) ?? [];
 
   return (
     <View style={styles.screen}>
@@ -388,7 +405,71 @@ export function EyesLab() {
           </View>
         ) : null}
 
-        {circles.length > 0 ? (
+        {pulse ? (
+          <View style={styles.section}>
+            <Eyebrow>{t('Pulse of the day')}</Eyebrow>
+            <View style={styles.pulse}>
+              {pulse.map((count, hour) => {
+                const mine = myHour === hour;
+                const height = count > 0 ? Math.max(4, Math.round((count / Math.max(1, pulsePeak)) * PULSE_H)) : 2;
+                return <View key={hour} style={[styles.pulseBar, { height, backgroundColor: mine ? colors.metal : count > 0 ? colors.positive : colors.line }]} />;
+              })}
+            </View>
+            {pulsePeak > 0 ? (
+              <Text style={styles.sectionLine}>
+                {[
+                  t('{count} blinked at {hour}', { count: integer(pulsePeak), hour: hh(peakHour) }),
+                  myHour != null ? t('you blinked at {hour}', { hour: hh(myHour) }) : null,
+                ].filter(Boolean).join(' · ')}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
+        {ladder ? (
+          <View style={styles.section}>
+            <Eyebrow>{t('The ladder')}</Eyebrow>
+            {ladder.map((count, index) => {
+              const mine = myRing === index;
+              return (
+                <View key={index} style={styles.rung}>
+                  <View style={styles.circleRow}>
+                    <Text numberOfLines={1} style={[styles.rungName, mine && styles.rungMine]}>{t('ring {ring}', { ring: index + 1 })}</Text>
+                    <Text numberOfLines={1} style={[styles.circleCount, mine && styles.rungMine]}>{count === 1 ? t('1 eye') : t('{count} eyes', { count: integer(count) })}</Text>
+                  </View>
+                  <Meter percent={ladderPeak > 0 ? (count / ladderPeak) * 100 : 0} tone={mine ? colors.metal : colors.positive} height={3} />
+                </View>
+              );
+            })}
+            {network?.me && percentile != null ? <Text style={styles.sectionLine}>{t('You are ahead of {p}% of Eyes', { p: integer(percentile) })}</Text> : null}
+          </View>
+        ) : null}
+
+        {streaks.length > 0 ? (
+          <View style={styles.section}>
+            <Eyebrow>{t('Leaders')}</Eyebrow>
+            {streaks.map((eye) => (
+              <View key={eye.serial} style={styles.circleRow}>
+                <Text numberOfLines={1} style={styles.circleName}>{eye.name}</Text>
+                <Text numberOfLines={1} style={styles.circleCount}>{eye.streak === 1 ? t('1 day') : t('{count} days', { count: integer(eye.streak) })}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {newest.length > 0 ? (
+          <View style={styles.section}>
+            <Eyebrow>{t('New today')}</Eyebrow>
+            {newest.map((eye) => (
+              <View key={eye.serial} style={styles.circleRow}>
+                <Text numberOfLines={1} style={styles.circleName}>{eye.name}</Text>
+                <Text numberOfLines={1} style={styles.serialText}>{serialName(eye.serial)}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {network?.circlesShown === true && circles.length > 0 ? (
           <View style={styles.circles}>
             <Eyebrow>{t('Circles today')}</Eyebrow>
             {circles.map((circle) => (
@@ -442,6 +523,15 @@ const styles = StyleSheet.create({
   gazes: { gap: spacing.xs },
   gazesTitle: { color: colors.text, fontFamily: font.bold, fontSize: 18, lineHeight: 24, letterSpacing: -0.3 },
   gazesNames: { color: colors.muted, fontFamily: font.regular, ...type.body },
+  section: { gap: spacing.sm },
+  sectionLine: { color: colors.muted, fontFamily: font.regular, ...type.small, fontVariant: ['tabular-nums'] },
+  // Twenty-four bars, one an hour, grown from the baseline.
+  pulse: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: PULSE_H, marginTop: spacing.xs },
+  pulseBar: { flex: 1, borderRadius: 1.5 },
+  rung: { gap: spacing.xs },
+  rungName: { flexShrink: 1, color: colors.muted, fontFamily: font.medium, ...type.small },
+  rungMine: { color: colors.metal },
+  serialText: { color: colors.metal, fontFamily: font.monoBold, fontSize: 12, letterSpacing: 0.8 },
   circles: { gap: spacing.md },
   circle: { gap: spacing.sm },
   circleRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: spacing.md },
