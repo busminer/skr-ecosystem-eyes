@@ -49,8 +49,8 @@ export function Mark({ size = 26, tone = colors.accent, open = 1 }: { size?: num
 // find out which room they were standing in.
 //
 // Shapes are read without reading. Each one says what its tab holds — the
-// eye of the Iris, the vault door, the flow of events, the standings, a
-// person — and the
+// vault door, the flow of events, the standings, a person, the eye of the
+// Iris — and the
 // live one sits in a pool of accent light, which is the one place on any
 // screen where the accent is spent by default.
 export function TabIcon({ name, tone, size = 22 }: { name: 'eyes' | 'pulse' | 'flow' | 'top' | 'me'; tone: string; size?: number }) {

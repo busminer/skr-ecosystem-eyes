@@ -29,16 +29,17 @@ import { useTabRequests } from './src/nav';
 import { PulseLab } from './src/lab/PulseLab';
 import { EyesLab } from './src/eye/EyesLab';
 
-type Tab = 'eyes' | 'pulse' | 'flow' | 'top' | 'me';
+type Tab = 'pulse' | 'flow' | 'top' | 'me' | 'eyes';
 
-// Eyes first: the Iris is the reason to open the app every day now. Alerts
-// gave up its place in the bar and lives at the tail of Me.
+// The vault first, as it always was: the app opens on the number it is
+// named for. Eyes closes the bar, at the end, where a person goes on
+// purpose. Alerts gave up its place in the bar and lives at the tail of Me.
 const tabs: Array<{ key: Tab; label: string }> = [
-  { key: 'eyes', label: 'Eyes' },
   { key: 'pulse', label: 'Vault' },
   { key: 'flow', label: 'Flow' },
   { key: 'top', label: 'Top' },
   { key: 'me', label: 'Me' },
+  { key: 'eyes', label: 'Eyes' },
 ];
 
 const freshnessTone = { fresh: colors.positive, aging: colors.pending, stale: colors.pending, unavailable: colors.negative } as const;
@@ -55,13 +56,13 @@ const freshnessOpen = { fresh: 1, aging: 0.62, stale: 0.22, unavailable: 0 } as 
 const TOP_BAR = 46;
 
 const TAB_SOURCE: Record<Tab, keyof Pick<FreshnessDetail, 'metrics' | 'events' | 'queue' | 'overall'>> = {
-  // The Iris has its own clock, in the pupil; the bar says nothing over it.
-  eyes: 'overall',
   pulse: 'metrics',
   flow: 'events',
   // The board is rebuilt from the position scan, so its age is the scan's.
   top: 'queue',
   me: 'metrics',
+  // The Iris has its own clock, in the pupil; the bar says nothing over it.
+  eyes: 'overall',
 };
 
 // The age is measured from the moment the source itself last spoke, not from
@@ -125,7 +126,7 @@ function TabBar({ tab, onSelect }: { tab: Tab; onSelect: (next: Tab) => void }) 
 }
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('eyes');
+  const [tab, setTab] = useState<Tab>('pulse');
   // On Vault the header floats over the sky; once the page scrolls it gets its ground back.
   const [vaultAtTop, setVaultAtTop] = useState(true);
   const [detail, setDetail] = useState<FreshnessDetail | null>(null);
@@ -136,8 +137,9 @@ export default function App() {
   // language: an opening that starts as one thing and becomes another is
   // worse than a moment's delay.
   const [prefsLoaded, setPrefsLoaded] = useState(false);
-  // The connected wallet too: the Eyes tab opens on it, and a panel that
-  // offers to connect and then swaps to your Eye is the wrong first frame.
+  // The connected wallet too: the Eyes tab reads it the moment it is opened,
+  // and a panel that offers to connect and then swaps to your Eye is the
+  // wrong first frame there.
   const [walletLoaded, setWalletLoaded] = useState(false);
   // Nothing on screen may be drawn in the wrong language and then swapped, so
   // the saved choice is read before the first frame, beside the fonts.
@@ -243,11 +245,11 @@ export default function App() {
         </View>
 
         <Animated.View key={tab} entering={FadeIn.duration(180)} style={[styles.body, tab === 'pulse' && { marginTop: -TOP_BAR }]}>
-          {tab === 'eyes' ? <EyesLab /> : null}
           {tab === 'pulse' ? <PulseLab frozen={freshness === 'stale' || freshness === 'unavailable'} topInset={TOP_BAR} onAtTop={setVaultAtTop} /> : null}
           {tab === 'flow' ? <FlowLab active={tab === 'flow'} /> : null}
           {tab === 'top' ? <TopLab /> : null}
           {tab === 'me' ? <MyLab /> : null}
+          {tab === 'eyes' ? <EyesLab /> : null}
         </Animated.View>
 
         {/* Two openings. The turn is the one from 1.0, back because people
