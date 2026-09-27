@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { isWalletCancel } from '../mwa';
-import { t } from '../i18n';
+import { lang, t } from '../i18n';
 import { prefValue } from '../prefs';
 import { useReducedMotion } from '../useReducedMotion';
 import { Button } from '../lab/kit';
@@ -12,6 +12,7 @@ import { EYE_FINGER_ENABLED } from './config';
 import { isFingerCancel } from './finger';
 import { intentFresh, runMove, stepFor, type MoveKind, type MoveResume, type MoveStage, type MoveStep } from './move';
 import { BEAT_MS, Stepper, keyFingerprint, shorten, usePaced, type Failure, type StepModel } from './Stepper';
+import { epochMs } from './time';
 
 // The sheet that shows a move as it happens: opening the Eye, or one Blink.
 //
@@ -37,6 +38,16 @@ function buzz() {
 }
 
 function describe(error: unknown): Failure {
+  // Asked too early: the Eye rests eight hours between Blinks. Said as the
+  // phone's own time of day, not as an error.
+  if (error instanceof EyeApiError && error.code === 'cooling') {
+    const at = epochMs(error.extra.nextAt);
+    let time: string | null = null;
+    if (at != null) {
+      try { time = new Date(at).toLocaleTimeString(lang(), { hour: '2-digit', minute: '2-digit' }); } catch { time = new Date(at).toISOString().slice(11, 16); }
+    }
+    return { title: t('Your Eye is resting'), body: time ? t('The next Blink opens at {time}.', { time }) : null, detail: null };
+  }
   if (error instanceof EyeApiError) return { title: error.message, body: null, detail: error.code };
   return { title: error instanceof Error && error.message ? error.message : t('The Eye service did not answer'), body: null, detail: null };
 }

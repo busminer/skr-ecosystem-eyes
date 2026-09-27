@@ -30,6 +30,27 @@ export type BlinkWindow = {
   closesAt: string | number;
   witnesses: number;
   doneToday: boolean;
+  // A Blink every eight hours: when this wallet last blinked, when it may
+  // next, and whether it may right now. Optional until the server sends them;
+  // without them the day's window rules as before.
+  lastAt?: string | null;
+  nextAt?: string | null;
+  ready?: boolean;
+  cooldownSeconds?: number;
+};
+
+// What an Eye costs, as the server says it right now. `tier` is where the
+// open price steps up: `serial` is the last Eye sold at the current price,
+// `left` how many of those remain. `openRentLamports` is the storage the
+// wallet also pays the chain when the Eye is born; `solUsd` is the dollar
+// hint, null when the server has none.
+export type EyePrices = {
+  openLamports: number;
+  blinkLamports: number;
+  tier?: { serial: number; afterLamports: number; left?: number };
+  openRentLamports?: number;
+  blinkCooldownSeconds?: number;
+  solUsd?: number | null;
 };
 
 export type EyeStatus = {
@@ -37,9 +58,11 @@ export type EyeStatus = {
   gates: EyeGates;
   eye: Eye | null;
   blink: BlinkWindow;
-  prices: { openLamports: number; blinkLamports: number };
+  prices: EyePrices;
   network: { eyes: number; watching: number };
 };
+
+export type EyeHealth = { prices?: EyePrices; openEnabled?: boolean };
 
 export type EyeIntent = {
   intent: string;
@@ -54,7 +77,9 @@ export type EyeIntent = {
 export type EyeSubmitResult = { signature: string; kind: string; serial: number; asset: string; eye: Eye };
 
 export class EyeApiError extends Error {
-  constructor(public readonly status: number, public readonly code: string | null, message: string) {
+  // `extra` is everything else the server put beside code and message, such
+  // as `nextAt` on a Blink asked for too early.
+  constructor(public readonly status: number, public readonly code: string | null, message: string, public readonly extra: Record<string, unknown> = {}) {
     super(message);
     this.name = 'EyeApiError';
   }
@@ -84,6 +109,7 @@ async function call<T>(path: string, body?: object): Promise<T> {
     // The server's own words when it has them: `{ error: { code, message } }`.
     let code: string | null = null;
     let message = '';
+    let extra: Record<string, unknown> = {};
     try {
       const payload = await response.json() as { error?: unknown };
       if (typeof payload.error === 'string') message = payload.error;
@@ -91,11 +117,12 @@ async function call<T>(path: string, body?: object): Promise<T> {
         const detail = payload.error as { code?: unknown; message?: unknown };
         if (typeof detail.message === 'string') message = detail.message;
         if (typeof detail.code === 'string') code = detail.code;
+        extra = payload.error as Record<string, unknown>;
       }
     } catch {
       // Status remains authoritative when a proxy answers with non-JSON.
     }
-    throw new EyeApiError(response.status, code, message || t('The Eye service returned {status}', { status: response.status }));
+    throw new EyeApiError(response.status, code, message || t('The Eye service returned {status}', { status: response.status }), extra);
   }
   return response.json() as Promise<T>;
 }
@@ -126,7 +153,7 @@ export type EyeNetwork = {
   // `blinkHour`: the hour of the day (0..23) your Blink landed in today;
   // `percentile`: how many of all Eyes you are ahead of, 0..100. Both
   // optional until the server sends them.
-  me: { serial: number; ring: number; streak: number; moons: number; blinkHour?: number | null; percentile?: number | null } | null;
+  me: { serial: number; ring: number; streak: number; moons: number; blinkHour?: number | null; percentile?: number | null; lastBlinkAt?: string | null; nextBlinkAt?: string | null } | null;
   gazes: { received: Array<{ serial: number; name: string }>; sentToday: number; limit: number };
   circles: Array<{ pool: string; label: string; blinked: number; eyes: number }>;
   // The circles are drawn only when the server says there is more than one
@@ -163,6 +190,7 @@ export type WitnessProof = {
   challenge: string;
 };
 
+export const fetchEyeHealth = () => call<EyeHealth>('/eye/health');
 export const fetchEyeStatus = (wallet: string) => call<EyeStatus>(`/eye/status?wallet=${encodeURIComponent(wallet)}`);
 export const registerWitness = (wallet: string, record: unknown) => call<unknown>('/eye/witness', { wallet, record });
 export const fetchWitnessChallenge = (wallet: string) => call<{ challenge: string }>(`/eye/witness/challenge?wallet=${encodeURIComponent(wallet)}`);

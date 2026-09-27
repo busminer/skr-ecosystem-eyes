@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { t } from '../i18n';
 import { integer } from '../format';
@@ -11,6 +12,7 @@ import { Button, Eyebrow, Meter } from '../lab/kit';
 import { EyeApiError, fetchEyeNetwork, sendGaze, type EyeNetwork, type EyeStatus, type NetworkEye } from './api';
 import { EYE_BASE_URL, EYE_FINGER_ENABLED } from './config';
 import { EyePanel } from './EyePanel';
+import { EyeOnboarding } from './EyeOnboarding';
 import { WitnessWalkthrough, getWitnessState } from './WitnessWalkthrough';
 import { IrisScene, type IrisHandle } from './IrisScene';
 import { openEyeStream } from './stream';
@@ -43,6 +45,8 @@ import { clock, epochMs, localHourOf, pulseInPhoneTime } from './time';
 // nothing is called an error.
 
 const REFRESH_MS = 60_000;
+// Set once the walk-through of the Eye has been seen or skipped.
+const INTRO_KEY = 'skr-eyes:eye-intro:v1';
 const RINGS = 9;
 // The tallest bar of the day's pulse.
 const PULSE_H = 34;
@@ -51,21 +55,33 @@ const hh = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
 
 const serialName = (serial: number) => `EYE #${String(serial).padStart(4, '0')}`;
 
+// What the pupil counts: your own next Blink when you have an Eye, the
+// word Ready when it is due, and otherwise the end of the Blink day (UTC
+// midnight), when every streak is settled.
+type PupilClock = { eyebrow: string; at: number | null; fixed: string | null };
+
+// The next UTC midnight after a Blink day (YYYY-MM-DD).
+function dayEnd(day: string | null | undefined): number | null {
+  const [year = NaN, month = NaN, date = NaN] = String(day ?? '').split('-').map(Number);
+  if (![year, month, date].every(Number.isFinite)) return null;
+  return Date.UTC(year, month - 1, date + 1);
+}
+
 // The pupil's own clock. It is the one thing on the tab that changes every
 // second, so it is the one thing redrawn every second.
-function Pupil({ blink, label, size, onEdge }: { blink: { open: boolean; opensAt: string | number; closesAt: string | number } | null; label: string | null; size: number; onEdge: () => void }) {
+function Pupil({ clock: face, label, size, onEdge }: { clock: PupilClock; label: string | null; size: number; onEdge: () => void }) {
   const [now, setNow] = useState(() => Date.now());
   const crossed = useRef<number | null>(null);
+  const edge = face.at;
   useEffect(() => {
-    if (!blink) return;
+    if (edge == null) return;
     setNow(Date.now());
     const timer = setInterval(() => { if (AppState.currentState === 'active') setNow(Date.now()); }, 1_000);
     return () => clearInterval(timer);
-  }, [blink]);
-  const edge = blink ? epochMs(blink.open ? blink.closesAt : blink.opensAt) : null;
+  }, [edge]);
   const remaining = edge != null ? edge - now : null;
-  // The window turned under the clock: ask once, a second late so the
-  // server has turned too.
+  // The clock ran out under us: ask once, a second late so the server has
+  // turned too.
   useEffect(() => {
     if (edge == null || remaining == null || remaining > -1_000 || crossed.current === edge) return;
     crossed.current = edge;
@@ -73,8 +89,8 @@ function Pupil({ blink, label, size, onEdge }: { blink: { open: boolean; opensAt
   }, [edge, remaining, onEdge]);
   return (
     <View pointerEvents="none" style={[styles.pupil, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text numberOfLines={1} style={styles.pupilEyebrow}>{(blink ? (blink.open ? t('Blink is open') : t('Next Blink')) : t('The Iris')).toUpperCase()}</Text>
-      <Text numberOfLines={1} style={styles.pupilTime}>{remaining != null ? clock(remaining) : '--:--:--'}</Text>
+      <Text numberOfLines={1} style={styles.pupilEyebrow}>{face.eyebrow.toUpperCase()}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.pupilTime, face.fixed ? { color: colors.positive } : null]}>{face.fixed ?? (remaining != null ? clock(Math.max(0, remaining)) : '--:--:--')}</Text>
       {label ? <Text numberOfLines={1} style={styles.pupilLabel}>{label}</Text> : null}
     </View>
   );
@@ -170,6 +186,12 @@ export function EyesLab() {
   // asked waits on `verdict` for the answer.
   const [verifying, setVerifying] = useState(false);
   const verdict = useRef<((ok: boolean) => void) | null>(null);
+  // The walk-through of the Eye: whether it has been seen (null while the
+  // phone is asked), whether it is up, and each press of its last button.
+  const [introSeen, setIntroSeen] = useState<boolean | null>(null);
+  const [intro, setIntro] = useState(false);
+  const [openRequest, setOpenRequest] = useState(0);
+  const [phoneVerified, setPhoneVerified] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   // Blinks heard on the stream since the last read, for the line under the
   // title; the scene lights the rings itself.
@@ -306,6 +328,38 @@ export function EyesLab() {
 
   const onStatus = useCallback((next: EyeStatus) => setStatus(next), []);
 
+  // The walk-through of the Eye comes up by itself once: the first time the
+  // tab is opened by someone with no wallet yet, or with a wallet that has no
+  // Eye. Someone who already has one never sees it unasked.
+  useEffect(() => {
+    let live = true;
+    AsyncStorage.getItem(INTRO_KEY)
+      .then((value) => { if (live) setIntroSeen(value === '1'); })
+      .catch(() => { if (live) setIntroSeen(false); });
+    return () => { live = false; };
+  }, []);
+  const markIntroSeen = useCallback(() => {
+    setIntroSeen(true);
+    void AsyncStorage.setItem(INTRO_KEY, '1').catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    if (introSeen !== false || intro) return;
+    if (wallet && !status) return;
+    if (status?.eye) { markIntroSeen(); return; }
+    setIntro(true);
+  }, [introSeen, intro, wallet, status, markIntroSeen]);
+  // Whether this phone has been through the Seeker walk-through, for the
+  // last page's checklist and its button.
+  useEffect(() => {
+    let live = true;
+    if (!intro || !wallet || !EYE_FINGER_ENABLED) { setPhoneVerified(false); return; }
+    void getWitnessState(wallet).then((state) => { if (live) setPhoneVerified(state.kind === 'verified'); }).catch(() => undefined);
+    return () => { live = false; };
+  }, [intro, wallet]);
+  const closeIntro = useCallback(() => { setIntro(false); markIntroSeen(); }, [markIntroSeen]);
+  const openFromIntro = useCallback(() => { closeIntro(); setOpenRequest((count) => count + 1); }, [closeIntro]);
+  const showIntro = useCallback(() => setIntro(true), []);
+
   const beforeOpen = useCallback(async () => {
     if (!EYE_FINGER_ENABLED || !wallet) return true;
     const state = await getWitnessState(wallet).catch(() => null);
@@ -336,13 +390,20 @@ export function EyesLab() {
   const size = width;
   const pupil = Math.round(size * 0.165 * 2);
   const watching = network?.totals.watching ?? network?.totals.eyes ?? status?.network?.watching ?? status?.network?.eyes ?? null;
-  // One object per window, not per render: the pupil restarts its clock on
-  // a new one.
-  const fallback = status?.blink;
-  const blink = useMemo(
-    () => network?.window ?? (fallback ? { open: fallback.open, opensAt: fallback.opensAt, closesAt: fallback.closesAt } : null),
-    [network?.window, fallback?.open, fallback?.opensAt, fallback?.closesAt],
-  );
+  // One object per face, not per render: the pupil restarts its clock on a
+  // new one. Your own Eye, when the server paces Blinks: Ready, or the time
+  // to the next one. Otherwise the end of the Blink day.
+  const mine = status?.eye ? status.blink : null;
+  const blinkDay = network?.day ?? status?.blink?.day ?? null;
+  const pupilClock = useMemo<PupilClock>(() => {
+    if (mine && typeof mine.ready === 'boolean') {
+      if (mine.ready) return { eyebrow: t('Your Blink'), at: null, fixed: t('Ready') };
+      return { eyebrow: t('Next Blink'), at: mine.nextAt ? epochMs(mine.nextAt) : null, fixed: null };
+    }
+    const end = dayEnd(blinkDay);
+    return end != null ? { eyebrow: t('New day in'), at: end, fixed: null } : { eyebrow: t('The Iris'), at: null, fixed: null };
+  }, [mine?.ready, mine?.nextAt, blinkDay]);
+  const nextSerial = network ? network.totals.eyes + 1 : status ? status.network.eyes + 1 : null;
   const eventLabel = network?.event?.label ?? status?.blink?.event?.label ?? null;
   const blinkedToday = network ? network.totals.blinkedToday + liveBlinks : null;
   const received = network?.gazes.received ?? [];
@@ -372,7 +433,7 @@ export function EyesLab() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void read(true)} tintColor={colors.accent} />}
       >
-        <EyePanel wallet={wallet} onStatus={onStatus} onBlinked={onBlinked} onConnect={() => void connect()} onBeforeOpen={beforeOpen} connecting={connecting} connectError={connectError} />
+        <EyePanel wallet={wallet} onStatus={onStatus} onBlinked={onBlinked} onConnect={() => void connect()} onBeforeOpen={beforeOpen} onHowItWorks={showIntro} openRequest={openRequest} nextSerial={nextSerial} connecting={connecting} connectError={connectError} />
 
         <View style={styles.head}>
           <Eyebrow>{t('The Iris')}</Eyebrow>
@@ -395,7 +456,7 @@ export function EyesLab() {
         <View style={[styles.sceneWrap, { height: size, marginHorizontal: -spacing.lg }]}>
           <IrisScene ref={scene} size={size} onTap={onTap} />
           <View pointerEvents="none" style={[styles.pupilWrap, { top: (size - pupil) / 2, left: (size - pupil) / 2 }]}>
-            <Pupil blink={blink} label={eventLabel} size={pupil} onEdge={onEdge} />
+            <Pupil clock={pupilClock} label={eventLabel} size={pupil} onEdge={onEdge} />
           </View>
         </View>
 
@@ -494,6 +555,22 @@ export function EyesLab() {
           </View>
         ) : null}
       </ScrollView>
+
+      {intro ? (
+        <View style={styles.walkthrough}>
+          <EyeOnboarding
+            wallet={wallet}
+            status={status}
+            nextSerial={nextSerial}
+            verified={phoneVerified}
+            connecting={connecting}
+            connectError={connectError}
+            onConnect={() => void connect()}
+            onOpen={openFromIntro}
+            onClose={closeIntro}
+          />
+        </View>
+      ) : null}
 
       {verifying && wallet ? (
         <View style={styles.walkthrough}>

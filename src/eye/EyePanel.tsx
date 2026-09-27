@@ -8,6 +8,7 @@ import { EyePicture, type Motion } from './EyePicture';
 import { clock, epochMs } from './time';
 import { MoveSheet } from './MoveSheet';
 import type { MoveKind } from './move';
+import { cooldownHours, leftAtPrice, sol, usd } from './money';
 
 // Your Eye, at the top of the Eyes tab.
 //
@@ -24,10 +25,6 @@ import type { MoveKind } from './move';
 // and shut and open again on every Blink. The picture itself does that, in
 // EyePicture; this panel only says when.
 
-// Lamports to SOL, three places: the prices are small round numbers and a
-// nine-digit tail would only hide them.
-const sol = (lamports: number) => (lamports / 1_000_000_000).toFixed(3);
-
 // One step of the witnesses count on its way up. Usually the way up is one,
 // after our own Blink; a poll that finds a crowd arrived takes at most a
 // dozen steps to get there rather than counting every head.
@@ -42,7 +39,11 @@ const step = (from: number, to: number) => Math.min(to, from + Math.max(1, Math.
 // `onBeforeOpen` is asked once before the first open: the tab shows the
 // Seeker walk-through there when the finger is on and this phone has not
 // been through it. A false answer ends the open quietly.
-export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen, connecting = false, connectError = null }: { wallet: string | null; onStatus?: (status: EyeStatus) => void; onBlinked?: () => void; onConnect?: () => void; onBeforeOpen?: () => Promise<boolean>; connecting?: boolean; connectError?: string | null }) {
+// `onHowItWorks` brings the tab's walk-through of the Eye back up, and
+// `openRequest` is how that walk-through's last button reaches this one: each
+// new number is one press of Open my Eye. `nextSerial` is the number the next
+// Eye will carry, for the line that says how many are left at this price.
+export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen, onHowItWorks, openRequest = 0, nextSerial = null, connecting = false, connectError = null }: { wallet: string | null; onStatus?: (status: EyeStatus) => void; onBlinked?: () => void; onConnect?: () => void; onBeforeOpen?: () => Promise<boolean>; onHowItWorks?: () => void; openRequest?: number; nextSerial?: number | null; connecting?: boolean; connectError?: string | null }) {
   const [status, setStatus] = useState<EyeStatus | null>(null);
   const [reading, setReading] = useState(false);
   const [unreachable, setUnreachable] = useState(false);
@@ -120,11 +121,15 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
   }, [hasEye]);
 
   const blink = status?.blink;
-  const edge = blink ? epochMs(blink.open ? blink.closesAt : blink.opensAt) : null;
+  // A Blink every eight hours when the server says so (it sends `ready`); the
+  // day's window otherwise, as before.
+  const paced = typeof blink?.ready === 'boolean';
+  const edge = !blink ? null : paced ? (blink.nextAt ? epochMs(blink.nextAt) : null) : epochMs(blink.open ? blink.closesAt : blink.opensAt);
   const remaining = edge != null ? edge - now : null;
 
-  // The window opened or closed under the clock: ask the server what is true
-  // now. One second of grace so the server has flipped before we ask.
+  // The window opened or closed under the clock, or the rest after a Blink
+  // ran out: ask the server what is true now. One second of grace so the
+  // server has flipped before we ask.
   useEffect(() => {
     if (edge == null || remaining == null || remaining > -1_000 || boundary.current === edge) return;
     boundary.current = edge;
@@ -167,17 +172,32 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
     setMove(kind);
   }, [wallet, move, gate, onBeforeOpen]);
 
+  // The tab's walk-through pressed Open my Eye on its last page.
+  const handled = useRef(openRequest);
+  useEffect(() => {
+    if (openRequest === handled.current) return;
+    handled.current = openRequest;
+    if (status && !status.eye) void act('open');
+  }, [openRequest, status, act]);
+
   // The sheet's last step has landed. What the server just handed back is
   // truer than what it said a minute ago, so the Eye it returned goes on
   // screen now and the lids move on it; the full status follows and fills
   // in the rest.
   const onMoved = useCallback((kind: MoveKind, result: EyeSubmitResult) => {
     setMove(null);
-    setStatus((previous) => previous ? {
-      ...previous,
-      eye: result.eye ?? previous.eye,
-      blink: kind === 'blink' && previous.blink ? { ...previous.blink, doneToday: true } : previous.blink,
-    } : previous);
+    setStatus((previous) => {
+      if (!previous) return previous;
+      const was = previous.blink;
+      const rest = (was?.cooldownSeconds ?? previous.prices.blinkCooldownSeconds ?? 0) * 1_000;
+      // An open includes the first Blink, so either move starts the rest.
+      const blinkNow = was ? {
+        ...was,
+        doneToday: true,
+        ...(typeof was.ready === 'boolean' ? { ready: false, lastAt: new Date().toISOString(), nextAt: rest ? new Date(Date.now() + rest).toISOString() : was.nextAt ?? null } : {}),
+      } : was;
+      return { ...previous, eye: result.eye ?? previous.eye, blink: blinkNow };
+    });
     setMotion(kind === 'open' ? 'opening' : 'blink');
     setNote(kind === 'open' ? t('Your Eye is open.') : t('Blink witnessed.'));
     if (kind === 'blink') onBlinked?.();
@@ -194,6 +214,7 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
             <Button label={connecting ? t('Connecting…') : t('Connect Solana Mobile')} onPress={onConnect} disabled={connecting} />
           </View>
         ) : null}
+        {onHowItWorks ? <Button label={t('How it works')} onPress={onHowItWorks} quiet /> : null}
         {connectError ? <Text style={styles.error}>{connectError}</Text> : null}
       </Panel>
     );
@@ -227,31 +248,43 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
   // is keyed by the move so a Blink after an open starts from nothing.
   const sheet = move ? <MoveSheet key={move} kind={move} wallet={wallet} onDone={(result) => onMoved(move, result)} onClose={() => setMove(null)} /> : null;
 
+  const solUsd = prices.solUsd ?? null;
+  const hours = cooldownHours(prices, blink?.cooldownSeconds);
+
   if (!eye) {
+    const left = leftAtPrice(prices, nextSerial);
+    const openUsd = usd(prices.openLamports, solUsd);
     return (
       <Panel style={styles.panel}>
         <Eyebrow>{t('Your Eye')}</Eyebrow>
         <Text style={styles.title}>{t('Open your Eye')}</Text>
-        <Text style={styles.line}>{t('{sol} SOL to open', { sol: sol(prices.openLamports) })}</Text>
+        <Text style={styles.line}>{`${t('{sol} SOL to open', { sol: sol(prices.openLamports) })}${openUsd ? ` · ${openUsd}` : ''}`}</Text>
+        {left != null && prices.tier ? (
+          <Text style={styles.micro}>{t('{count} left at this price, then {sol} SOL', { count: left.toLocaleString('en-US'), sol: sol(prices.tier.afterLamports) })}</Text>
+        ) : null}
         {gates.staked ? null : <Text style={styles.hint}>{t('Needs an active SKR position')}</Text>}
         <View style={styles.button}>
           <Button label={move === 'open' || gate ? t('Opening…') : t('Open my Eye')} onPress={() => void act('open')} disabled={!gates.staked || move != null || gate} />
         </View>
+        {onHowItWorks ? <Button label={t('How it works')} onPress={onHowItWorks} quiet /> : null}
         {feedback}
         {sheet}
       </Panel>
     );
   }
 
-  const canBlink = Boolean(blink?.open && !blink.doneToday);
+  const canBlink = paced ? Boolean(blink?.ready) : Boolean(blink?.open && !blink.doneToday);
   const blinkLabel = move === 'blink'
     ? t('Blinking…')
-    : blink?.doneToday
-      ? t('Blinked today')
-      : blink?.open
-        ? t('Blink')
-        : t('Blink is closed');
+    : paced
+      ? t('Blink')
+      : blink?.doneToday
+        ? t('Blinked today')
+        : blink?.open
+          ? t('Blink')
+          : t('Blink is closed');
   const count = shownWitnesses ?? blink?.witnesses ?? 0;
+  const blinkUsd = usd(prices.blinkLamports, solUsd);
 
   return (
     <Panel style={styles.panel}>
@@ -265,7 +298,18 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
           ? t('Streak {streak} · 1 Blink', { streak: eye.streak })
           : t('Streak {streak} · {blinks} Blinks', { streak: eye.streak, blinks: eye.blinks })}
       </Text>
-      {blink ? (
+      {blink && paced ? (
+        <>
+          <Text style={styles.clock}>
+            {blink.ready
+              ? t('Your Blink is ready')
+              : t('Next Blink in {time}', { time: remaining != null ? clock(Math.max(0, remaining)) : '—' })}
+            {blink.event?.label ? <Text style={styles.event}>{`  ${blink.event.label}`}</Text> : null}
+          </Text>
+          {!blink.doneToday ? <Text style={styles.hint}>{t('Blink today to keep the streak')}</Text> : null}
+          <Text style={styles.lead}>{t('{count} blinked today', { count })}</Text>
+        </>
+      ) : blink ? (
         <>
           <Text style={styles.clock}>
             {blink.open
@@ -273,17 +317,18 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
               : t('Next Blink in {time}', { time: remaining != null ? clock(remaining) : '—' })}
             {blink.event?.label ? <Text style={styles.event}>{`  ${blink.event.label}`}</Text> : null}
           </Text>
-          <Text style={styles.lead}>
-            {count === 1
-              ? t("1 Eye witnessed today's Blink")
-              : t("{count} Eyes witnessed today's Blink", { count })}
-          </Text>
+          <Text style={styles.lead}>{t('{count} blinked today', { count })}</Text>
         </>
       ) : null}
       <View style={styles.button}>
         <Button label={blinkLabel} onPress={() => void act('blink')} disabled={!canBlink || move != null} tone={colors.metal} />
       </View>
-      <Text style={styles.micro}>{t('{sol} SOL per Blink', { sol: sol(prices.blinkLamports) })}</Text>
+      <Text style={styles.micro}>
+        {[
+          t('{sol} SOL per Blink', { sol: sol(prices.blinkLamports) }) + (blinkUsd ? ` · ${blinkUsd}` : ''),
+          paced ? t('every {hours} hours', { hours }) : null,
+        ].filter(Boolean).join(' · ')}
+      </Text>
       {feedback}
       {sheet}
     </Panel>
