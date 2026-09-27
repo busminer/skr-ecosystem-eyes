@@ -287,7 +287,7 @@ export const tr: Record<string, string> = {
   'Try again': 'Yeniden dene',
   'Open your Eye': 'Gözünü aç',
   '{sol} SOL to open': 'Açmak için {sol} SOL',
-  'Stake SKR first': 'Önce SKR stake et',
+  'Needs an active SKR position': 'Aktif bir SKR pozisyonu gerekir',
   'Open my Eye': 'Gözümü aç',
   'Opening…': 'Açılıyor…',
   'Streak {streak} · 1 Blink': 'Seri {streak} · 1 göz kırpma',

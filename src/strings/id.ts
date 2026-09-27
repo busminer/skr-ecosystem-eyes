@@ -282,7 +282,7 @@ export const id: Record<string, string> = {
   'Try again': 'Coba lagi',
   'Open your Eye': 'Buka Matamu',
   '{sol} SOL to open': '{sol} SOL untuk membuka',
-  'Stake SKR first': 'Stake SKR dulu',
+  'Needs an active SKR position': 'Perlu posisi SKR yang aktif',
   'Open my Eye': 'Buka Mataku',
   'Opening…': 'Membuka…',
   'Streak {streak} · 1 Blink': 'Rentetan {streak} · 1 kedipan',

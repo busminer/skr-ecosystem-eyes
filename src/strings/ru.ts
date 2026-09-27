@@ -287,7 +287,7 @@ export const ru: Record<string, string> = {
   'Try again': 'Повторить',
   'Open your Eye': 'Открыть глаз',
   '{sol} SOL to open': '{sol} SOL за открытие',
-  'Stake SKR first': 'Сначала нужен стейк SKR',
+  'Needs an active SKR position': 'Нужна активная позиция в SKR',
   'Open my Eye': 'Открыть мой глаз',
   'Opening…': 'Открывается…',
   'Streak {streak} · 1 Blink': 'Серия {streak} · 1 моргание',

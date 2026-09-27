@@ -282,7 +282,7 @@ export const ja: Record<string, string> = {
   'Try again': 'もう一度',
   'Open your Eye': '目を開ける',
   '{sol} SOL to open': '開けるのに {sol} SOL',
-  'Stake SKR first': 'まず SKR をステークしてください',
+  'Needs an active SKR position': '有効な SKR ポジションが必要です',
   'Open my Eye': '自分の目を開ける',
   'Opening…': '開けています…',
   'Streak {streak} · 1 Blink': '連続 {streak} · まばたき 1 回',

@@ -228,7 +228,7 @@ export function EyePanel({ wallet }: { wallet: string | null }) {
         <Eyebrow>{t('Your Eye')}</Eyebrow>
         <Text style={styles.title}>{t('Open your Eye')}</Text>
         <Text style={styles.line}>{t('{sol} SOL to open', { sol: sol(prices.openLamports) })}</Text>
-        {gates.staked ? null : <Text style={styles.hint}>{t('Stake SKR first')}</Text>}
+        {gates.staked ? null : <Text style={styles.hint}>{t('Needs an active SKR position')}</Text>}
         <View style={styles.button}>
           <Button label={busy === 'open' ? t('Opening…') : t('Open my Eye')} onPress={() => void act('open')} disabled={!gates.staked || busy != null} />
         </View>

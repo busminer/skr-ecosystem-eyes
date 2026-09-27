@@ -286,7 +286,7 @@ export const zh: Record<string, string> = {
   'Try again': '再试一次',
   'Open your Eye': '睁开你的眼',
   '{sol} SOL to open': '睁开需要 {sol} SOL',
-  'Stake SKR first': '请先质押 SKR',
+  'Needs an active SKR position': '需要一个有效的 SKR 仓位',
   'Open my Eye': '睁开我的眼',
   'Opening…': '正在睁开…',
   'Streak {streak} · 1 Blink': '连续 {streak} · 1 次眨眼',

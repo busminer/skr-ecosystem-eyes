@@ -283,7 +283,7 @@ export const ko: Record<string, string> = {
   'Try again': '다시 시도',
   'Open your Eye': '눈을 뜨세요',
   '{sol} SOL to open': '뜨는 데 {sol} SOL',
-  'Stake SKR first': '먼저 SKR을 스테이킹하세요',
+  'Needs an active SKR position': '활성 SKR 포지션이 필요합니다',
   'Open my Eye': '내 눈 뜨기',
   'Opening…': '뜨는 중…',
   'Streak {streak} · 1 Blink': '연속 {streak} · 깜빡임 1회',

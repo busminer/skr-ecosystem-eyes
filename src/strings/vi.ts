@@ -286,7 +286,7 @@ export const vi: Record<string, string> = {
   'Try again': 'Thử lại',
   'Open your Eye': 'Mở Mắt của bạn',
   '{sol} SOL to open': '{sol} SOL để mở',
-  'Stake SKR first': 'Hãy stake SKR trước',
+  'Needs an active SKR position': 'Cần có vị thế SKR đang hoạt động',
   'Open my Eye': 'Mở Mắt của tôi',
   'Opening…': 'Đang mở…',
   'Streak {streak} · 1 Blink': 'Chuỗi {streak} · 1 lần chớp',

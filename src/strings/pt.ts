@@ -288,7 +288,7 @@ export const pt: Record<string, string> = {
   'Try again': 'Tentar de novo',
   'Open your Eye': 'Abra seu Olho',
   '{sol} SOL to open': '{sol} SOL para abrir',
-  'Stake SKR first': 'Faça stake de SKR primeiro',
+  'Needs an active SKR position': 'Precisa de uma posição ativa em SKR',
   'Open my Eye': 'Abrir meu Olho',
   'Opening…': 'Abrindo…',
   'Streak {streak} · 1 Blink': 'Sequência {streak} · 1 piscada',
