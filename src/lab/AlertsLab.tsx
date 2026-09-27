@@ -46,7 +46,10 @@ function Setting({ label, note, open, onPeek, control }: { label: string; note?:
   );
 }
 
-export function AlertsLab() {
+// `embedded`: the tail of Me rather than a screen of its own. Then it is a
+// run of panels inside Me's scroll view, and the tip sheet is Me's to show,
+// over the whole screen, through `onTip`.
+export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onTip?: () => void } = {}) {
   // The language switch lives here because this is the only settings screen the
   // app has. Reading it through the hook is what redraws every other screen the
   // moment it changes.
@@ -147,9 +150,8 @@ export function AlertsLab() {
   const { config, fallback } = resolveAlertThresholds(state);
   const canArm = Boolean(profile && profile.nextUnlockAt);
 
-  return (
-    <View style={styles.screen}>
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+  const body = (
+    <>
       {/* The one panel on this screen allowed to raise its hand, and only
           while the phone is refusing to wake anybody. Once it is allowed that
           is a settled fact, and a settled fact goes quiet. */}
@@ -335,7 +337,7 @@ export function AlertsLab() {
             <Eyebrow tone={colors.metal}>{t('Support SKR Eyes')}</Eyebrow>
             <Text style={styles.noteText}>{t('Free and open source, built by one Seeker. Tips go straight to kosa.skr.')}</Text>
           </View>
-          <Button label={t('Send a tip')} tone={colors.metal} onPress={() => { void Haptics.selectionAsync(); setTipping(true); }} />
+          <Button label={t('Send a tip')} tone={colors.metal} onPress={() => { void Haptics.selectionAsync(); if (onTip) onTip(); else setTipping(true); }} />
         </View>
       </Panel>
 
@@ -346,7 +348,12 @@ export function AlertsLab() {
           'privacy           no address sent for alerts, no push server',
         ]}
       />
-    </ScrollView>
+    </>
+  );
+  if (embedded) return <View style={styles.embedded}>{body}</View>;
+  return (
+    <View style={styles.screen}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>{body}</ScrollView>
     {/* Outside the scroll view on purpose: a sheet inside it would sit at the
         top of the content and scroll away with it, leaving a blank screen. */}
     {tipping ? <TipSheet onClose={() => setTipping(false)} /> : null}
@@ -357,6 +364,7 @@ export function AlertsLab() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 130, gap: spacing.lg },
+  embedded: { gap: spacing.lg },
   panel: { padding: spacing.md },
   pressed: { opacity: 0.6 },
   tipRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },

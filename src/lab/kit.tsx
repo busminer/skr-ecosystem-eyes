@@ -49,13 +49,20 @@ export function Mark({ size = 26, tone = colors.accent, open = 1 }: { size?: num
 // find out which room they were standing in.
 //
 // Shapes are read without reading. Each one says what its tab holds — the
-// vault door, the flow of events, the standings, a person, a bell — and the
+// eye of the Iris, the vault door, the flow of events, the standings, a
+// person — and the
 // live one sits in a pool of accent light, which is the one place on any
 // screen where the accent is spent by default.
-export function TabIcon({ name, tone, size = 22 }: { name: 'pulse' | 'flow' | 'top' | 'me' | 'alerts'; tone: string; size?: number }) {
+export function TabIcon({ name, tone, size = 22 }: { name: 'eyes' | 'pulse' | 'flow' | 'top' | 'me'; tone: string; size?: number }) {
   const stroke = { stroke: tone, strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
+      {name === 'eyes' ? (
+        <G>
+          <Path d="M2.5 12c2.6-4.3 5.8-6.4 9.5-6.4s6.9 2.1 9.5 6.4c-2.6 4.3-5.8 6.4-9.5 6.4S5.1 16.3 2.5 12Z" {...stroke} />
+          <Circle cx={12} cy={12} r={3.1} {...stroke} />
+        </G>
+      ) : null}
       {name === 'pulse' ? (
         <G>
           <Rect x={3} y={4} width={18} height={16} rx={3} {...stroke} />
@@ -73,12 +80,6 @@ export function TabIcon({ name, tone, size = 22 }: { name: 'pulse' | 'flow' | 't
         <G>
           <Circle cx={12} cy={8.5} r={3.6} {...stroke} />
           <Path d="M4.8 20c.6-3.8 3.6-6 7.2-6s6.6 2.2 7.2 6" {...stroke} />
-        </G>
-      ) : null}
-      {name === 'alerts' ? (
-        <G>
-          <Path d="M18 9.5a6 6 0 1 0-12 0c0 6-2.5 8-2.5 8h17S18 15.5 18 9.5" {...stroke} />
-          <Path d="M13.7 21a2 2 0 0 1-3.4 0" {...stroke} />
         </G>
       ) : null}
     </Svg>

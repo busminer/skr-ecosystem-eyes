@@ -18,7 +18,6 @@ import { prepareSound } from './src/sound';
 import { useEventCues } from './src/lab/cues';
 import { colors, font, radius, spacing, type } from './src/theme';
 import type { Freshness, FreshnessDetail } from './src/types';
-import { AlertsLab } from './src/lab/AlertsLab';
 import { FlowLab } from './src/lab/FlowLab';
 import { Mark, TabIcon } from './src/lab/kit';
 import { Splash } from './src/lab/Splash';
@@ -27,15 +26,18 @@ import { MyLab } from './src/lab/MyLab';
 import { TopLab } from './src/lab/TopLab';
 import { useTabRequests } from './src/nav';
 import { PulseLab } from './src/lab/PulseLab';
+import { EyesLab } from './src/eye/EyesLab';
 
-type Tab = 'pulse' | 'flow' | 'top' | 'me' | 'alerts';
+type Tab = 'eyes' | 'pulse' | 'flow' | 'top' | 'me';
 
+// Eyes first: the Iris is the reason to open the app every day now. Alerts
+// gave up its place in the bar and lives at the tail of Me.
 const tabs: Array<{ key: Tab; label: string }> = [
+  { key: 'eyes', label: 'Eyes' },
   { key: 'pulse', label: 'Vault' },
   { key: 'flow', label: 'Flow' },
   { key: 'top', label: 'Top' },
   { key: 'me', label: 'Me' },
-  { key: 'alerts', label: 'Alerts' },
 ];
 
 const freshnessTone = { fresh: colors.positive, aging: colors.pending, stale: colors.pending, unavailable: colors.negative } as const;
@@ -52,12 +54,13 @@ const freshnessOpen = { fresh: 1, aging: 0.62, stale: 0.22, unavailable: 0 } as 
 const TOP_BAR = 46;
 
 const TAB_SOURCE: Record<Tab, keyof Pick<FreshnessDetail, 'metrics' | 'events' | 'queue' | 'overall'>> = {
+  // The Iris has its own clock, in the pupil; the bar says nothing over it.
+  eyes: 'overall',
   pulse: 'metrics',
   flow: 'events',
   // The board is rebuilt from the position scan, so its age is the scan's.
   top: 'queue',
   me: 'metrics',
-  alerts: 'overall',
 };
 
 // The age is measured from the moment the source itself last spoke, not from
@@ -121,7 +124,7 @@ function TabBar({ tab, onSelect }: { tab: Tab; onSelect: (next: Tab) => void }) 
 }
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('pulse');
+  const [tab, setTab] = useState<Tab>('eyes');
   // On Vault the header floats over the sky; once the page scrolls it gets its ground back.
   const [vaultAtTop, setVaultAtTop] = useState(true);
   const [detail, setDetail] = useState<FreshnessDetail | null>(null);
@@ -235,16 +238,16 @@ export default function App() {
         </View>
 
         <Animated.View key={tab} entering={FadeIn.duration(180)} style={[styles.body, tab === 'pulse' && { marginTop: -TOP_BAR }]}>
+          {tab === 'eyes' ? <EyesLab /> : null}
           {tab === 'pulse' ? <PulseLab frozen={freshness === 'stale' || freshness === 'unavailable'} topInset={TOP_BAR} onAtTop={setVaultAtTop} /> : null}
           {tab === 'flow' ? <FlowLab active={tab === 'flow'} /> : null}
           {tab === 'top' ? <TopLab /> : null}
           {tab === 'me' ? <MyLab /> : null}
-          {tab === 'alerts' ? <AlertsLab /> : null}
         </Animated.View>
 
         {/* Two openings. The turn is the one from 1.0, back because people
             asked for it; the first stone is the one from 1.1. Chosen on
-            Alerts, and the turn is the default. */}
+            Me, and the turn is the default. */}
         {opening ? (prefValue('splash:turn', true) ? <SplashTurn onDone={finishOpening} /> : <Splash onDone={finishOpening} />) : null}
 
         <TabBar tab={tab} onSelect={select} />

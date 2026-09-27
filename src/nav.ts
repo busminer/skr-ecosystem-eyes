@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 // tab bar lives in App, so the request travels through here rather than
 // through props threaded down every screen.
 
-export type TabRequest = { tab: 'pulse' | 'flow' | 'top' | 'me' | 'alerts'; wallet?: string | null; share?: boolean };
+export type TabRequest = { tab: 'eyes' | 'pulse' | 'flow' | 'top' | 'me'; wallet?: string | null; share?: boolean };
 
 const listeners = new Set<(request: TabRequest) => void>();
 let last: TabRequest | null = null;

@@ -100,7 +100,39 @@ async function call<T>(path: string, body?: object): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+// The Iris: every open Eye on its ring, the day's window, who gazed at you,
+// and the Guardian circles. `eyes` may be capped at about two thousand; then
+// `ringCounts` carries the whole count per ring and the rest are drawn as
+// placeholders.
+export type NetworkEye = {
+  serial: number;
+  name: string;
+  streak: number;
+  ring: number;
+  blinkedToday: boolean;
+  perfect: boolean;
+  pool: string | null;
+  moons: number;
+};
+
+export type EyeNetwork = {
+  day: string;
+  event: { kind: string; label: string };
+  window: { open: boolean; opensAt: string | number; closesAt: string | number };
+  totals: { eyes: number; watching: number; blinkedToday: number; perfect: number; newToday: number };
+  rings: number;
+  eyes: NetworkEye[];
+  ringCounts?: number[];
+  me: { serial: number; ring: number; streak: number; moons: number } | null;
+  gazes: { received: Array<{ serial: number; name: string }>; sentToday: number; limit: number };
+  circles: Array<{ pool: string; label: string; blinked: number; eyes: number }>;
+};
+
+export type GazeResult = { ok: boolean; sentToday: number; limit: number };
+
 export const fetchEyeStatus = (wallet: string) => call<EyeStatus>(`/eye/status?wallet=${encodeURIComponent(wallet)}`);
+export const fetchEyeNetwork = (wallet: string | null) => call<EyeNetwork>(`/eye/network${wallet ? `?wallet=${encodeURIComponent(wallet)}` : ''}`);
+export const sendGaze = (wallet: string, target: number) => call<GazeResult>('/eye/gaze', { wallet, target });
 export const openEye = (wallet: string) => call<EyeIntent>('/eye/open', { wallet });
 export const blinkEye = (wallet: string) => call<EyeIntent>('/eye/blink', { wallet });
 export const submitEye = (intent: string, signedTransaction: string) => call<EyeSubmitResult>('/eye/submit', { intent, signedTransaction });

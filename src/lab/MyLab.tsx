@@ -15,7 +15,9 @@ import { Switch } from 'react-native';
 import { colors, font, radius, spacing, type } from '../theme';
 import type { TopMe, WalletProfile } from '../types';
 import { fetchWalletAge, type PositionAge } from './age';
-import { Button, Chevron, Evidence, Eyebrow, Inset, Meter, Panel } from './kit';
+import { Button, Chevron, Evidence, Eyebrow, Hairline, Inset, Meter, Panel } from './kit';
+import { AlertsLab } from './AlertsLab';
+import { TipSheet } from './TipSheet';
 import { StakerCard, cardFacts } from './StakerCard';
 import type { CardFacts } from './cardArt';
 import { CardExporter, shareCardPng } from './shareCard';
@@ -92,6 +94,9 @@ export function MyLab() {
   const [standing, setStanding] = useState<{ me: TopMe; people: number } | null>(null);
   // Top's "Share my place" lands here wanting the card shared once it is drawn.
   const wantShare = useRef(Boolean(takeTabRequest('me')?.share));
+  // The tip jar lives in the settings at the tail of this screen; the sheet
+  // itself is shown here, over the whole screen.
+  const [tipping, setTipping] = useState(false);
 
   useEffect(() => {
     fetchEcosystemState().then((state) => {
@@ -488,7 +493,15 @@ export function MyLab() {
 
       {busy ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
       {error ? <Pressable onPress={() => setError(null)}><Text style={styles.error}>{error}</Text></Pressable> : null}
+
+      {/* Alerts, language, the opening and the tip jar: the settings that
+          were a tab of their own, now the tail of Me. Eyes took the first
+          place in the bar, and five tabs is what a 400-wide phone can name. */}
+      <Hairline />
+      <Eyebrow>{t('Alerts')}</Eyebrow>
+      <AlertsLab embedded onTip={() => setTipping(true)} />
     </ScrollView>
+    {tipping ? <TipSheet onClose={() => setTipping(false)} /> : null}
     </View>
   );
 }
