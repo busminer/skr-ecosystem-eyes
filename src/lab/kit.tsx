@@ -16,12 +16,16 @@ export function Mark({ size = 26, tone = colors.accent, open = 1 }: { size?: num
   const height = 52 * gap;
   const y = 50 - height / 2;
   const lidTone = gap < 0.3 ? '#6C8593' : tone;
+  // On Android a clip path is read once by id and never again, so a lid
+  // that moves under the same id stays where it was first drawn. One id per
+  // hundredth of opening: a moving lid is a new clip each step.
+  const clip = `lids-${Math.round(gap * 100)}`;
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100">
       <Defs>
-        <ClipPath id="lids"><Rect x={0} y={y} width={100} height={Math.max(height, 0.01)} /></ClipPath>
+        <ClipPath id={clip}><Rect x={0} y={y} width={100} height={Math.max(height, 0.01)} /></ClipPath>
       </Defs>
-      <G clipPath="url(#lids)">
+      <G clipPath={`url(#${clip})`}>
         <Path
           d="M12 50 C22 29 34 24 50 24 C66 24 78 29 88 50 C78 71 66 76 50 76 C34 76 22 71 12 50 Z"
           fill="#070B0E"

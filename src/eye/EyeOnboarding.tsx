@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 import { t } from '../i18n';
 import { integer, shortAddress } from '../format';
 import { prefValue } from '../prefs';
 import { useReducedMotion } from '../useReducedMotion';
-import { Button, Mark } from '../lab/kit';
+import { Button } from '../lab/kit';
 import { colors, font, radius, spacing, type } from '../theme';
 import { fetchEyeHealth, type EyePrices, type EyeStatus } from './api';
 import { EYE_FINGER_ENABLED } from './config';
 import { cooldownHours, leftAtPrice, rentOf, sol, usd } from './money';
+import { PortalEye } from './PortalEye';
 
 // The Eye, explained before it is bought, by showing rather than telling.
 //
@@ -34,82 +35,42 @@ import { cooldownHours, leftAtPrice, rentOf, sol, usd } from './money';
 
 const PAGES = 5;
 
-// The lids, as a number from 0 (shut) to 1 (open), moved on the JS thread in
-// short bursts. The Mark draws its lids from that number; a burst is a third
-// of a second, so the redraws cost nothing worth measuring.
-function useLids(start: number) {
-  const [value, setValue] = useState(start);
-  const current = useRef(start);
-  const raf = useRef<number | null>(null);
-  const stop = useCallback(() => {
-    if (raf.current != null) cancelAnimationFrame(raf.current);
-    raf.current = null;
-  }, []);
-  const run = useCallback((steps: Array<{ to: number; ms: number }>) => {
-    stop();
-    let index = 0;
-    let from = current.current;
-    let started = 0;
-    const tick = (time: number) => {
-      const step = steps[index];
-      if (!step) { raf.current = null; return; }
-      if (!started) started = time;
-      const k = step.ms <= 0 ? 1 : Math.min(1, (time - started) / step.ms);
-      const eased = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
-      const next = from + (step.to - from) * eased;
-      current.current = next;
-      setValue(next);
-      if (k >= 1) { index += 1; from = step.to; started = 0; }
-      raf.current = requestAnimationFrame(tick);
-    };
-    raf.current = requestAnimationFrame(tick);
-  }, [stop]);
-  const set = useCallback((to: number) => { stop(); current.current = to; setValue(to); }, [stop]);
-  useEffect(() => stop, [stop]);
-  return { value, run, set };
-}
-
-// Shut fast, a beat, open a little slower: the way the Eye itself blinks.
-const BLINK = [{ to: 0.02, ms: 120 }, { to: 0.02, ms: 60 }, { to: 1, ms: 190 }];
-
 function buzz() {
   if (prefValue('buzz', true)) void Haptics.selectionAsync().catch(() => undefined);
 }
 
 // ---------------------------------------------------------------- pictures --
 
-// Page one: the Eye opens, and its number comes up under it.
+// Page one: the Eye as the NFT draws it opens, with a touch, and its number
+// comes up under it; then it blinks now and then, as it will every day.
 function EyeBirth({ active, reduced, serial, size }: { active: boolean; reduced: boolean; serial: string | null; size: number }) {
-  const lids = useLids(reduced ? 1 : 0);
-  const { run, set } = lids;
+  const [open, setOpen] = useState(reduced);
+  const [blink, setBlink] = useState(0);
+  const shown = useSharedValue(reduced ? 1 : 0);
   useEffect(() => {
-    if (reduced) { set(1); return; }
-    if (!active) { set(0); return; }
-    set(0);
-    const first = setTimeout(() => run([{ to: 1, ms: 950 }]), 380);
-    const loop = setInterval(() => run(BLINK), 4_200);
+    if (reduced) { setOpen(true); shown.value = 1; return; }
+    if (!active) { setOpen(false); shown.value = 0; return; }
+    setOpen(false);
+    shown.value = 0;
+    const first = setTimeout(() => {
+      setOpen(true);
+      shown.value = withDelay(650, withTiming(1, { duration: 500 }));
+      if (prefValue('buzz', true)) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+    }, 500);
+    const loop = setInterval(() => setBlink((count) => count + 1), 3_600);
     return () => { clearTimeout(first); clearInterval(loop); };
-  }, [active, reduced, run, set]);
-  const half = size / 2;
+  }, [active, reduced, shown]);
+  const tag = useAnimatedStyle(() => ({ opacity: shown.value, transform: [{ translateY: (1 - shown.value) * 8 }] }));
   return (
     <View style={{ width: size, alignItems: 'center' }}>
-      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
-          {[0.98, 0.8, 0.62].map((k, index) => (
-            <Circle key={k} cx={half} cy={half} r={half * k - 1} fill="none" stroke={colors.line} strokeWidth={1} opacity={0.9 - index * 0.2} />
-          ))}
-          <Circle cx={half} cy={half} r={half * 0.62 - 1} fill="none" stroke={colors.accent} strokeWidth={1.2} opacity={0.18 + 0.4 * lids.value} />
-        </Svg>
-        <Mark size={size * 0.74} open={lids.value} />
-      </View>
-      <Text style={[styles.serial, { opacity: serial ? Math.max(0, (lids.value - 0.6) / 0.4) : 0 }]}>{serial ?? ' '}</Text>
+      <PortalEye size={size} open={open} blink={blink} instant={reduced} />
+      <Animated.Text style={[styles.serial, tag]}>{serial ?? ' '}</Animated.Text>
     </View>
   );
 }
 
 // The four stops of every move, drawn small.
-function RoadIcon({ name, tone, open }: { name: 'finger' | 'wallet' | 'network' | 'eye'; tone: string; open: number }) {
-  if (name === 'eye') return <Mark size={34} tone={tone} open={open} />;
+function RoadIcon({ name, tone }: { name: 'finger' | 'wallet' | 'network'; tone: string }) {
   return (
     <Svg width={26} height={26} viewBox="0 0 26 26">
       {name === 'finger' ? (
@@ -145,22 +106,18 @@ function Road({ active, reduced, width, finger }: { active: boolean; reduced: bo
   const stops = finger ? ROAD : ROAD.slice(1);
   const last = stops.length - 1;
   const [at, setAt] = useState(reduced ? last : -1);
-  const lids = useLids(reduced ? 1 : 0.06);
-  const { run, set } = lids;
   useEffect(() => {
-    if (reduced) { setAt(last); set(1); return; }
-    if (!active) { setAt(-1); set(0.06); return; }
+    if (reduced) { setAt(last); return; }
+    if (!active) { setAt(-1); return; }
     let step = -1;
     setAt(-1);
-    set(0.06);
+    // One stop a beat; the Eye stays open two beats before the road starts over.
     const timer = setInterval(() => {
       step = step >= last + 2 ? -1 : step + 1;
-      if (step === -1) set(0.06);
-      if (step === last) run([{ to: 1, ms: 700 }]);
       setAt(Math.min(step, last));
     }, 950);
     return () => clearInterval(timer);
-  }, [active, reduced, last, run, set]);
+  }, [active, reduced, last]);
 
   const captions: Record<(typeof ROAD)[number], string> = {
     finger: t('Your fingerprint signs'),
@@ -182,7 +139,9 @@ function Road({ active, reduced, width, finger }: { active: boolean; reduced: bo
               <View style={styles.roadRow}>
                 {index > 0 ? <View style={[styles.roadLine, { backgroundColor: at >= index ? colors.positive : colors.line }]} /> : <View style={styles.roadLineGap} />}
                 <View style={[styles.roadNode, { width: node, height: node, borderRadius: node / 2, borderColor: tone, backgroundColor: here ? 'rgba(86, 224, 255, 0.10)' : colors.inset }]}>
-                  <RoadIcon name={name} tone={tone} open={name === 'eye' ? lids.value : 1} />
+                  {name === 'eye'
+                    ? <PortalEye size={node - 6} open={at >= index} instant={reduced} />
+                    : <RoadIcon name={name} tone={tone} />}
                 </View>
                 {index < last ? <View style={[styles.roadLine, { backgroundColor: at > index ? colors.positive : colors.line }]} /> : <View style={styles.roadLineGap} />}
               </View>
@@ -211,13 +170,11 @@ function arc(cx: number, cy: number, r: number, from: number, to: number): strin
 // round; at the end of each stretch the Eye in the middle blinks and the next
 // stretch lights.
 function BlinkDial({ active, reduced, size, slots }: { active: boolean; reduced: boolean; size: number; slots: number }) {
-  const lids = useLids(1);
-  const { run, set } = lids;
+  const [blink, setBlink] = useState(0);
   const [slot, setSlot] = useState(0);
   const turn = useSharedValue(0);
   const per = 360 / slots;
   useEffect(() => {
-    set(1);
     setSlot(0);
     turn.value = 0;
     if (reduced || !active) return;
@@ -226,12 +183,12 @@ function BlinkDial({ active, reduced, size, slots }: { active: boolean; reduced:
     turn.value = withTiming(per, { duration: SLOT_MS, easing: Easing.linear });
     const timer = setInterval(() => {
       ticks += 1;
-      run(BLINK);
+      setBlink(ticks);
       setSlot(ticks % slots);
       turn.value = withTiming((ticks + 1) * per, { duration: SLOT_MS, easing: Easing.linear });
     }, SLOT_MS);
     return () => clearInterval(timer);
-  }, [active, reduced, per, slots, run, set, turn]);
+  }, [active, reduced, per, slots, turn]);
   const hand = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value}deg` }] }));
   const half = size / 2;
   const r = half - 10;
@@ -256,7 +213,7 @@ function BlinkDial({ active, reduced, size, slots }: { active: boolean; reduced:
           <View style={[styles.handDot, { left: half - 5, top: 10 - 5 }]} />
         </Animated.View>
       )}
-      <Mark size={size * 0.46} open={lids.value} />
+      <PortalEye size={Math.round(size * 0.62)} open blink={blink} instant={reduced} />
     </View>
   );
 }
@@ -534,7 +491,7 @@ export function EyeOnboarding({
 
         <ScrollView style={{ width }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
           <View style={styles.readyHead}>
-            <Mark size={44} open={hasEye ? 1 : 0.35} />
+            <PortalEye size={52} open={hasEye} instant />
             <View style={{ flex: 1 }}>
               <Text style={styles.titleLeft}>{hasEye ? t('Your Eye is open') : t('Ready to open')}</Text>
               {serial && !hasEye ? <Text style={styles.serialLeft}>{t('Next: {serial}', { serial })}</Text> : null}
