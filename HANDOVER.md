@@ -1,8 +1,64 @@
 # SKR Eyes — состояние
 
-Обновлено **22.09.2026**, чат «SKR Eyes: витрина и полная самопроверка».
+Обновлено **27.09.2026**, чат «SKR Eyes: Глаз, Радужка, палец». Предыдущий срез (22.09) ниже, он остаётся верным там, где не перекрыт.
 
-## Главное: Solana Mobile требует убрать стейкинг
+
+## 27.09.2026 — Глаз: что построено за день и где оно живёт
+
+**Идея (решена Alex'ом).** Eye = аккаунт, Streak = репутация, Blink = доказательство
+присутствия, Token = награда потом. Одна NFT на кошелёк «EYE #N» (Metaplex Core), растёт с
+каждым ежедневным Blink. Деньги Alex: открытие 0,008 SOL (до #1000, потом 0,016), Blink
+0,004 SOL, всё на kosa.skr автоматически. Потом токен $EYES на StonkFun (пара EYES/SKR,
+standard, около 0,5% оборота создателю), снапшот по Eye Score. Полная спецификация и
+хронология — в памяти Клода `eyes-eye-system.md` (проекты C--seekin и C--skrx).
+
+**Ветка `eye-lab`** (head 584f684 плюс этот handover), не слита в `design-1.3`. В ней:
+- вкладка **Eyes** (последняя в баре, старт на Vault): наверху твой глаз (`src/eye/EyePanel.tsx`,
+  `EyePicture.tsx` — веки открываются и моргают), ниже **Радужка** (`EyesLab.tsx`, `IrisScene.tsx`,
+  `irisSceneHtml.ts` — canvas в WebView как у Vault; кольца по стрику, зрачок с отсчётом,
+  живая волна по SSE `stream.ts`), Пульс дня / Лестница / Лидеры / Новички (Circles скрыты,
+  пока гардиан один — `circlesShown`); Alerts переехали в Me.
+- **Палец**: `modules/seeker-witness/` (Kotlin, StrongBox P-256 под отпечатком, цепочка
+  аттестации), `src/eye/witness.ts`, `finger.ts`, обряд `WitnessWalkthrough.tsx` на общем
+  `Stepper.tsx` (4 шага с прогресс-барами и словами), минт и Blink тоже шагами (`move.ts`,
+  `MoveSheet.tsx`: палец → кошелёк → сеть → веко).
+- `src/mwa.ts`: `signTransactionBase64` через `signTransactions` (кошелёк Seeker ПЕРЕПИСЫВАЕТ
+  транзакцию: ComputeBudget×2 + Lighthouse; сервер верифицирует и до-подписывает после).
+- `src/eye/config.ts`: окружение по пакету. `dev.alexkosa.skreyes` → `https://skr.alexkosa.dev`
+  (боевой), `dev.alexkosa.skreyes.lab` → `…/eye-lab` (одноразовая лаборатория), палец включён
+  только в lab. Лаб-сборка: `gradlew assembleRelease -PskrLabId=true`, называется «SKR Eyes LAB»
+  (resValue в `android/app/build.gradle`, папка gitignored — правка руками).
+- общий стор кошелька `src/wallet.ts`; `modules/skr-share/android` и `modules/seeker-witness/android`
+  добавлены force-add (правило `android/` в .gitignore глотало их).
+
+**Сервер `eye-mint`** — `C:\Users\Alex Kosa\skr-eye-mint` (Node 24, 146 тестов), на VPS как
+`skr-eye-mint.service` (`/eye/*`) и `skr-eye-mint-lab.service` (`/eye-lab/*`), см. его
+`README.md`, `deploy/DEPLOY.md`, `docs/{WITNESS,ATTEST,AUTHORITY,FINGER}.md`. Внутри: минт и
+Blink с ко-подписью, рендер карточки (@napi-rs/canvas), журнал append-only, почасовая сверка с
+цепью, `/eye/stats`, CSV, бэкап-таймер, `/eye/network` для Радужки, SSE, **свой аттестор**
+(`src/attest/*`, порт attestor.py, проверен настоящей цепочкой), проверка пальца (`witness*.mjs`).
+Ключи на VPS: authority `/etc/skr-eye-mint/authority.json` (pubkey G7ME…), аттесторы
+`Af4Tuz3Q…` (prod) и `3h49i1Ms…` (lab). Боевая коллекция «SKR Eyes» `2WZuFRH9…` с EYE #0001
+Alex (тестовый). Лаб-коллекция «SKR Eyes lab» `2U3asgsh…` — стирается по DEPLOY.md.
+
+**Проверено живьём 27.09** (дважды с нуля): обряд → аттестор VERIFIED StrongBox Seeker flags 15
+→ витнесс → подпись пальцем → минт в лаборатории подтверждён. Кошелёк Seeker минт-транзакции
+не блокирует.
+
+**Что Alex сказал в конце дня:** один релиз со всем сразу (1.4.0/9 с Глазом в Me — запасная
+сборка в `builds/`, в стор не идёт); преминта нет; в стор публикует только он; обряд должен
+погружать (сделано шагами, ждёт его оценки); коллекцию на релизе создаёт он сам своим
+кошельком (Genesis), серверный ключ — делегат; замок через маленькую программу — после релиза.
+
+**Известные хвосты:** часы в «Пульсе дня» по UTC, показать по времени телефона; Blink с
+пальцем ещё не пройден живьём (завтра); прод-сборка с пальцем (`EYE_FINGER_ENABLED` для стора,
+`EYE_REQUIRE_FINGER=1` на сервере) — после лаб-проверки Blink; слить `eye-lab` в основную
+ветку и обновить пульт; SEEKIN-аттестор `attestor.alexkosa.dev` отвечает 525 (нет
+ingress-правила, DNS-изменение — с разрешения Alex).
+
+---
+
+## Главное (22.09): Solana Mobile требует убрать стейкинг
 
 22.09 на почту Alexа пришло письмо от Solana Mobile: убрать функцию стейкинга
 и выпустить обновлённую сборку **до 1 октября 2026**, иначе приложение снимут
