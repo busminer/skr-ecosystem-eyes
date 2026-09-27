@@ -1,0 +1,22 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'dev.alexkosa.skreyes'
+version = '1.0.0'
+
+android {
+  namespace "dev.alexkosa.skreyes.witness"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+dependencies {
+  // The fingerprint prompt is the framework's own android.hardware.biometrics,
+  // not androidx.biometric: the AndroidX artifact drags in a 2020 fragment
+  // library that breaks the permission request flow (seeker-grabli, build §8).
+  implementation "androidx.core:core-ktx:1.17.0"
+}
