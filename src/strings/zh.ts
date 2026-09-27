@@ -335,8 +335,9 @@ export const zh: Record<string, string> = {
   'Gazed.': '已注视。',
   'No gazes left today': '今天的注视已用完',
   '{left} of {limit} gazes left today': '今天还剩 {left} 次注视，共 {limit} 次',
-  'Connect the wallet on Me to gaze': '要注视，请在“我的”里连接钱包',
+  'Connect the wallet to gaze': '要注视，请先连接钱包',
   'You need an Eye of your own to gaze': '需要有自己的眼才能注视',
   'That is your own Eye': '这是你自己的眼',
   'That Eye is not on the Iris': '虹膜上没有这只眼',
+  'Connecting…': '连接中…',
 };

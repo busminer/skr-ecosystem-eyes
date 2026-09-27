@@ -336,8 +336,9 @@ export const ru: Record<string, string> = {
   'Gazed.': 'Взгляд отправлен.',
   'No gazes left today': 'Взглядов на сегодня не осталось',
   '{left} of {limit} gazes left today': 'Осталось взглядов на сегодня: {left} из {limit}',
-  'Connect the wallet on Me to gaze': 'Чтобы взглянуть, подключите кошелёк на вкладке «Я»',
+  'Connect the wallet to gaze': 'Чтобы взглянуть, подключите кошелёк',
   'You need an Eye of your own to gaze': 'Чтобы взглянуть, нужен собственный глаз',
   'That is your own Eye': 'Это ваш собственный глаз',
   'That Eye is not on the Iris': 'Этого глаза нет на Ирисе',
+  'Connecting…': 'Подключение…',
 };

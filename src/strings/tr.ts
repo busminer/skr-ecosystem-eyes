@@ -336,8 +336,9 @@ export const tr: Record<string, string> = {
   'Gazed.': 'Bakış gönderildi.',
   'No gazes left today': 'Bugün bakış hakkı kalmadı',
   '{left} of {limit} gazes left today': 'Bugün {limit} bakıştan {left} kaldı',
-  'Connect the wallet on Me to gaze': 'Bakmak için Ben sekmesinde cüzdanı bağla',
+  'Connect the wallet to gaze': 'Bakmak için cüzdanı bağla',
   'You need an Eye of your own to gaze': 'Bakmak için kendi Gözün olmalı',
   'That is your own Eye': 'Bu senin kendi Gözün',
   'That Eye is not on the Iris': 'Bu Göz İris üzerinde değil',
+  'Connecting…': 'Bağlanıyor…',
 };

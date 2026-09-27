@@ -331,8 +331,9 @@ export const id: Record<string, string> = {
   'Gazed.': 'Tatapan terkirim.',
   'No gazes left today': 'Tatapan hari ini sudah habis',
   '{left} of {limit} gazes left today': 'Tersisa {left} dari {limit} tatapan hari ini',
-  'Connect the wallet on Me to gaze': 'Untuk menatap, hubungkan dompet di tab Saya',
+  'Connect the wallet to gaze': 'Untuk menatap, hubungkan dompet',
   'You need an Eye of your own to gaze': 'Untuk menatap, kamu perlu Mata sendiri',
   'That is your own Eye': 'Itu Matamu sendiri',
   'That Eye is not on the Iris': 'Mata itu tidak ada di Iris',
+  'Connecting…': 'Menghubungkan…',
 };

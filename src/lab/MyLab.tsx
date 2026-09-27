@@ -10,6 +10,7 @@ import { compact, integer, shortAddress } from '../format';
 import { connectReadOnlyWallet, forgetWalletAuthorization } from '../mwa';
 import { clearStoredSchedule, scheduleUnlockAlerts } from '../notifications';
 import { SESSION_KEY } from '../session';
+import { connectedWallet, forgetConnectedWallet, rememberConnectedWallet } from '../wallet';
 import { usePref } from '../prefs';
 import { Switch } from 'react-native';
 import { colors, font, radius, spacing, type } from '../theme';
@@ -22,7 +23,6 @@ import { StakerCard, cardFacts } from './StakerCard';
 import type { CardFacts } from './cardArt';
 import { CardExporter, shareCardPng } from './shareCard';
 import type { CardHandle } from './cardArt';
-import { EyePanel } from '../eye/EyePanel';
 
 // The card is the reason to open the app daily, so the phone remembers who
 // you are. Only the public address and the name the wallet gave us are stored.
@@ -47,10 +47,6 @@ export function MyLab() {
   // True only for the wallet that answered Mobile Wallet Adapter. A pasted
   // address is looked at, never staked from: the phone cannot sign for it.
   const [connected, setConnected] = useState(false);
-  // The address the wallet itself answered with. `address` above is only set
-  // once the position has been read, and the Eye must not wait for that read,
-  // nor follow a pasted address the phone cannot sign for.
-  const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
   const [profile, setProfile] = useState<WalletProfile | null>(null);
   const [age, setAge] = useState<PositionAge | null>(null);
   const ageExact = useRef(false);
@@ -127,7 +123,6 @@ export function MyLab() {
         if (saved.label) setWalletLabel(saved.label);
         // Connect saves the label key even when the wallet gave none; a look-up saves only the address.
         if ('label' in saved) setConnected(true);
-        if ('label' in saved && saved.address) setConnectedAddress(saved.address);
         if (saved.address) void inspect(saved.address);
       } catch {
         // A corrupted session is simply a session we do not have.
@@ -167,7 +162,13 @@ export function MyLab() {
       void fetchTop({ list: 'stake', limit: 1, wallet: clean })
         .then((top) => { if (ticket === session.current && top.me) setStanding({ me: top.me, people: top.people }); })
         .catch(() => undefined);
-      void AsyncStorage.mergeItem(SESSION_KEY, JSON.stringify({ address: clean })).catch(() => AsyncStorage.setItem(SESSION_KEY, JSON.stringify({ address: clean })).catch(() => undefined));
+      // Remembered for the next launch — unless a connected wallet is what
+      // the session holds and this is a look-up at somebody else: a pasted
+      // address must not overwrite the wallet the Eyes tab signs with.
+      const signer = connectedWallet();
+      if (!signer || signer.address === clean) {
+        void AsyncStorage.mergeItem(SESSION_KEY, JSON.stringify({ address: clean })).catch(() => AsyncStorage.setItem(SESSION_KEY, JSON.stringify({ address: clean })).catch(() => undefined));
+      }
       const accounts = next.positions.map((position) => position.stakeAccount).filter(Boolean);
       if (quiet && ageExact.current) return;
       setAgeError(null);
@@ -192,8 +193,8 @@ export function MyLab() {
       const account = await connectReadOnlyWallet();
       setWalletLabel(account.label ?? null);
       setConnected(true);
-      setConnectedAddress(account.address);
-      void AsyncStorage.setItem(SESSION_KEY, JSON.stringify({ address: account.address, label: account.label ?? null })).catch(() => undefined);
+      // Written through the shared store, so the Eyes tab has it at once.
+      rememberConnectedWallet({ address: account.address, label: account.label ?? null });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await inspect(account.address);
     } catch (caught) {
@@ -298,13 +299,13 @@ export function MyLab() {
     // The wallet permission goes with the session: the next person to open
     // this phone must be asked, not silently handed the last wallet.
     await forgetWalletAuthorization();
+    forgetConnectedWallet();
     if (previous) await clearStoredSchedule(previous).catch(() => undefined);
     setProfile(null);
     setAge(null);
     setStanding(null);
     setWalletLabel(null);
     setConnected(false);
-    setConnectedAddress(null);
     setAddress('');
     setAlertStatus(null);
   }, [address, profile]);
@@ -326,11 +327,6 @@ export function MyLab() {
       />
 
       {profile ? <CardExporter ref={cardArt} facts={cardFacts(profile, age, shownName, networkPositions, privacy, place)} /> : null}
-
-      {/* Your Eye, under the card. Only the wallet that answered Mobile
-          Wallet Adapter can have one: a pasted address is looked at, and the
-          phone cannot sign for it. */}
-      <EyePanel wallet={connected ? connectedAddress : null} />
 
       {claimed ? (
         <>
@@ -487,7 +483,7 @@ export function MyLab() {
             onChangeText={setAddress}
             style={styles.input}
           />
-          <Button label={t('Look up')} onPress={() => { setWalletLabel(null); setConnected(false); setConnectedAddress(null); void inspect(address); }} disabled={busy || !address.trim()} ghost />
+          <Button label={t('Look up')} onPress={() => { setWalletLabel(null); setConnected(false); void inspect(address); }} disabled={busy || !address.trim()} ghost />
         </>
       )}
 

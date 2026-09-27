@@ -335,8 +335,9 @@ export const vi: Record<string, string> = {
   'Gazed.': 'Đã nhìn.',
   'No gazes left today': 'Hôm nay đã hết lượt nhìn',
   '{left} of {limit} gazes left today': 'Hôm nay còn {left} trên {limit} lượt nhìn',
-  'Connect the wallet on Me to gaze': 'Để nhìn, hãy kết nối ví ở mục Tôi',
+  'Connect the wallet to gaze': 'Để nhìn, hãy kết nối ví',
   'You need an Eye of your own to gaze': 'Cần có Mắt của riêng bạn để nhìn',
   'That is your own Eye': 'Đây là Mắt của chính bạn',
   'That Eye is not on the Iris': 'Mắt này không có trên Mống mắt',
+  'Connecting…': 'Đang kết nối…',
 };

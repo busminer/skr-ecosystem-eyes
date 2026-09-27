@@ -340,8 +340,9 @@ export const de: Record<string, string> = {
   'Gazed.': 'Angeschaut.',
   'No gazes left today': 'Für heute keine Blicke mehr',
   '{left} of {limit} gazes left today': 'Heute noch {left} von {limit} Blicken',
-  'Connect the wallet on Me to gaze': 'Zum Anschauen die Wallet unter Ich verbinden',
+  'Connect the wallet to gaze': 'Zum Anschauen die Wallet verbinden',
   'You need an Eye of your own to gaze': 'Zum Anschauen brauchen Sie ein eigenes Auge',
   'That is your own Eye': 'Das ist Ihr eigenes Auge',
   'That Eye is not on the Iris': 'Dieses Auge ist nicht auf der Iris',
+  'Connecting…': 'Verbindung wird hergestellt…',
 };

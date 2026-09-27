@@ -332,8 +332,9 @@ export const ko: Record<string, string> = {
   'Gazed.': '바라봤습니다.',
   'No gazes left today': '오늘 남은 바라보기가 없습니다',
   '{left} of {limit} gazes left today': '오늘 바라보기 {limit}회 중 {left}회 남음',
-  'Connect the wallet on Me to gaze': '바라보려면 내 정보 탭에서 지갑을 연결하세요',
+  'Connect the wallet to gaze': '바라보려면 지갑을 연결하세요',
   'You need an Eye of your own to gaze': '바라보려면 내 눈이 있어야 합니다',
   'That is your own Eye': '내 눈입니다',
   'That Eye is not on the Iris': '그 눈은 홍채에 없습니다',
+  'Connecting…': '연결 중…',
 };

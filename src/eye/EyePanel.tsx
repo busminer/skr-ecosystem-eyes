@@ -7,8 +7,9 @@ import { Button, Eyebrow, Panel } from '../lab/kit';
 import { colors, font, spacing, type } from '../theme';
 import { blinkEye, eyeImageUrl, fetchEyeStatus, openEye, submitEye, type EyeStatus } from './api';
 import { EyePicture, type Motion } from './EyePicture';
+import { clock, epochMs } from './time';
 
-// Your Eye, under the card on Me.
+// Your Eye, at the top of the Eyes tab.
 //
 // Three states and nothing hidden between them: no wallet, so one line; a
 // wallet with no Eye, so the price and the one button that opens it; an Eye,
@@ -25,37 +26,18 @@ import { EyePicture, type Motion } from './EyePicture';
 // nine-digit tail would only hide them.
 const sol = (lamports: number) => (lamports / 1_000_000_000).toFixed(3);
 
-// The server says when the window opens and closes. Whether it says it as an
-// ISO string, epoch seconds or epoch millis is not this screen's business.
-function epochMs(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) return value < 1e12 ? value * 1_000 : value;
-  if (typeof value === 'string' && value) {
-    const numeric = Number(value);
-    if (Number.isFinite(numeric)) return numeric < 1e12 ? numeric * 1_000 : numeric;
-    const parsed = Date.parse(value);
-    return Number.isNaN(parsed) ? null : parsed;
-  }
-  return null;
-}
-
-// HH:MM:SS, hours left to grow past 24 rather than folded into days: the
-// window is daily, so the number is never large and a "1d" would read as an
-// error beside the seconds ticking under it.
-function clock(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / 1_000));
-  const hours = Math.floor(total / 3_600);
-  const minutes = Math.floor((total % 3_600) / 60);
-  const seconds = total % 60;
-  return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':');
-}
-
 // One step of the witnesses count on its way up. Usually the way up is one,
 // after our own Blink; a poll that finds a crowd arrived takes at most a
 // dozen steps to get there rather than counting every head.
 const TICK_MS = 90;
 const step = (from: number, to: number) => Math.min(to, from + Math.max(1, Math.ceil((to - from) / 12)));
 
-export function EyePanel({ wallet }: { wallet: string | null }) {
+// `onStatus` hands every status this panel reads to the tab around it, so
+// the pupil under it can count down from the same window without a second
+// read. `onBlinked` fires once a Blink has gone through, for the ring on the
+// Iris that is yours. `onConnect` is the tab's connect: with no wallet the
+// panel is where the one button to get one lives.
+export function EyePanel({ wallet, onStatus, onBlinked, onConnect, connecting = false, connectError = null }: { wallet: string | null; onStatus?: (status: EyeStatus) => void; onBlinked?: () => void; onConnect?: () => void; connecting?: boolean; connectError?: string | null }) {
   const [status, setStatus] = useState<EyeStatus | null>(null);
   const [reading, setReading] = useState(false);
   const [unreachable, setUnreachable] = useState(false);
@@ -155,6 +137,8 @@ export function EyePanel({ wallet }: { wallet: string | null }) {
 
   const settle = useCallback(() => setMotion(null), []);
 
+  useEffect(() => { if (status) onStatus?.(status); }, [status, onStatus]);
+
   const act = useCallback(async (kind: 'open' | 'blink') => {
     if (!wallet || busy) return;
     const mine = ticket.current;
@@ -176,6 +160,7 @@ export function EyePanel({ wallet }: { wallet: string | null }) {
       } : previous);
       setMotion(kind === 'open' ? 'opening' : 'blink');
       setNote(kind === 'open' ? t('Your Eye is open.') : t('Blink witnessed.'));
+      if (kind === 'blink') onBlinked?.();
       await read(true);
     } catch (caught) {
       if (mine !== ticket.current) return;
@@ -186,13 +171,19 @@ export function EyePanel({ wallet }: { wallet: string | null }) {
     } finally {
       if (mine === ticket.current) setBusy(null);
     }
-  }, [wallet, busy, read]);
+  }, [wallet, busy, read, onBlinked]);
 
   if (!wallet) {
     return (
       <Panel style={styles.panel}>
         <Eyebrow>{t('Your Eye')}</Eyebrow>
         <Text style={styles.lead}>{t('Your Eye opens once the wallet is connected.')}</Text>
+        {onConnect ? (
+          <View style={styles.button}>
+            <Button label={connecting ? t('Connecting…') : t('Connect Solana Mobile')} onPress={onConnect} disabled={connecting} />
+          </View>
+        ) : null}
+        {connectError ? <Text style={styles.error}>{connectError}</Text> : null}
       </Panel>
     );
   }

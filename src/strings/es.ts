@@ -335,8 +335,9 @@ export const es: Record<string, string> = {
   'Gazed.': 'Mirada enviada.',
   'No gazes left today': 'No quedan miradas por hoy',
   '{left} of {limit} gazes left today': 'Te quedan {left} de {limit} miradas hoy',
-  'Connect the wallet on Me to gaze': 'Para mirar, conecta la billetera en Yo',
+  'Connect the wallet to gaze': 'Para mirar, conecta la billetera',
   'You need an Eye of your own to gaze': 'Para mirar necesitas un Ojo propio',
   'That is your own Eye': 'Ese es tu propio Ojo',
   'That Eye is not on the Iris': 'Ese Ojo no está en el Iris',
+  'Connecting…': 'Conectando…',
 };

@@ -4,22 +4,29 @@ import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { t } from '../i18n';
 import { integer } from '../format';
-import { readSessionAddress } from '../session';
+import { isWalletCancel, connectReadOnlyWallet } from '../mwa';
+import { rememberConnectedWallet, useConnectedWallet } from '../wallet';
 import { colors, font, radius, spacing, type } from '../theme';
 import { Button, Eyebrow, Meter } from '../lab/kit';
-import { EyeApiError, fetchEyeNetwork, sendGaze, type EyeNetwork, type NetworkEye } from './api';
+import { EyeApiError, fetchEyeNetwork, sendGaze, type EyeNetwork, type EyeStatus, type NetworkEye } from './api';
 import { EYE_BASE_URL } from './config';
+import { EyePanel } from './EyePanel';
 import { IrisScene, type IrisHandle } from './IrisScene';
 import { openEyeStream } from './stream';
 import { clock, epochMs } from './time';
 
-// The Eyes tab: the network as one eye.
+// The Eyes tab: your Eye, then the network as one eye.
 //
-// Every open Eye is a ring on the Iris, closer to the pupil the longer its
-// streak, lit if it blinked today. The pupil counts down to the next Blink.
-// Under the Iris: who gazed at you today, and the Guardian circles as teams.
-// A tap on a ring opens that Eye — its card, its streak, and a Gaze, five a
-// day.
+// On top, your own Eye — the card to open one, or the picture, the streak
+// and the Blink — and, with no wallet, the one button that connects. Then
+// the Iris: every open Eye is a ring on it, closer to the pupil the longer
+// its streak, lit if it blinked today, and the pupil counts down to the next
+// Blink. Under the Iris: who gazed at you today, and the Guardian circles as
+// teams. A tap on a ring opens that Eye — its card, its streak, and a Gaze,
+// five a day.
+//
+// The wallet is the one Me keeps too, from the shared store: whichever tab
+// connects, the other one knows.
 //
 // Two clocks and one ear. The network is re-read once a minute while the tab
 // is in front and the moment the window opens or closes; blinks and gazes
@@ -127,7 +134,7 @@ function EyeSheet({ eye, gazes, wallet, mine, width, onClose, onGazed }: { eye: 
             />
             <Text style={styles.sheetMicro}>
               {!wallet
-                ? t('Connect the wallet on Me to gaze')
+                ? t('Connect the wallet to gaze')
                 : gazes
                   ? t('{left} of {limit} gazes left today', { left, limit: gazes.limit })
                   : ''}
@@ -143,7 +150,13 @@ function EyeSheet({ eye, gazes, wallet, mine, width, onClose, onGazed }: { eye: 
 
 export function EyesLab() {
   const { width } = useWindowDimensions();
-  const [wallet, setWallet] = useState<string | null>(null);
+  const connected = useConnectedWallet();
+  const wallet = connected?.address ?? null;
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
+  // What your own Eye's panel last read: the window and the counts, so the
+  // pupil has a clock even while the Iris itself is still waking up.
+  const [status, setStatus] = useState<EyeStatus | null>(null);
   const [network, setNetwork] = useState<EyeNetwork | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   // Blinks heard on the stream since the last read, for the line under the
@@ -157,12 +170,27 @@ export function EyesLab() {
   const meSerial = useRef<number | null>(null);
   const reread = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // The wallet Me keeps, so the Iris knows which ring is yours.
-  useEffect(() => {
-    let alive = true;
-    readSessionAddress().then((address) => { if (alive) setWallet(address); }).catch(() => undefined);
-    return () => { alive = false; };
-  }, []);
+  // A status belongs to the wallet it was read for.
+  useEffect(() => { setStatus(null); }, [wallet]);
+
+  const connect = useCallback(async () => {
+    if (connecting) return;
+    setConnecting(true);
+    setConnectError(null);
+    try {
+      const account = await connectReadOnlyWallet();
+      rememberConnectedWallet({ address: account.address, label: account.label ?? null });
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (caught) {
+      // The finger came off the wallet: nothing went wrong, so nothing is said.
+      if (!isWalletCancel(caught)) {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setConnectError(caught instanceof Error && caught.message ? caught.message : t('The wallet request was cancelled'));
+      }
+    } finally {
+      setConnecting(false);
+    }
+  }, [connecting]);
 
   const read = useCallback(async (visible = false) => {
     if (reading.current) return;
@@ -258,9 +286,25 @@ export function EyesLab() {
 
   const onEdge = useCallback(() => { void read(); }, [read]);
 
+  const onStatus = useCallback((next: EyeStatus) => setStatus(next), []);
+
+  // Your own Blink went through: your ring flashes like any other blink
+  // arriving, and the count under the title moves with it.
+  const onBlinked = useCallback(() => {
+    const me = network?.me;
+    if (!me) return;
+    scene.current?.push({ type: 'blink', items: [{ serial: me.serial, ring: me.ring }] });
+    if (!blinked.current.has(me.serial)) {
+      blinked.current.add(me.serial);
+      setLiveBlinks((count) => count + 1);
+    }
+  }, [network]);
+
   const size = width;
   const pupil = Math.round(size * 0.165 * 2);
-  const watching = network?.totals.watching ?? network?.totals.eyes ?? null;
+  const watching = network?.totals.watching ?? network?.totals.eyes ?? status?.network?.watching ?? status?.network?.eyes ?? null;
+  const blink = network?.window ?? (status?.blink ? { open: status.blink.open, opensAt: status.blink.opensAt, closesAt: status.blink.closesAt } : null);
+  const eventLabel = network?.event?.label ?? status?.blink?.event?.label ?? null;
   const blinkedToday = network ? network.totals.blinkedToday + liveBlinks : null;
   const received = network?.gazes.received ?? [];
   const circles = network?.circles ?? [];
@@ -273,6 +317,8 @@ export function EyesLab() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void read(true)} tintColor={colors.accent} />}
       >
+        <EyePanel wallet={wallet} onStatus={onStatus} onBlinked={onBlinked} onConnect={() => void connect()} connecting={connecting} connectError={connectError} />
+
         <View style={styles.head}>
           <Eyebrow>{t('The Iris')}</Eyebrow>
           <Text style={styles.title}>
@@ -294,7 +340,7 @@ export function EyesLab() {
         <View style={[styles.sceneWrap, { height: size, marginHorizontal: -spacing.lg }]}>
           <IrisScene ref={scene} size={size} onTap={onTap} />
           <View pointerEvents="none" style={[styles.pupilWrap, { top: (size - pupil) / 2, left: (size - pupil) / 2 }]}>
-            <Pupil blink={network?.window ?? null} label={network?.event?.label ?? null} size={pupil} onEdge={onEdge} />
+            <Pupil blink={blink} label={eventLabel} size={pupil} onEdge={onEdge} />
           </View>
         </View>
 

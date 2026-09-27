@@ -331,8 +331,9 @@ export const ja: Record<string, string> = {
   'Gazed.': '見つめました。',
   'No gazes left today': '今日はもう見つめられません',
   '{left} of {limit} gazes left today': '今日はあと {left} / {limit} 回見つめられます',
-  'Connect the wallet on Me to gaze': '見つめるには「自分」でウォレットを接続してください',
+  'Connect the wallet to gaze': '見つめるにはウォレットを接続してください',
   'You need an Eye of your own to gaze': '見つめるには自分の目が必要です',
   'That is your own Eye': 'それは自分の目です',
   'That Eye is not on the Iris': 'その目は虹彩にありません',
+  'Connecting…': '接続中…',
 };
