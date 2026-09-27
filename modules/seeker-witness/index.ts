@@ -62,6 +62,11 @@ export type WitnessSignature = {
 };
 
 export type SeekerWitnessModule = {
+  // The application id this build runs under: `dev.alexkosa.skreyes`, or
+  // `dev.alexkosa.skreyes.lab` for a sideloaded test build. Decides which
+  // attestor the JS side talks to.
+  readonly PACKAGE: string;
+  readonly KEY_ALIAS: string;
   hasKey(): Promise<boolean>;
   createKey(challengeBase64: string): Promise<CreatedKey>;
   sign(messageBase64: string, texts: PromptTexts): Promise<WitnessSignature>;

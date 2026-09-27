@@ -8,12 +8,23 @@ export const EYE_BASE_URL = 'http://127.0.0.1:8787';
 
 // The attestor that reads Google's key-attestation chain and says whether the
 // key was born in a real Seeker's StrongBox, under a fingerprint, inside our
-// APK. SEEKIN's service; it must be told to accept this app's package and
-// signing digest before it will say yes to us (docs/FINGER.md).
-export const ATTESTOR_BASE_URL = 'https://attestor.alexkosa.dev';
+// APK. SKR Eyes has its own instance of SEEKIN's attestor, on the same
+// reviewed host as the API, with its own key. The endpoints are SEEKIN's:
+// `GET {base}/attestor`, `GET {base}/challenge?wallet=`, `POST {base}/verify`
+// (docs/FINGER.md).
+//
+// Two of them, because the attestor checks the package name and the signing
+// certificate that Google's chain names, and a sideloaded test build has
+// neither the store's package nor the store's key: `-PskrLabId=true` gives
+// `dev.alexkosa.skreyes.lab`, signed with the debug key. The lab attestor
+// accepts that pair; the production one never will. The build picks by its
+// own package (src/eye/witness.ts).
+export const ATTESTOR_BASE_URL = 'https://skr.alexkosa.dev/eye/attest';
+export const ATTESTOR_LAB_BASE_URL = 'https://skr.alexkosa.dev/eye/attest-lab';
+export const LAB_PACKAGE = 'dev.alexkosa.skreyes.lab';
 
 // The finger. When on, the Eye is enrolled with the attestor before it is
-// first opened, and every Blink carries a signature from the StrongBox key
-// that only a living fingerprint can use (src/eye/finger.ts). Off until the
-// attestor accepts this package and the eye-mint server verifies the proof.
+// first opened, and every open and every Blink carries a signature from the
+// StrongBox key that only a living fingerprint can use (src/eye/finger.ts).
+// Off until the attestor and the eye-mint endpoints are live.
 export const EYE_FINGER_ENABLED = false;

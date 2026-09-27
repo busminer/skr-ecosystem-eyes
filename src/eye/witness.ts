@@ -2,17 +2,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Buffer } from 'buffer';
 import { t } from '../i18n';
 import { getSeekerWitness, WITNESS_ERROR, witnessErrorCode, type CreatedKey, type WitnessErrorCode, type WitnessSignature } from '../../modules/seeker-witness';
-import { ATTESTOR_BASE_URL } from './config';
+import { registerWitness } from './api';
+import { ATTESTOR_BASE_URL, ATTESTOR_LAB_BASE_URL, LAB_PACKAGE } from './config';
 
 // The Eye's witness: a key born in this phone's StrongBox under a fingerprint,
 // and the attestor's word that it was.
 //
-// Enrolling is one round trip each way. The attestor issues a single-use
-// challenge for the wallet; the phone generates the key with that challenge
-// inside Google's attestation chain; the attestor reads the chain and answers
-// with a signed verdict: real Seeker, StrongBox, locked bootloader, our APK,
-// finger-bound key, and the wallet's Seeker Genesis Token. The verdict and the
-// key's public half are kept here, keyed by wallet, for every Blink after.
+// Enrolling is one round trip each way and one hand-over. The attestor issues
+// a single-use challenge for the wallet; the phone generates the key with that
+// challenge inside Google's attestation chain; the attestor reads the chain
+// and answers with a signed verdict: real Seeker, StrongBox, locked
+// bootloader, our APK, finger-bound key, and the wallet's Seeker Genesis
+// Token. That verdict record goes to the eye-mint server as it came, so the
+// server binds the key to the wallet, and it is kept here too, keyed by
+// wallet, for the walkthrough to show and for the hand-over to be retried.
 //
 // Signing is one fingerprint prompt. The message is handed to the hardware;
 // the hardware refuses until a finger is on the sensor; one DER signature
@@ -34,6 +37,23 @@ export type AttestorVerdict = {
   verified_at: string;
 };
 
+// What the attestor read out of Google's certificate, kept so the walkthrough
+// can show the person the facts rather than tell them a verdict was reached.
+// Every field is exactly as the attestor reported it; null when it did not.
+export type WitnessChecks = {
+  chainLength: number | null;
+  securityLevel: string | null;
+  deviceLocked: boolean | null;
+  verifiedBootState: string | null;
+  brand: string | null;
+  model: string | null;
+  manufacturer: string | null;
+  product: string | null;
+  osVersion: number | null;
+  fingerBound: boolean | null;
+  packages: string[];
+};
+
 export type WitnessRecord = {
   wallet: string;
   // 33-byte compressed public key, hex. The same string the verdict carries.
@@ -41,12 +61,39 @@ export type WitnessRecord = {
   // Where the key actually lives; TEE only when the phone has no StrongBox.
   strongBox: boolean;
   attestation: AttestorVerdict;
+  checks: WitnessChecks;
+  // The attestor's answer exactly as it came, for `POST /eye/witness`.
+  verdict: unknown;
+  // Whether the eye-mint server has been handed the verdict. False when the
+  // hand-over failed after the attestor said yes; retried before the next use.
+  registered: boolean;
   enrolledAt: string;
 };
 
 type AttestorResponse =
-  | ({ ok: true } & AttestorVerdict)
-  | { ok: false; reason?: string };
+  | ({ ok: true; checks?: Record<string, unknown> } & AttestorVerdict)
+  | { ok: false; reason?: string; checks?: Record<string, unknown> };
+
+function pickChecks(raw: Record<string, unknown> | undefined): WitnessChecks {
+  const source = raw ?? {};
+  const str = (key: string) => (typeof source[key] === 'string' ? source[key] as string : null);
+  const num = (key: string) => (typeof source[key] === 'number' ? source[key] as number : null);
+  const bool = (key: string) => (typeof source[key] === 'boolean' ? source[key] as boolean : null);
+  const packages = Array.isArray(source.packages) ? (source.packages as unknown[]).filter((p): p is string => typeof p === 'string') : [];
+  return {
+    chainLength: num('chain_length'),
+    securityLevel: str('securityLevel'),
+    deviceLocked: bool('deviceLocked'),
+    verifiedBootState: str('verifiedBootState'),
+    brand: str('brand'),
+    model: str('model'),
+    manufacturer: str('manufacturer'),
+    product: str('product'),
+    osVersion: num('osVersion'),
+    fingerBound: bool('fingerBound'),
+    packages,
+  };
+}
 
 // Every failure is one of these, with a code the screen can act on and a
 // message already in the person's language.
@@ -57,10 +104,13 @@ export type WitnessFailure =
   // The attestor read the chain and said no; the message carries its reason.
   | 'E_ATTESTOR_REJECTED'
   // The attestor could not be reached or answered nonsense.
-  | 'E_ATTESTOR_UNREACHABLE';
+  | 'E_ATTESTOR_UNREACHABLE'
+  // The eye-mint server did not take the verdict; the record is kept unregistered.
+  | 'E_EYE_SERVICE';
 
 export class WitnessError extends Error {
-  constructor(public readonly code: WitnessFailure, message: string) {
+  // `detail` is the attestor's own reason, in its words, when it refused.
+  constructor(public readonly code: WitnessFailure, message: string, public readonly detail: string | null = null) {
     super(message);
     this.name = 'WitnessError';
   }
@@ -74,11 +124,19 @@ const storeKey = (wallet: string) => `${STORE_PREFIX}${wallet}`;
 // morning, so a longer patience than the eye-mint client's.
 const TIMEOUT_MS = 45_000;
 
+// Which attestor this build may talk to. The attestor checks the package and
+// signing certificate that Google's chain names, so a sideloaded lab build
+// (`dev.alexkosa.skreyes.lab`, debug key) has its own instance; every other
+// build is held to the store's package and key.
+export function attestorBaseUrl(): string {
+  return getSeekerWitness()?.PACKAGE === LAB_PACKAGE ? ATTESTOR_LAB_BASE_URL : ATTESTOR_BASE_URL;
+}
+
 async function attestor<T>(path: string, body?: object): Promise<T> {
   const controller = new AbortController();
   const deadline = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const response = await fetch(`${ATTESTOR_BASE_URL}${path}`, {
+    const response = await fetch(`${attestorBaseUrl()}${path}`, {
       method: body ? 'POST' : 'GET',
       headers: { accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}) },
       body: body ? JSON.stringify(body) : undefined,
@@ -131,8 +189,8 @@ export async function readWitness(wallet: string): Promise<WitnessRecord | null>
     const raw = await AsyncStorage.getItem(storeKey(wallet));
     if (!raw) return null;
     const saved = JSON.parse(raw) as Partial<WitnessRecord>;
-    if (typeof saved.p256 !== 'string' || !saved.attestation || typeof saved.attestation.attestor_sig !== 'string') return null;
-    return saved as WitnessRecord;
+    if (typeof saved.p256 !== 'string' || !saved.attestation || typeof saved.attestation.attestor_sig !== 'string' || !saved.checks) return null;
+    return { ...saved, registered: saved.registered === true } as WitnessRecord;
   } catch {
     return null;
   }
@@ -176,7 +234,8 @@ export async function enrollWitness(wallet: string): Promise<WitnessRecord> {
 
   if (!verdict.ok) {
     await module.deleteKey().catch(() => undefined);
-    throw new WitnessError('E_ATTESTOR_REJECTED', t('The attestor did not accept this phone: {reason}', { reason: verdict.reason || '?' }));
+    const reason = verdict.reason || '?';
+    throw new WitnessError('E_ATTESTOR_REJECTED', t('The attestor did not accept this phone: {reason}', { reason }), reason);
   }
   if (typeof verdict.p256 !== 'string' || verdict.p256.toLowerCase() !== created.p256Compressed.toLowerCase()) {
     // The attestor vouched for a key that is not the one in this phone.
@@ -198,19 +257,40 @@ export async function enrollWitness(wallet: string): Promise<WitnessRecord> {
       attestor_sig: verdict.attestor_sig,
       verified_at: verdict.verified_at,
     },
+    checks: pickChecks(verdict.checks),
+    verdict,
+    registered: false,
     enrolledAt: new Date().toISOString(),
   };
+  // Kept before the hand-over, so a hand-over that fails leaves a key, a
+  // verdict and one thing to retry rather than a spent challenge and nothing.
   await AsyncStorage.setItem(storeKey(wallet), JSON.stringify(record)).catch(() => undefined);
-  return record;
+  return registerRecord(record);
+}
+
+// Hands the attestor's verdict to the eye-mint server, as it came, so the
+// server binds the key it names to the wallet. Idempotent: a record already
+// registered is returned as is.
+export async function registerRecord(record: WitnessRecord): Promise<WitnessRecord> {
+  if (record.registered) return record;
+  try {
+    await registerWitness(record.wallet, record.verdict);
+  } catch (caught) {
+    throw new WitnessError('E_EYE_SERVICE', caught instanceof Error && caught.message ? caught.message : t('The Eye service did not answer'));
+  }
+  const registered: WitnessRecord = { ...record, registered: true };
+  await AsyncStorage.setItem(storeKey(record.wallet), JSON.stringify(registered)).catch(() => undefined);
+  return registered;
 }
 
 // One signature over the payload, after the system fingerprint prompt.
-// ECDSA-SHA256 over exactly these bytes, DER, base64.
-export async function witnessSign(payload: Uint8Array): Promise<WitnessSignature> {
+// ECDSA-SHA256 over exactly these bytes, DER, base64. The prompt's title says
+// what the touch is for: opening the Eye, or one Blink.
+export async function witnessSign(payload: Uint8Array, purpose: 'open' | 'blink' = 'blink'): Promise<WitnessSignature> {
   const module = requireModule();
   try {
     return await module.sign(Buffer.from(payload).toString('base64'), {
-      title: t('Sign this Blink'),
+      title: purpose === 'open' ? t('Open your Eye') : t('Sign this Blink'),
       subtitle: t('Your Seeker signs with its own key'),
       description: t('The key cannot sign without your finger.'),
       cancel: t('Cancel'),

@@ -1,6 +1,5 @@
 import { lang, t } from '../i18n';
 import { EYE_BASE_URL } from './config';
-import type { AttestorVerdict } from './witness';
 
 // The eye-mint service: one read, two intents, one submit. The transaction
 // travels as base64 of a legacy web3.js Transaction serialized with
@@ -101,17 +100,25 @@ async function call<T>(path: string, body?: object): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-// The finger (docs/FINGER.md). `attestation` is the attestor's signed verdict
-// that binds the hardware key to this wallet; the server verifies it the first
-// time it sees the key. A Blink adds one signature by that key over the
-// server's own single-use challenge. Both are optional on the wire: with
+// The finger (docs/FINGER.md). At enrollment the attestor's verdict record is
+// posted to the server as it came, and the server binds the hardware key it
+// names to the wallet. Every open and every Blink then carries one signature
+// by that key, made under a fingerprint, over a challenge the server issued
+// for this wallet moments before. `witness` is optional on the wire: with
 // EYE_FINGER_ENABLED off the bodies are exactly what they were.
-export type WitnessEnrollment = { p256: string; attestation: AttestorVerdict };
-export type WitnessProof = WitnessEnrollment & { signature: string; challenge: string };
+export type WitnessProof = {
+  // 33-byte compressed P-256 public key, hex; the one the record binds.
+  p256: string;
+  // ECDSA-SHA256 over `SKR-EYES|BLINK|1|<wallet>|<challenge>` (UTF-8), DER, base64.
+  signature: string;
+  // The server's own challenge, echoed back.
+  challenge: string;
+};
 
 export const fetchEyeStatus = (wallet: string) => call<EyeStatus>(`/eye/status?wallet=${encodeURIComponent(wallet)}`);
+export const registerWitness = (wallet: string, record: unknown) => call<unknown>('/eye/witness', { wallet, record });
 export const fetchWitnessChallenge = (wallet: string) => call<{ challenge: string }>(`/eye/witness/challenge?wallet=${encodeURIComponent(wallet)}`);
-export const openEye = (wallet: string, witness?: WitnessEnrollment) => call<EyeIntent>('/eye/open', witness ? { wallet, witness } : { wallet });
+export const openEye = (wallet: string, witness?: WitnessProof) => call<EyeIntent>('/eye/open', witness ? { wallet, witness } : { wallet });
 export const blinkEye = (wallet: string, witness?: WitnessProof) => call<EyeIntent>('/eye/blink', witness ? { wallet, witness } : { wallet });
 export const submitEye = (intent: string, signedTransaction: string) => call<EyeSubmitResult>('/eye/submit', { intent, signedTransaction });
 
