@@ -9,6 +9,7 @@ import { clock, epochMs } from './time';
 import { MoveSheet } from './MoveSheet';
 import type { MoveKind } from './move';
 import { cooldownHours, leftAtPrice, sol, usd } from './money';
+import { shareEye, type ShareMoment } from './shareEye';
 
 // Your Eye, at the top of the Eyes tab.
 //
@@ -54,6 +55,10 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
   const [move, setMove] = useState<MoveKind | null>(null);
   const [gate, setGate] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  // Which moment the share button speaks for: the open or the Blink just
+  // made, or simply the Eye as it stands.
+  const [moment, setMoment] = useState<ShareMoment>('any');
+  const [sharing, setSharing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   // Which of the two motions the picture is in, if any. Null is the rule.
@@ -201,10 +206,28 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
       return { ...previous, eye: result.eye ?? previous.eye, blink: blinkNow };
     });
     setMotion(kind === 'open' ? 'opening' : 'blink');
-    setNote(kind === 'open' ? t('Your Eye is open.') : t('Blink witnessed.'));
+    setNote(kind === 'open'
+      ? t('{name} is open. You are one of {count} who keep watch.', { name: result.eye.name, count: result.eye.serial.toLocaleString('en-US') })
+      : t('Day {count} is kept.', { count: result.eye.streak }));
+    setMoment(kind);
     if (kind === 'blink') onBlinked?.();
     void read(true);
   }, [read, onBlinked]);
+
+  // The Eye's picture and a caption, out to X (or wherever the person picks).
+  const share = useCallback(async () => {
+    const eye = status?.eye;
+    if (!eye || sharing) return;
+    setSharing(true);
+    setError(null);
+    try {
+      await shareEye(eye, moment, t('Share my Eye'));
+    } catch (caught) {
+      setError(caught instanceof Error && caught.message ? caught.message : t('The Eye service did not answer'));
+    } finally {
+      setSharing(false);
+    }
+  }, [status?.eye, moment, sharing]);
 
   if (!wallet) {
     return (
@@ -337,6 +360,9 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
         ].filter(Boolean).join(' · ')}
       </Text>
       {feedback}
+      <View style={moment === 'any' ? null : styles.shareLoud}>
+        <Button label={sharing ? t('Opening the share sheet…') : t('Share my Eye on X')} onPress={() => void share()} disabled={sharing} ghost={moment === 'any'} />
+      </View>
       {sheet}
     </Panel>
   );
@@ -346,21 +372,23 @@ const styles = StyleSheet.create({
   panel: { padding: spacing.md, gap: spacing.sm },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, minHeight: 20 },
   serial: { color: colors.metal, fontFamily: font.monoBold, fontSize: 12, letterSpacing: 0.8, flexShrink: 1 },
-  title: { color: colors.text, fontFamily: font.bold, fontSize: 18, letterSpacing: -0.3 },
-  line: { color: colors.text, fontFamily: font.medium, ...type.small, fontVariant: ['tabular-nums'] },
-  clock: { color: colors.text, fontFamily: font.semibold, ...type.body, fontVariant: ['tabular-nums'] },
+  title: { color: colors.text, fontFamily: font.bold, fontSize: 21, lineHeight: 26, letterSpacing: -0.3 },
+  line: { color: colors.text, fontFamily: font.medium, fontSize: 14.5, lineHeight: 20, fontVariant: ['tabular-nums'] },
+  clock: { color: colors.text, fontFamily: font.semibold, fontSize: 16, lineHeight: 22, fontVariant: ['tabular-nums'] },
   clockReady: { color: colors.positive },
   // The Eye small on the left, what it has done and what is next on the right.
   eyeRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   thumb: { width: 124 },
   eyeInfo: { flex: 1, gap: 3 },
-  streak: { color: colors.metal, fontFamily: font.bold, fontSize: 22, lineHeight: 27, letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
+  streak: { color: colors.metal, fontFamily: font.bold, fontSize: 26, lineHeight: 31, letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
   event: { color: colors.muted, fontFamily: font.regular, ...type.small },
-  lead: { color: colors.muted, fontFamily: font.regular, ...type.small, fontVariant: ['tabular-nums'] },
-  micro: { color: colors.faint, fontFamily: font.regular, ...type.micro },
-  hint: { color: colors.pending, fontFamily: font.medium, ...type.small },
+  lead: { color: colors.muted, fontFamily: font.regular, fontSize: 14, lineHeight: 20, fontVariant: ['tabular-nums'] },
+  micro: { color: colors.faint, fontFamily: font.regular, fontSize: 13, lineHeight: 18 },
+  hint: { color: colors.pending, fontFamily: font.medium, fontSize: 14, lineHeight: 20 },
   button: { marginTop: spacing.xs },
   actions: { flexDirection: 'row' },
-  note: { color: colors.positive, fontFamily: font.medium, ...type.small },
-  error: { color: colors.negative, fontFamily: font.medium, ...type.small },
+  note: { color: colors.positive, fontFamily: font.semibold, fontSize: 15, lineHeight: 21 },
+  error: { color: colors.negative, fontFamily: font.medium, fontSize: 14, lineHeight: 20 },
+  // Right after an open or a Blink the share button stands out.
+  shareLoud: { marginTop: spacing.xs },
 });

@@ -569,6 +569,8 @@ export function EyesLab() {
             onConnect={() => void connect()}
             onOpen={openFromIntro}
             onClose={closeIntro}
+            watching={network?.totals.eyes ?? null}
+            blinkedToday={network?.totals.blinkedToday ?? null}
           />
         </View>
       ) : null}

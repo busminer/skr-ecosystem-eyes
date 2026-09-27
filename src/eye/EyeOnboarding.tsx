@@ -64,16 +64,16 @@ function hash(n: number) {
 }
 
 const STARS = Array.from({ length: 110 }, (_, i) => ({ x: hash(i * 3 + 1), y: hash(i * 7 + 2) * 0.8, r: 0.5 + hash(i * 11 + 3) * 1.1, a: 0.2 + hash(i * 13 + 4) * 0.6 }));
-const TWINKLES = Array.from({ length: 14 }, (_, i) => ({ x: hash(i * 17 + 5), y: hash(i * 19 + 6) * 0.72, r: 1.2 + hash(i * 23 + 7) * 1.2, d: 1_400 + hash(i * 29 + 8) * 2_200, o: hash(i * 31 + 9) * 2_000 }));
+const TWINKLES = Array.from({ length: 16 }, (_, i) => ({ x: hash(i * 17 + 5), y: 0.08 + hash(i * 19 + 6) * 0.6, r: 0.7 + hash(i * 23 + 7) * 0.6, d: 1_400 + hash(i * 29 + 8) * 2_200, o: hash(i * 31 + 9) * 2_000 }));
 
 function Twinkle({ x, y, r, d, o, still }: { x: number; y: number; r: number; d: number; o: number; still: boolean }) {
-  const glow = useSharedValue(0.25);
+  const glow = useSharedValue(0.2);
   useEffect(() => {
-    if (still) { glow.value = 0.6; return; }
-    glow.value = withDelay(o, withRepeat(withSequence(withTiming(1, { duration: d, easing: Easing.inOut(Easing.sin) }), withTiming(0.15, { duration: d, easing: Easing.inOut(Easing.sin) })), -1, false));
+    if (still) { glow.value = 0.5; return; }
+    glow.value = withDelay(o, withRepeat(withSequence(withTiming(0.85, { duration: d, easing: Easing.inOut(Easing.sin) }), withTiming(0.1, { duration: d, easing: Easing.inOut(Easing.sin) })), -1, false));
   }, [still, d, o, glow]);
-  const style = useAnimatedStyle(() => ({ opacity: glow.value, transform: [{ scale: 0.7 + glow.value * 0.5 }] }));
-  return <Animated.View pointerEvents="none" style={[styles.twinkle, { left: x - r * 2, top: y - r * 2, width: r * 4, height: r * 4, borderRadius: r * 2 }, style]} />;
+  const style = useAnimatedStyle(() => ({ opacity: glow.value }));
+  return <Animated.View pointerEvents="none" style={[styles.twinkle, { left: x - r, top: y - r, width: r * 2, height: r * 2, borderRadius: r }, style]} />;
 }
 
 // The NFT's night: stars, an aurora low down, the sea catching it.
@@ -118,8 +118,22 @@ function Breath({ size, still, tone = colors.accent }: { size: number; still: bo
     if (still) { k.value = 0.6; return; }
     k.value = withRepeat(withSequence(withTiming(1, { duration: 2_400, easing: Easing.inOut(Easing.sin) }), withTiming(0.35, { duration: 2_400, easing: Easing.inOut(Easing.sin) })), -1, false);
   }, [still, k]);
-  const style = useAnimatedStyle(() => ({ opacity: 0.2 + k.value * 0.35, transform: [{ scale: 0.92 + k.value * 0.12 }] }));
-  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', width: size, height: size, borderRadius: size / 2, backgroundColor: tone, shadowColor: tone, shadowOpacity: 1, shadowRadius: size / 3, elevation: 0 }, styles.breath, style]} />;
+  const style = useAnimatedStyle(() => ({ opacity: 0.35 + k.value * 0.55, transform: [{ scale: 0.94 + k.value * 0.1 }] }));
+  const half = size / 2;
+  return (
+    <Animated.View pointerEvents="none" style={[{ position: 'absolute', width: size, height: size }, styles.breath, style]}>
+      <Svg width={size} height={size}>
+        <Defs>
+          <RadialGradient id="breath" cx="0.5" cy="0.5" r="0.5">
+            <Stop offset="0.45" stopColor={tone} stopOpacity="0.32" />
+            <Stop offset="0.7" stopColor={tone} stopOpacity="0.12" />
+            <Stop offset="1" stopColor={tone} stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+        <Circle cx={half} cy={half} r={half} fill="url(#breath)" />
+      </Svg>
+    </Animated.View>
+  );
 }
 
 // ---------------------------------------------------------------- pictures --
@@ -146,8 +160,8 @@ function Awakening({ active, reduced, serial, size }: { active: boolean; reduced
   return (
     <View style={{ width: size, alignItems: 'center' }}>
       <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        <Breath size={size * 0.9} still={reduced} />
-        <PortalEye size={size} open={open} blink={blink} instant={reduced} />
+        <Breath size={size * 1.35} still={reduced} />
+        <PortalEye size={Math.round(size * 0.92)} open={open} blink={blink} instant={reduced} />
       </View>
       <Animated.Text style={[styles.serial, tag]}>{serial ?? ' '}</Animated.Text>
     </View>
@@ -211,14 +225,16 @@ function Orbit({ active, reduced, size, finger, onCaption }: { active: boolean; 
     if (reduced) { setAt(n); onCaption(captions.eye); return; }
     if (!active) { setAt(-1); return; }
     let step = -1;
+    let pass = 0;
     setAt(-1);
     onCaption(' ');
     const timer = setInterval(() => {
       step += 1;
-      if (step > n + 2) step = -1;
-      if (step >= 0 && step < n) { cue('chime', 0.32); onCaption(captions[stops[step] ?? 'eye']); }
-      if (step === n) { cue('heart', 0.5); }
-      if (step === n + 1) { thud(); cue('wake', 0.38); onCaption(captions.eye); }
+      if (step > n + 2) { step = -1; pass += 1; }
+      const loud = pass === 0;
+      if (step >= 0 && step < n) { if (loud) cue('chime', 0.32); else tick(); onCaption(captions[stops[step] ?? 'eye']); }
+      if (step === n && loud) cue('heart', 0.5);
+      if (step === n + 1) { if (loud) { thud(); cue('wake', 0.38); } onCaption(captions.eye); }
       if (step === -1) onCaption(' ');
       setAt(Math.min(step, n + 1));
     }, 1_050);
@@ -241,7 +257,7 @@ function Orbit({ active, reduced, size, finger, onCaption }: { active: boolean; 
         })}
       </Svg>
       <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-        <Breath size={size * 0.5} still={reduced} />
+        <Breath size={size * 0.8} still={reduced} />
         <PortalEye size={Math.round(size * 0.56)} open={open} instant={reduced} />
       </View>
       {stops.map((name, i) => {
@@ -277,9 +293,9 @@ function BlinkDial({ active, reduced, size, slots }: { active: boolean; reduced:
     turn.value = withTiming(per, { duration: SLOT_MS, easing: Easing.linear });
     const timer = setInterval(() => {
       ticks += 1;
-      setBlink(ticks);
+      setBlink((count) => count + 1);
       setSlot(ticks % slots);
-      cue('wink', 0.32);
+      if (ticks <= slots) cue('wink', 0.3);
       turn.value = withTiming((ticks + 1) * per, { duration: SLOT_MS, easing: Easing.linear });
     }, SLOT_MS);
     return () => clearInterval(timer);
@@ -307,8 +323,10 @@ function BlinkDial({ active, reduced, size, slots }: { active: boolean; reduced:
           <View style={[styles.handDot, { left: half - 6, top: 10 - 6 }]} />
         </Animated.View>
       )}
-      <Breath size={size * 0.52} still={reduced} />
-      <PortalEye size={Math.round(size * 0.66)} open blink={blink} instant={reduced} />
+      <Breath size={size * 0.95} still={reduced} />
+      <Pressable onPress={() => { setBlink((count) => count + 1); cue('wink', 0.45); }} accessibilityRole="button" accessibilityLabel={t('Tap the Eye to try a Blink')}>
+        <PortalEye size={Math.round(size * 0.66)} open blink={blink} instant={reduced} />
+      </Pressable>
     </View>
   );
 }
@@ -375,6 +393,7 @@ function IrisClimb({ active, reduced, size }: { active: boolean; reduced: boolea
     if (!active) return;
     let current = 8;
     let hold = 0;
+    let arrived = false;
     const timer = setInterval(() => {
       if (current === 0) {
         hold += 1;
@@ -386,7 +405,7 @@ function IrisClimb({ active, reduced, size }: { active: boolean; reduced: boolea
       }
       current -= 1;
       place(current, 420);
-      if (current === 0) { cue('chime', 0.45); setBlink((count) => count + 1); } else tick();
+      if (current === 0) { if (!arrived) cue('chime', 0.45); else tick(); arrived = true; setBlink((count) => count + 1); } else tick();
     }, 720);
     return () => clearInterval(timer);
   }, [active, reduced, at, x, y]);
@@ -466,7 +485,12 @@ export function EyeOnboarding({
   onConnect,
   onOpen,
   onClose,
+  watching = null,
+  blinkedToday = null,
 }: {
+  // How many Eyes are open and how many blinked today, as the Iris says.
+  watching?: number | null;
+  blinkedToday?: number | null;
   wallet: string | null;
   status: EyeStatus | null;
   // The number the next Eye will carry, from the Iris's count; null while unknown.
@@ -543,29 +567,39 @@ export function EyeOnboarding({
   const pages: Array<{ key: string; title: string; body: string; art: ReactElement; foot?: ReactElement | null }> = [
     {
       key: 'wake',
-      title: t('This is your Eye'),
-      body: t('An NFT that lives in your wallet, one per wallet. Its number is its place in line, and it never changes.'),
+      title: t('Every Seeker carries an Eye'),
+      body: t('Yours is still closed. It is an NFT that lives in your wallet, one per wallet, numbered in the order Eyes open.'),
       art: <Awakening active={page === 0} reduced={reduced} serial={serial} size={art} />,
     },
     {
       key: 'open',
-      title: t('You open it yourself'),
-      body: t('Nothing happens without you. Each step lights up on screen the moment it is done.'),
+      title: t('Only you can open it'),
+      body: EYE_FINGER_ENABLED
+        ? t('Your fingerprint, your Seeker wallet, then Solana. Each light comes on the moment its step is done.')
+        : t('Your Seeker wallet, then Solana. Each light comes on the moment its step is done.'),
       art: <Orbit active={page === 1} reduced={reduced} size={art} finger={EYE_FINGER_ENABLED} onCaption={setCaption} />,
       foot: <Animated.Text key={caption} entering={reduced ? undefined : FadeIn.duration(260)} style={styles.caption}>{caption}</Animated.Text>,
     },
     {
       key: 'blink',
-      title: t('Blink every {hours} hours', { hours }),
-      body: t('A Blink is a small mark on Solana that says: I was here. One tap, and your Eye blinks.'),
+      title: t('Blink your Eye every {hours} hours', { hours }),
+      body: t('Once a day keeps it open. Each Blink is a small mark on Solana that says: I was here. Tap the Eye to try one, free.'),
       art: <BlinkDial active={page === 2} reduced={reduced} size={art} slots={slots} />,
       foot: blinkPrice ? <Text style={styles.caption}>{`${blinkPrice} · ${t('every {hours} hours', { hours })}`}</Text> : null,
     },
     {
       key: 'iris',
-      title: t('One Blink a day draws you in'),
-      body: t('The Iris is every Eye together. Each day you blink, your Eye moves one ring closer to the centre. Thirty days in a row and it turns gold. Miss a day and you start again.'),
+      title: t('Keep your rhythm, move inward'),
+      body: t('Each light is a Seeker keeping watch. Every day you blink, your Eye moves one ring closer to the centre. Thirty days unbroken and it turns gold. Miss a day and you start again.'),
       art: <IrisClimb active={page === 3} reduced={reduced} size={Math.min(320, Math.round(width * 0.8), Math.round(height * 0.4))} />,
+      foot: watching != null ? (
+        <Text style={styles.caption}>
+          {[
+            watching === 1 ? t('1 Eye is watching') : t('{count} Eyes are watching', { count: integer(watching) }),
+            blinkedToday != null ? t('{count} blinked today', { count: integer(blinkedToday) }) : null,
+          ].filter(Boolean).join(' · ')}
+        </Text>
+      ) : null,
     },
   ];
 
@@ -618,7 +652,7 @@ export function EyeOnboarding({
               <PortalEye size={84} open={hasEye} instant />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.titleLeft}>{hasEye ? t('Your Eye is open') : t('Ready to open')}</Text>
+              <Text style={styles.titleLeft}>{hasEye ? t('Your Eye is open') : t('Only a Seeker can open an Eye')}</Text>
               {serial && !hasEye ? <Text style={styles.serialLeft}>{t('Next: {serial}', { serial })}</Text> : null}
             </View>
           </View>
@@ -711,43 +745,43 @@ const styles = StyleSheet.create({
   bars: { flex: 1, flexDirection: 'row', gap: 6 },
   barHit: { flex: 1, paddingVertical: 8 },
   bar: { height: 3, borderRadius: 2 },
-  skip: { color: colors.muted, fontFamily: font.medium, ...type.small },
+  skip: { color: colors.muted, fontFamily: font.medium, fontSize: 15 },
   pager: { flex: 1 },
   page: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xl, gap: spacing.sm },
   art: { alignItems: 'center', justifyContent: 'center', minHeight: 250, marginTop: spacing.sm },
-  caption: { color: colors.text, fontFamily: font.semibold, fontSize: 16, lineHeight: 22, textAlign: 'center', minHeight: 22, marginTop: spacing.sm, fontVariant: ['tabular-nums'] },
-  captionGap: { height: 22 + spacing.sm },
-  title: { color: colors.text, fontFamily: font.bold, fontSize: 27, lineHeight: 33, letterSpacing: -0.6, textAlign: 'center', marginTop: spacing.md },
-  titleLeft: { color: colors.text, fontFamily: font.bold, fontSize: 24, lineHeight: 30, letterSpacing: -0.5 },
-  body: { color: '#9FB4C6', fontFamily: font.regular, fontSize: 15, lineHeight: 22, textAlign: 'center', paddingHorizontal: spacing.sm },
-  serial: { color: colors.metal, fontFamily: font.mono, fontSize: 16, letterSpacing: 2, marginTop: spacing.sm },
-  serialLeft: { color: colors.metal, fontFamily: font.mono, fontSize: 13, letterSpacing: 1.2, marginTop: 2 },
+  caption: { color: colors.text, fontFamily: font.semibold, fontSize: 19, lineHeight: 25, textAlign: 'center', minHeight: 25, marginTop: spacing.sm, fontVariant: ['tabular-nums'] },
+  captionGap: { height: 25 + spacing.sm },
+  title: { color: colors.text, fontFamily: font.bold, fontSize: 32, lineHeight: 38, letterSpacing: -0.8, textAlign: 'center', marginTop: spacing.md },
+  titleLeft: { color: colors.text, fontFamily: font.bold, fontSize: 27, lineHeight: 32, letterSpacing: -0.6 },
+  body: { color: '#A9BDCE', fontFamily: font.regular, fontSize: 17.5, lineHeight: 26, textAlign: 'center', paddingHorizontal: spacing.xs },
+  serial: { color: colors.metal, fontFamily: font.mono, fontSize: 19, letterSpacing: 2.2, marginTop: spacing.sm },
+  serialLeft: { color: colors.metal, fontFamily: font.mono, fontSize: 15, letterSpacing: 1.2, marginTop: 2 },
   orb: { position: 'absolute', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, elevation: 0 },
   handDot: { position: 'absolute', width: 12, height: 12, borderRadius: 6, backgroundColor: '#E8FBFF', shadowColor: '#56E0FF', shadowOpacity: 1, shadowRadius: 8 },
   youEye: { position: 'absolute', left: 0, top: 0, width: 18, height: 18, borderRadius: 9, borderWidth: 2.5, backgroundColor: '#050B10', alignItems: 'center', justifyContent: 'center', shadowOpacity: 1, shadowRadius: 10 },
   youIris: { width: 7, height: 7, borderRadius: 3.5 },
   youTag: { position: 'absolute' },
-  youTagText: { fontFamily: font.semibold, ...type.small, fontVariant: ['tabular-nums'] },
+  youTagText: { fontFamily: font.semibold, fontSize: 15, lineHeight: 20, fontVariant: ['tabular-nums'] },
   readyHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.xs },
   card: { backgroundColor: 'rgba(10, 16, 23, 0.86)', borderRadius: radius.card, borderWidth: 1, borderColor: '#13212C', padding: spacing.md, gap: spacing.md },
   check: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
   checkMark: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   checkText: { flex: 1, gap: 2 },
-  checkLabel: { color: colors.text, fontFamily: font.semibold, ...type.body },
-  checkDetail: { color: colors.faint, fontFamily: font.regular, ...type.small, fontVariant: ['tabular-nums'] },
+  checkLabel: { color: colors.text, fontFamily: font.semibold, fontSize: 17, lineHeight: 23 },
+  checkDetail: { color: '#8FA6B9', fontFamily: font.regular, fontSize: 15, lineHeight: 21, fontVariant: ['tabular-nums'] },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md },
-  rowLabel: { color: colors.muted, fontFamily: font.regular, ...type.body, flexShrink: 1 },
-  rowValue: { color: colors.text, fontFamily: font.medium, ...type.body, fontVariant: ['tabular-nums'], flexShrink: 1, textAlign: 'right' },
+  rowLabel: { color: colors.muted, fontFamily: font.regular, fontSize: 16, lineHeight: 22, flexShrink: 1 },
+  rowValue: { color: colors.text, fontFamily: font.medium, fontSize: 16, lineHeight: 22, fontVariant: ['tabular-nums'], flexShrink: 1, textAlign: 'right' },
   rowStrong: { color: colors.text, fontFamily: font.bold },
   rule: { height: 1, backgroundColor: colors.line },
   ladder: { gap: 6, paddingTop: spacing.xs },
   rung: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   rungDot: { width: 8, height: 8, borderRadius: 4 },
-  rungText: { flex: 1, color: colors.muted, fontFamily: font.regular, ...type.small, fontVariant: ['tabular-nums'] },
-  rungPrice: { color: colors.text, fontFamily: font.medium, ...type.small, fontVariant: ['tabular-nums'] },
-  rungNote: { color: colors.accent, fontFamily: font.medium, ...type.micro, marginLeft: 16, fontVariant: ['tabular-nums'] },
-  fine: { color: colors.faint, fontFamily: font.regular, ...type.small, textAlign: 'center', paddingHorizontal: spacing.sm },
-  error: { color: colors.negative, fontFamily: font.medium, ...type.small, textAlign: 'center' },
+  rungText: { flex: 1, color: colors.muted, fontFamily: font.regular, fontSize: 15, lineHeight: 21, fontVariant: ['tabular-nums'] },
+  rungPrice: { color: colors.text, fontFamily: font.medium, fontSize: 15, lineHeight: 21, fontVariant: ['tabular-nums'] },
+  rungNote: { color: colors.accent, fontFamily: font.medium, fontSize: 14, lineHeight: 19, marginLeft: 16, fontVariant: ['tabular-nums'] },
+  fine: { color: '#8FA6B9', fontFamily: font.regular, fontSize: 14.5, lineHeight: 21, textAlign: 'center', paddingHorizontal: spacing.sm },
+  error: { color: colors.negative, fontFamily: font.medium, fontSize: 14.5, textAlign: 'center' },
   bottom: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
   bottomStack: { gap: spacing.xs },
 });
