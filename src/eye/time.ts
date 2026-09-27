@@ -24,3 +24,24 @@ export function clock(ms: number): string {
   const seconds = total % 60;
   return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':');
 }
+
+// The server counts the day's blinks by UTC hour, because a Blink day is a
+// UTC day. The phone shows the day in its own time: the UTC hour of `day`
+// (YYYY-MM-DD) becomes the local hour it fell in, and the twenty-four counts
+// are laid out again so the row runs from the phone's midnight. A day that
+// does not parse is left as it came.
+export function localHourOf(day: string, utcHour: number): number {
+  const [year = NaN, month = NaN, date = NaN] = String(day ?? '').split('-').map(Number);
+  if (![year, month, date].every(Number.isFinite)) return utcHour;
+  const hour = new Date(Date.UTC(year, month - 1, date, utcHour)).getHours();
+  return Number.isFinite(hour) ? hour : utcHour;
+}
+
+export function pulseInPhoneTime(day: string, utcHours: number[]): number[] {
+  const local = new Array<number>(24).fill(0);
+  utcHours.forEach((count, utcHour) => {
+    const hour = localHourOf(day, utcHour);
+    local[hour] = (local[hour] ?? 0) + (Number(count) || 0);
+  });
+  return local;
+}

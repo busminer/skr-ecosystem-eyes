@@ -14,7 +14,7 @@ import { EyePanel } from './EyePanel';
 import { WitnessWalkthrough, getWitnessState } from './WitnessWalkthrough';
 import { IrisScene, type IrisHandle } from './IrisScene';
 import { openEyeStream } from './stream';
-import { clock, epochMs } from './time';
+import { clock, epochMs, localHourOf, pulseInPhoneTime } from './time';
 
 // The Eyes tab: your Eye, then the network as one eye.
 //
@@ -349,10 +349,15 @@ export function EyesLab() {
   const circles = network?.circles ?? [];
   const peak = circles.reduce((most, circle) => Math.max(most, circle.blinked), 0);
   // The new sections, each only when the server has sent its numbers.
-  const pulse = network?.pulse?.hours && network.pulse.hours.length === 24 ? network.pulse.hours : null;
+  // The pulse comes by UTC hour; the phone shows it by its own clock, the row
+  // running from the phone's midnight, and the hours it names are local too.
+  const pulse = useMemo(
+    () => (network?.pulse?.hours && network.pulse.hours.length === 24 ? pulseInPhoneTime(network.day, network.pulse.hours) : null),
+    [network?.day, network?.pulse?.hours],
+  );
   const pulsePeak = pulse ? pulse.reduce((most, count) => Math.max(most, count), 0) : 0;
   const peakHour = pulse ? pulse.indexOf(pulsePeak) : -1;
-  const myHour = network?.me?.blinkHour ?? null;
+  const myHour = network?.me?.blinkHour != null ? localHourOf(network.day, network.me.blinkHour) : null;
   const ladder = network?.ladder?.rings && network.ladder.rings.length > 0 ? network.ladder.rings : null;
   const ladderPeak = ladder ? ladder.reduce((most, count) => Math.max(most, count), 0) : 0;
   const myRing = network?.me?.ring ?? null;
@@ -414,6 +419,11 @@ export function EyesLab() {
                 const height = count > 0 ? Math.max(4, Math.round((count / Math.max(1, pulsePeak)) * PULSE_H)) : 2;
                 return <View key={hour} style={[styles.pulseBar, { height, backgroundColor: mine ? colors.metal : count > 0 ? colors.positive : colors.line }]} />;
               })}
+            </View>
+            <View style={styles.pulseTicks}>
+              {[0, 6, 12, 18].map((hour) => (
+                <Text key={hour} style={styles.pulseTick}>{String(hour).padStart(2, '0')}</Text>
+              ))}
             </View>
             {pulsePeak > 0 ? (
               <Text style={styles.sectionLine}>
@@ -528,6 +538,9 @@ const styles = StyleSheet.create({
   // Twenty-four bars, one an hour, grown from the baseline.
   pulse: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: PULSE_H, marginTop: spacing.xs },
   pulseBar: { flex: 1, borderRadius: 1.5 },
+  // The phone's own hours under the bars: midnight, six, noon, six.
+  pulseTicks: { flexDirection: 'row', marginTop: 2 },
+  pulseTick: { flex: 1, color: colors.muted, fontFamily: font.regular, ...type.small, fontVariant: ['tabular-nums'] },
   rung: { gap: spacing.xs },
   rungName: { flexShrink: 1, color: colors.muted, fontFamily: font.medium, ...type.small },
   rungMine: { color: colors.metal },
