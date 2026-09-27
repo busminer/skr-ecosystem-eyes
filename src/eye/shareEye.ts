@@ -6,21 +6,39 @@ import { getSkrShare } from '../../modules/skr-share';
 import { eyeImageUrl, type Eye } from './api';
 
 // Sharing the Eye: the NFT's own picture, as the server draws it right now,
-// and a caption written the way the staker card's is (src/lab/shareCard.tsx):
-// lower case, no full stops, the app named once, no link (X pushes a post
-// with a link down) and no @mention of ours, because the person is posting
-// about themselves. Right after an Eye opens it says so; after a Blink it
-// says which day was kept.
+// and a caption Alex set on 27.09: the person's own Eye number, the phone it
+// was opened on (@solanamobile Seeker), the token by its cashtag ($SKR), the
+// app by name with its maker's handle (@AlexKosa1; the app has no account of
+// its own) and #SKREyes. Right after an Eye opens it says so and dares the
+// reader to get a lower number; after a Blink it says which day was kept.
+// No link: X pushes a post with a link down.
 
 export type ShareMoment = 'open' | 'blink' | 'any';
 
+const EYE = '\u{1F441}';
+
 export function eyeCaption(eye: Eye, moment: ShareMoment): string {
+  const days = eye.streak === 1 ? '1 day' : `${eye.streak} days`;
   const lines = moment === 'open'
-    ? [`my Eye is open: ${eye.name}`, 'opened with a fingerprint on my Seeker']
+    ? [
+      `${eye.name} is open ${EYE}`,
+      'opened with my fingerprint on a @solanamobile Seeker',
+      '',
+      'one Eye per wallet, for $SKR stakers only, and the number never changes',
+      'how low will yours be?',
+    ]
     : moment === 'blink'
-      ? [`day ${eye.streak} kept · ${eye.name}`, 'one Blink on Solana, one ring closer to the centre']
-      : [`${eye.name} · ${eye.streak === 1 ? '1 day' : `${eye.streak} days`} in a row`, 'keeping watch on my Seeker'];
-  return [...lines, '', 'SKR Eyes · #SKR #SolanaMobile'].join('\n');
+      ? [
+        `day ${eye.streak} kept ${EYE} ${eye.name}`,
+        'one Blink on Solana, one ring closer to the centre of the Iris',
+        '',
+        'still watching, @solanamobile Seekers?',
+      ]
+      : [
+        `${eye.name} · ${days} in a row ${EYE}`,
+        'keeping watch on my @solanamobile Seeker',
+      ];
+  return [...lines, '', 'SKR Eyes by @AlexKosa1 · $SKR #SKREyes'].join('\n');
 }
 
 export async function shareEye(eye: Eye, moment: ShareMoment, dialogTitle: string) {
