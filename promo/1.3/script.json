@@ -1,0 +1,17 @@
+{
+  "voice": "en-US-AvaNeural",
+  "rate": "+6%",
+  "note": "SKR Eyes 1.3 promo. Sixty seconds, vertical, English. Nothing here claims the app stakes: 1.3 only reads the chain. The one line about staking names where it went and does not apologise.",
+  "lines": {
+    "l1": "SKR Eyes, version one point three. The SKR vault, alive in your hand.",
+    "l2": "Every phone falling in is a finalized stake, with the name of the person who made it.",
+    "l3": "Four point nine eight billion SKR held, the day drawn hour by hour, and the exits cooling above the pile.",
+    "l4": "Flow is every move as it lands, by kind and by size, with the day's biggest pinned on top.",
+    "l5": "Top is everybody who stakes, in order. The treasury wallets are set aside, so number one is a person.",
+    "l6": "And the radar puts all forty six thousand on one dial, your own phone gold among them.",
+    "l7": "Your card: your days in stake, your weight in the vault, and what your position has earned.",
+    "l8": "Free, and open source. A quiet place to thank the developer, and nothing at all behind it.",
+    "l9": "One change to name. Staking has been removed from the app: SKR Eyes only watches the chain now. You stake with your Solana Mobile wallet.",
+    "l10": "SKR Eyes. By Alex Kosa. On the Solana dApp Store."
+  }
+}

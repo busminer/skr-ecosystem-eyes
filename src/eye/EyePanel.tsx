@@ -8,6 +8,8 @@ import { colors, font, spacing, type } from '../theme';
 import { blinkEye, eyeImageUrl, fetchEyeStatus, openEye, submitEye, type EyeStatus } from './api';
 import { EyePicture, type Motion } from './EyePicture';
 import { clock, epochMs } from './time';
+import { EYE_FINGER_ENABLED } from './config';
+import { isFingerCancel, witnessBeforeBlink, witnessBeforeOpen } from './finger';
 
 // Your Eye, at the top of the Eyes tab.
 //
@@ -146,7 +148,11 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, connecting = 
     setError(null);
     setNote(null);
     try {
-      const intent = kind === 'open' ? await openEye(wallet) : await blinkEye(wallet);
+      // The finger, when it is on: the Eye is enrolled with the attestor before
+      // it first opens, and a Blink is signed by the hardware key first.
+      const intent = kind === 'open'
+        ? await openEye(wallet, EYE_FINGER_ENABLED ? await witnessBeforeOpen(wallet) : undefined)
+        : await blinkEye(wallet, EYE_FINGER_ENABLED ? await witnessBeforeBlink(wallet) : undefined);
       const signed = await signTransactionBase64(intent.transaction);
       const result = await submitEye(intent.intent, signed);
       if (mine !== ticket.current) return;
@@ -164,8 +170,9 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, connecting = 
       await read(true);
     } catch (caught) {
       if (mine !== ticket.current) return;
-      // The finger came off the wallet: nothing went wrong, so nothing is said.
-      if (isWalletCancel(caught)) return;
+      // The finger came off the wallet, or off the fingerprint prompt: nothing
+      // went wrong, so nothing is said.
+      if (isWalletCancel(caught) || isFingerCancel(caught)) return;
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setError(caught instanceof Error && caught.message ? caught.message : t('The Eye service did not answer'));
     } finally {

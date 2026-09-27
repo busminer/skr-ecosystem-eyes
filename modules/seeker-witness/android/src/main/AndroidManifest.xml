@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The system fingerprint prompt (android.hardware.biometrics.BiometricPrompt)
+  refuses to authenticate an app that has not declared USE_BIOMETRIC. It is a
+  normal permission, granted at install with no dialog. It lives here with the
+  module rather than in the app's manifest, so it travels with the code that
+  needs it and is merged in by autolinking.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+</manifest>
