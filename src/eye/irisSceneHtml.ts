@@ -39,8 +39,8 @@ var flashes=[], animating=false, paused=false, burst=[];
 function hash(n){ n=n|0; n=(n^61)^(n>>>16); n=n+(n<<3); n=n^(n>>>4); n=Math.imul(n,0x27d4eb2d); n=n^(n>>>15); return (n>>>0)/4294967296; }
 function geom(){ var S=Math.min(W,H); return {cx:W/2,cy:H/2,S:S,pupil:S*0.165,r0:S*0.215,step:S*0.0325}; }
 // Ring 0 is the innermost. The scatter across the band is deterministic too.
-function place(serial,ring,g){ var R=g.r0+ring*g.step, a=serial*GOLDEN+ring*0.9, rr=R+(hash(serial)-0.5)*g.step*0.8; return {x:g.cx+rr*Math.cos(a),y:g.cy+rr*Math.sin(a)}; }
-function placeGhost(i,ring,g){ var R=g.r0+ring*g.step, a=(i+0.5)*GOLDEN+ring*0.9+1.7, rr=R+(hash(i*7919+ring*31)-0.5)*g.step*0.8; return {x:g.cx+rr*Math.cos(a),y:g.cy+rr*Math.sin(a)}; }
+function place(serial,ring,g){ var R=g.r0+ring*g.step, a=serial*GOLDEN+ring*0.9, rr=R+(hash(serial)-0.5)*g.step*0.6; return {x:g.cx+rr*Math.cos(a),y:g.cy+rr*Math.sin(a)}; }
+function placeGhost(i,ring,g){ var R=g.r0+ring*g.step, a=(i+0.5)*GOLDEN+ring*0.9+1.7, rr=R+(hash(i*7919+ring*31)-0.5)*g.step*0.6; return {x:g.cx+rr*Math.cos(a),y:g.cy+rr*Math.sin(a)}; }
 // Smaller rings as the network grows, so two thousand still read as rings.
 function dotRadius(total){ if(total<=400) return 3.4; if(total<=900) return 3; if(total<=1800) return 2.6; if(total<=3200) return 2.2; return 1.9; }
 
@@ -79,7 +79,7 @@ function buildBase(){ if(W<2||H<2) return; var g=geom(); base=document.createEle
   var dr=M.dotR, listed=[0,0,0,0,0,0,0,0,0];
   M.eyes.forEach(function(e){ e.p=place(e.s,e.r,g); if(e.r>=0&&e.r<RINGS) listed[e.r]++; });
   // Placeholders for the Eyes the server counted but did not list.
-  if(M.ringCounts){ for(var rr=0;rr<RINGS;rr++){ var extra=Math.max(0,(M.ringCounts[rr]||0)-listed[rr]); for(var i=0;i<extra&&i<4000;i++){ dot(x,placeGhost(i,rr,g),dr*0.55,DIM,0.3); } } }
+  if(M.ringCounts){ for(var rr=0;rr<RINGS;rr++){ var extra=Math.max(0,(M.ringCounts[rr]||0)-listed[rr]); for(var i=0;i<extra&&i<4000;i++){ dot(x,placeGhost(i,rr,g),dr*0.5,DIM,0.22); } } }
   // Dim first, lit over them, gold over both, you on top.
   M.eyes.forEach(function(e){ if(!e.b&&!e.pf) ring(x,e.p,dr,DIM,1.1,0.5); });
   M.eyes.forEach(function(e){ if(e.b&&!e.pf){ drawGlow(x,LIT,e.p.x,e.p.y,dr*3.2,0.45); ring(x,e.p,dr,LIT,1.25,0.95); } });
