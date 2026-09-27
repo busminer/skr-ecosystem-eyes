@@ -39,7 +39,10 @@ const step = (from: number, to: number) => Math.min(to, from + Math.max(1, Math.
 // read. `onBlinked` fires once a Blink has gone through, for the ring on the
 // Iris that is yours. `onConnect` is the tab's connect: with no wallet the
 // panel is where the one button to get one lives.
-export function EyePanel({ wallet, onStatus, onBlinked, onConnect, connecting = false, connectError = null }: { wallet: string | null; onStatus?: (status: EyeStatus) => void; onBlinked?: () => void; onConnect?: () => void; connecting?: boolean; connectError?: string | null }) {
+// `onBeforeOpen` is asked once before the first open: the tab shows the
+// Seeker walk-through there when the finger is on and this phone has not
+// been through it. A false answer ends the open quietly.
+export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen, connecting = false, connectError = null }: { wallet: string | null; onStatus?: (status: EyeStatus) => void; onBlinked?: () => void; onConnect?: () => void; onBeforeOpen?: () => Promise<boolean>; connecting?: boolean; connectError?: string | null }) {
   const [status, setStatus] = useState<EyeStatus | null>(null);
   const [reading, setReading] = useState(false);
   const [unreachable, setUnreachable] = useState(false);
@@ -148,6 +151,7 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, connecting = 
     setError(null);
     setNote(null);
     try {
+      if (kind === 'open' && onBeforeOpen && !(await onBeforeOpen())) return;
       // The finger, when it is on: the Eye is enrolled with the attestor before
       // it first opens, and a Blink is signed by the hardware key first.
       const intent = kind === 'open'
@@ -178,7 +182,7 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, connecting = 
     } finally {
       if (mine === ticket.current) setBusy(null);
     }
-  }, [wallet, busy, read, onBlinked]);
+  }, [wallet, busy, read, onBlinked, onBeforeOpen]);
 
   if (!wallet) {
     return (

@@ -9,8 +9,9 @@ import { rememberConnectedWallet, useConnectedWallet } from '../wallet';
 import { colors, font, radius, spacing, type } from '../theme';
 import { Button, Eyebrow, Meter } from '../lab/kit';
 import { EyeApiError, fetchEyeNetwork, sendGaze, type EyeNetwork, type EyeStatus, type NetworkEye } from './api';
-import { EYE_BASE_URL } from './config';
+import { EYE_BASE_URL, EYE_FINGER_ENABLED } from './config';
 import { EyePanel } from './EyePanel';
+import { WitnessWalkthrough, getWitnessState } from './WitnessWalkthrough';
 import { IrisScene, type IrisHandle } from './IrisScene';
 import { openEyeStream } from './stream';
 import { clock, epochMs } from './time';
@@ -158,6 +159,11 @@ export function EyesLab() {
   // pupil has a clock even while the Iris itself is still waking up.
   const [status, setStatus] = useState<EyeStatus | null>(null);
   const [network, setNetwork] = useState<EyeNetwork | null>(null);
+  // The Seeker walk-through, shown over the tab before the first open when
+  // the finger is on and this phone has not been through it. The open that
+  // asked waits on `verdict` for the answer.
+  const [verifying, setVerifying] = useState(false);
+  const verdict = useRef<((ok: boolean) => void) | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   // Blinks heard on the stream since the last read, for the line under the
   // title; the scene lights the rings itself.
@@ -294,6 +300,21 @@ export function EyesLab() {
 
   const onStatus = useCallback((next: EyeStatus) => setStatus(next), []);
 
+  const beforeOpen = useCallback(async () => {
+    if (!EYE_FINGER_ENABLED || !wallet) return true;
+    const state = await getWitnessState(wallet).catch(() => null);
+    // Verified, or a phone without the module: nothing to walk through.
+    if (!state || state.kind !== 'none') return true;
+    return new Promise<boolean>((resolve) => { verdict.current = resolve; setVerifying(true); });
+  }, [wallet]);
+
+  const settleVerify = useCallback((ok: boolean) => {
+    setVerifying(false);
+    const resolve = verdict.current;
+    verdict.current = null;
+    resolve?.(ok);
+  }, []);
+
   // Your own Blink went through: your ring flashes like any other blink
   // arriving, and the count under the title moves with it.
   const onBlinked = useCallback(() => {
@@ -329,7 +350,7 @@ export function EyesLab() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void read(true)} tintColor={colors.accent} />}
       >
-        <EyePanel wallet={wallet} onStatus={onStatus} onBlinked={onBlinked} onConnect={() => void connect()} connecting={connecting} connectError={connectError} />
+        <EyePanel wallet={wallet} onStatus={onStatus} onBlinked={onBlinked} onConnect={() => void connect()} onBeforeOpen={beforeOpen} connecting={connecting} connectError={connectError} />
 
         <View style={styles.head}>
           <Eyebrow>{t('The Iris')}</Eyebrow>
@@ -383,6 +404,12 @@ export function EyesLab() {
         ) : null}
       </ScrollView>
 
+      {verifying && wallet ? (
+        <View style={styles.walkthrough}>
+          <WitnessWalkthrough wallet={wallet} onVerified={() => settleVerify(true)} onCancel={() => settleVerify(false)} />
+        </View>
+      ) : null}
+
       {picked ? (
         <EyeSheet
           eye={picked}
@@ -400,6 +427,8 @@ export function EyesLab() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
+  // Over the whole tab, under nothing: the walk-through has the screen to itself.
+  walkthrough: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: colors.bg, zIndex: 30 },
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 130, gap: spacing.lg },
   head: { gap: spacing.xs },
   title: { color: colors.text, fontFamily: font.bold, fontSize: 26, lineHeight: 32, letterSpacing: -0.8, fontVariant: ['tabular-nums'] },
