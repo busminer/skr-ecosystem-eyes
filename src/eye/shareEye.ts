@@ -7,7 +7,7 @@ import { eyeImageUrl, type Eye } from './api';
 
 // Sharing the Eye: the NFT's own picture, as the server draws it right now,
 // and a caption Alex set on 27.09: the person's own Eye number, the phone it
-// was opened on (@solanamobile Seeker), the token by its cashtag ($SKR), the
+// was opened on (Solana Mobile Seeker, in plain words so X indexes them), the token by its cashtag ($SKR), the
 // app by name with its maker's handle (@AlexKosa1; the app has no account of
 // its own) and #SKREyes. Right after an Eye opens it says so and dares the
 // reader to get a lower number; after a Blink it says which day was kept.
@@ -22,7 +22,7 @@ export function eyeCaption(eye: Eye, moment: ShareMoment): string {
   const lines = moment === 'open'
     ? [
       `${eye.name} is open ${EYE}`,
-      'opened with my fingerprint on a @solanamobile Seeker',
+      'opened with my fingerprint on a Solana Mobile Seeker',
       '',
       'one Eye per wallet, for $SKR stakers only, and the number never changes',
       'how low will yours be?',
@@ -32,11 +32,11 @@ export function eyeCaption(eye: Eye, moment: ShareMoment): string {
         `day ${eye.streak} kept ${EYE} ${eye.name}`,
         'one Blink on Solana, one ring closer to the centre of the Iris',
         '',
-        'still watching, @solanamobile Seekers?',
+        'still watching, Solana Mobile Seekers?',
       ]
       : [
         `${eye.name} · ${days} in a row ${EYE}`,
-        'keeping watch on my @solanamobile Seeker',
+        'keeping watch on my Solana Mobile Seeker',
       ];
   return [...lines, '', 'SKR Eyes by @AlexKosa1 · $SKR #SKREyes'].join('\n');
 }
