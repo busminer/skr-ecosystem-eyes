@@ -1,7 +1,7 @@
 import { Buffer } from 'buffer';
 import { getSeekerWitness, WITNESS_ERROR } from '../../modules/seeker-witness';
 import { fetchWitnessChallenge, type WitnessProof } from './api';
-import { enrollWitness, forgetWitness, readWitness, registerRecord, WitnessError, witnessSign, type WitnessRecord } from './witness';
+import { enrollWitness, forgetWitness, readWitness, registerRecord, WitnessError, witnessSign, type WitnessRecord, type WitnessStageListener } from './witness';
 
 // What EyePanel does with the finger, kept out of EyePanel.
 //
@@ -26,20 +26,26 @@ export function blinkMessage(wallet: string, challenge: string): Uint8Array {
 // phone, a fresh enrollment otherwise. A reinstall keeps the key and drops the
 // record, a new fingerprint drops the key and keeps the record; either way the
 // pair starts over, because the verdict names one key. A record the server
-// never received is handed over here before it is used.
-export async function ensureWitness(wallet: string): Promise<WitnessRecord> {
+// never received is handed over here before it is used. `onStage` hears a
+// fresh enrollment's steps as they happen; the on-file path says nothing.
+export async function ensureWitness(wallet: string, onStage?: WitnessStageListener): Promise<WitnessRecord> {
   const stored = await readWitness(wallet);
   const module = getSeekerWitness();
   if (stored && module && await module.hasKey().catch(() => false)) return registerRecord(stored);
   if (stored) await forgetWitness(wallet);
-  return enrollWitness(wallet);
+  return enrollWitness(wallet, onStage);
 }
 
 // The server's challenge, signed under a finger. `purpose` only chooses the
 // words on the prompt; the bytes and the proof are the same for both.
-export async function witnessProof(wallet: string, purpose: 'open' | 'blink'): Promise<WitnessProof> {
+// `onStage` hears the two moments a screen can show: the challenge being
+// fetched, and the prompt going up.
+export type ProofStage = 'challenge' | 'finger';
+export async function witnessProof(wallet: string, purpose: 'open' | 'blink', onStage?: (stage: ProofStage) => void): Promise<WitnessProof> {
+  onStage?.('challenge');
   const record = await ensureWitness(wallet);
   const { challenge } = await fetchWitnessChallenge(wallet);
+  onStage?.('finger');
   try {
     const { derSignatureBase64 } = await witnessSign(blinkMessage(wallet, challenge), purpose);
     return { p256: record.p256, signature: derSignatureBase64, challenge };

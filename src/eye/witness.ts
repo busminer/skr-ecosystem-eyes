@@ -108,6 +108,21 @@ export type WitnessFailure =
   // The eye-mint server did not take the verdict; the record is kept unregistered.
   | 'E_EYE_SERVICE';
 
+// What the walkthrough is told while an enrollment runs, in the order it
+// happens, so each card on the screen turns when its check actually starts
+// and settles when it actually ends. `challenge`: the attestor is being asked
+// for its single-use challenge. `vault`: the challenge is in hand and the
+// phone is about to make the key. `key`: the key is born; Google's chain is
+// about to go to the attestor. `verdict`: the attestor said yes; the verdict
+// is about to go to the eye-mint server. A refusal is the thrown error, and
+// whichever stage was last announced is where it happened.
+export type WitnessStage =
+  | { stage: 'challenge' }
+  | { stage: 'vault' }
+  | { stage: 'key'; created: CreatedKey }
+  | { stage: 'verdict'; record: WitnessRecord };
+export type WitnessStageListener = (stage: WitnessStage) => void;
+
 export class WitnessError extends Error {
   // `detail` is the attestor's own reason, in its words, when it refused.
   constructor(public readonly code: WitnessFailure, message: string, public readonly detail: string | null = null) {
@@ -208,20 +223,24 @@ export async function forgetWitness(wallet: string): Promise<void> {
 // verdict kept. Replaces any key already in the phone: the attestation
 // challenge is baked into the certificate at birth, so a verdict always needs
 // a key born for it.
-export async function enrollWitness(wallet: string): Promise<WitnessRecord> {
+export async function enrollWitness(wallet: string, onStage?: WitnessStageListener): Promise<WitnessRecord> {
   const module = requireModule();
 
+  onStage?.({ stage: 'challenge' });
   const { challenge } = await attestor<{ challenge: string }>(`/challenge?wallet=${encodeURIComponent(wallet)}`);
   if (typeof challenge !== 'string' || !/^[0-9a-f]{64}$/i.test(challenge)) {
     throw new WitnessError('E_ATTESTOR_UNREACHABLE', t('The attestor did not answer'));
   }
 
   let created: CreatedKey;
+  onStage?.({ stage: 'vault' });
   try {
     created = await module.createKey(Buffer.from(challenge, 'hex').toString('base64'));
   } catch (caught) {
     throw fromModule(caught);
   }
+
+  onStage?.({ stage: 'key', created });
 
   let verdict: AttestorResponse;
   try {
@@ -265,6 +284,7 @@ export async function enrollWitness(wallet: string): Promise<WitnessRecord> {
   // Kept before the hand-over, so a hand-over that fails leaves a key, a
   // verdict and one thing to retry rather than a spent challenge and nothing.
   await AsyncStorage.setItem(storeKey(wallet), JSON.stringify(record)).catch(() => undefined);
+  onStage?.({ stage: 'verdict', record });
   return registerRecord(record);
 }
 

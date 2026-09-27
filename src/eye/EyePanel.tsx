@@ -1,24 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
-import * as Haptics from 'expo-haptics';
 import { t } from '../i18n';
-import { isWalletCancel, signTransactionBase64 } from '../mwa';
 import { Button, Eyebrow, Panel } from '../lab/kit';
 import { colors, font, spacing, type } from '../theme';
-import { blinkEye, eyeImageUrl, fetchEyeStatus, openEye, submitEye, type EyeStatus } from './api';
+import { eyeImageUrl, fetchEyeStatus, type EyeStatus, type EyeSubmitResult } from './api';
 import { EyePicture, type Motion } from './EyePicture';
 import { clock, epochMs } from './time';
-import { EYE_FINGER_ENABLED } from './config';
-import { isFingerCancel, witnessBeforeBlink, witnessBeforeOpen } from './finger';
+import { MoveSheet } from './MoveSheet';
+import type { MoveKind } from './move';
 
 // Your Eye, at the top of the Eyes tab.
 //
 // Three states and nothing hidden between them: no wallet, so one line; a
 // wallet with no Eye, so the price and the one button that opens it; an Eye,
 // so its picture, its streak, the clock to the next Blink and the button that
-// blinks. Each move is the same three steps — the server builds a
-// transaction, the wallet signs it, the server submits it — and the panel
-// re-reads its status afterwards rather than guessing at what changed.
+// blinks. Each move is the same road — the finger, the wallet, the network —
+// and it is walked in the open, on a sheet that rises over the panel and
+// turns one step at a time (MoveSheet.tsx, move.ts). The panel opens the
+// door, takes what the sheet hands back, and re-reads its status afterwards
+// rather than guessing at what changed.
 //
 // The Eye moves twice and only twice: its lids part the once it is opened,
 // and shut and open again on every Blink. The picture itself does that, in
@@ -46,7 +46,10 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
   const [status, setStatus] = useState<EyeStatus | null>(null);
   const [reading, setReading] = useState(false);
   const [unreachable, setUnreachable] = useState(false);
-  const [busy, setBusy] = useState<'open' | 'blink' | null>(null);
+  // The move on the sheet right now, if any; and whether the walk-through is
+  // being shown before a first open, while the button waits on its answer.
+  const [move, setMove] = useState<MoveKind | null>(null);
+  const [gate, setGate] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -92,7 +95,8 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
     setUnreachable(false);
     setNote(null);
     setError(null);
-    setBusy(null);
+    setMove(null);
+    setGate(false);
     setMotion(null);
     setShownWitnesses(null);
     void read();
@@ -144,45 +148,41 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
 
   useEffect(() => { if (status) onStatus?.(status); }, [status, onStatus]);
 
-  const act = useCallback(async (kind: 'open' | 'blink') => {
-    if (!wallet || busy) return;
+  // The button: before a first open, the walk-through has its say; then the
+  // sheet rises and the move runs on it, step by step, where it can be seen.
+  const act = useCallback(async (kind: MoveKind) => {
+    if (!wallet || move || gate) return;
     const mine = ticket.current;
-    setBusy(kind);
     setError(null);
     setNote(null);
-    try {
-      if (kind === 'open' && onBeforeOpen && !(await onBeforeOpen())) return;
-      // The finger, when it is on: the Eye is enrolled with the attestor before
-      // it first opens, and a Blink is signed by the hardware key first.
-      const intent = kind === 'open'
-        ? await openEye(wallet, EYE_FINGER_ENABLED ? await witnessBeforeOpen(wallet) : undefined)
-        : await blinkEye(wallet, EYE_FINGER_ENABLED ? await witnessBeforeBlink(wallet) : undefined);
-      const signed = await signTransactionBase64(intent.transaction);
-      const result = await submitEye(intent.intent, signed);
-      if (mine !== ticket.current) return;
-      // What the server just handed back is truer than what it said a minute
-      // ago, so the Eye it returned goes on screen now and the lids move on
-      // it; the full status follows and fills in the rest.
-      setStatus((previous) => previous ? {
-        ...previous,
-        eye: result.eye ?? previous.eye,
-        blink: kind === 'blink' && previous.blink ? { ...previous.blink, doneToday: true } : previous.blink,
-      } : previous);
-      setMotion(kind === 'open' ? 'opening' : 'blink');
-      setNote(kind === 'open' ? t('Your Eye is open.') : t('Blink witnessed.'));
-      if (kind === 'blink') onBlinked?.();
-      await read(true);
-    } catch (caught) {
-      if (mine !== ticket.current) return;
-      // The finger came off the wallet, or off the fingerprint prompt: nothing
-      // went wrong, so nothing is said.
-      if (isWalletCancel(caught) || isFingerCancel(caught)) return;
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setError(caught instanceof Error && caught.message ? caught.message : t('The Eye service did not answer'));
-    } finally {
-      if (mine === ticket.current) setBusy(null);
+    if (kind === 'open' && onBeforeOpen) {
+      setGate(true);
+      try {
+        const go = await onBeforeOpen();
+        if (mine !== ticket.current || !go) return;
+      } finally {
+        if (mine === ticket.current) setGate(false);
+      }
     }
-  }, [wallet, busy, read, onBlinked, onBeforeOpen]);
+    setMove(kind);
+  }, [wallet, move, gate, onBeforeOpen]);
+
+  // The sheet's last step has landed. What the server just handed back is
+  // truer than what it said a minute ago, so the Eye it returned goes on
+  // screen now and the lids move on it; the full status follows and fills
+  // in the rest.
+  const onMoved = useCallback((kind: MoveKind, result: EyeSubmitResult) => {
+    setMove(null);
+    setStatus((previous) => previous ? {
+      ...previous,
+      eye: result.eye ?? previous.eye,
+      blink: kind === 'blink' && previous.blink ? { ...previous.blink, doneToday: true } : previous.blink,
+    } : previous);
+    setMotion(kind === 'open' ? 'opening' : 'blink');
+    setNote(kind === 'open' ? t('Your Eye is open.') : t('Blink witnessed.'));
+    if (kind === 'blink') onBlinked?.();
+    void read(true);
+  }, [read, onBlinked]);
 
   if (!wallet) {
     return (
@@ -223,6 +223,9 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
       {error ? <Pressable onPress={() => setError(null)}><Text style={styles.error}>{error}</Text></Pressable> : null}
     </>
   );
+  // The sheet is a Modal, so where it sits in the tree does not matter; it
+  // is keyed by the move so a Blink after an open starts from nothing.
+  const sheet = move ? <MoveSheet key={move} kind={move} wallet={wallet} onDone={(result) => onMoved(move, result)} onClose={() => setMove(null)} /> : null;
 
   if (!eye) {
     return (
@@ -232,15 +235,16 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
         <Text style={styles.line}>{t('{sol} SOL to open', { sol: sol(prices.openLamports) })}</Text>
         {gates.staked ? null : <Text style={styles.hint}>{t('Needs an active SKR position')}</Text>}
         <View style={styles.button}>
-          <Button label={busy === 'open' ? t('Opening…') : t('Open my Eye')} onPress={() => void act('open')} disabled={!gates.staked || busy != null} />
+          <Button label={move === 'open' || gate ? t('Opening…') : t('Open my Eye')} onPress={() => void act('open')} disabled={!gates.staked || move != null || gate} />
         </View>
         {feedback}
+        {sheet}
       </Panel>
     );
   }
 
   const canBlink = Boolean(blink?.open && !blink.doneToday);
-  const blinkLabel = busy === 'blink'
+  const blinkLabel = move === 'blink'
     ? t('Blinking…')
     : blink?.doneToday
       ? t('Blinked today')
@@ -277,10 +281,11 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
         </>
       ) : null}
       <View style={styles.button}>
-        <Button label={blinkLabel} onPress={() => void act('blink')} disabled={!canBlink || busy != null} tone={colors.metal} />
+        <Button label={blinkLabel} onPress={() => void act('blink')} disabled={!canBlink || move != null} tone={colors.metal} />
       </View>
       <Text style={styles.micro}>{t('{sol} SOL per Blink', { sol: sol(prices.blinkLamports) })}</Text>
       {feedback}
+      {sheet}
     </Panel>
   );
 }
