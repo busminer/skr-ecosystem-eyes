@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { t } from '../i18n';
 import { isWalletCancel, signTransactionBase64 } from '../mwa';
 import { Button, Eyebrow, Panel } from '../lab/kit';
-import { colors, font, radius, spacing, type } from '../theme';
+import { colors, font, spacing, type } from '../theme';
 import { blinkEye, eyeImageUrl, fetchEyeStatus, openEye, submitEye, type EyeStatus } from './api';
+import { EyePicture, type Motion } from './EyePicture';
 
 // Your Eye, under the card on Me.
 //
@@ -15,6 +16,10 @@ import { blinkEye, eyeImageUrl, fetchEyeStatus, openEye, submitEye, type EyeStat
 // blinks. Each move is the same three steps — the server builds a
 // transaction, the wallet signs it, the server submits it — and the panel
 // re-reads its status afterwards rather than guessing at what changed.
+//
+// The Eye moves twice and only twice: its lids part the once it is opened,
+// and shut and open again on every Blink. The picture itself does that, in
+// EyePicture; this panel only says when.
 
 // Lamports to SOL, three places: the prices are small round numbers and a
 // nine-digit tail would only hide them.
@@ -44,6 +49,12 @@ function clock(ms: number): string {
   return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':');
 }
 
+// One step of the witnesses count on its way up. Usually the way up is one,
+// after our own Blink; a poll that finds a crowd arrived takes at most a
+// dozen steps to get there rather than counting every head.
+const TICK_MS = 90;
+const step = (from: number, to: number) => Math.min(to, from + Math.max(1, Math.ceil((to - from) / 12)));
+
 export function EyePanel({ wallet }: { wallet: string | null }) {
   const [status, setStatus] = useState<EyeStatus | null>(null);
   const [reading, setReading] = useState(false);
@@ -52,6 +63,10 @@ export function EyePanel({ wallet }: { wallet: string | null }) {
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  // Which of the two motions the picture is in, if any. Null is the rule.
+  const [motion, setMotion] = useState<Motion | null>(null);
+  // The witnesses number as drawn, which follows the real one up in steps.
+  const [shownWitnesses, setShownWitnesses] = useState<number | null>(null);
   // Disconnect or a change of wallet moves the ticket on, and an answer that
   // set out for the old wallet is dropped when it lands.
   const ticket = useRef(0);
@@ -91,6 +106,8 @@ export function EyePanel({ wallet }: { wallet: string | null }) {
     setNote(null);
     setError(null);
     setBusy(null);
+    setMotion(null);
+    setShownWitnesses(null);
     void read();
   }, [read]);
 
@@ -123,6 +140,21 @@ export function EyePanel({ wallet }: { wallet: string | null }) {
     void read(true);
   }, [edge, remaining, read]);
 
+  // The witnesses number ticks up to what the server says, and snaps to
+  // anything else: the first reading, or a number that went down.
+  const witnesses = blink?.witnesses ?? null;
+  useEffect(() => {
+    if (witnesses == null) { setShownWitnesses(null); return; }
+    setShownWitnesses((shown) => (shown == null || witnesses < shown ? witnesses : shown));
+  }, [witnesses]);
+  useEffect(() => {
+    if (witnesses == null || shownWitnesses == null || shownWitnesses >= witnesses) return;
+    const timer = setTimeout(() => setShownWitnesses((shown) => (shown == null ? witnesses : step(shown, witnesses))), TICK_MS);
+    return () => clearTimeout(timer);
+  }, [witnesses, shownWitnesses]);
+
+  const settle = useCallback(() => setMotion(null), []);
+
   const act = useCallback(async (kind: 'open' | 'blink') => {
     if (!wallet || busy) return;
     const mine = ticket.current;
@@ -132,9 +164,17 @@ export function EyePanel({ wallet }: { wallet: string | null }) {
     try {
       const intent = kind === 'open' ? await openEye(wallet) : await blinkEye(wallet);
       const signed = await signTransactionBase64(intent.transaction);
-      await submitEye(intent.intent, signed);
+      const result = await submitEye(intent.intent, signed);
       if (mine !== ticket.current) return;
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // What the server just handed back is truer than what it said a minute
+      // ago, so the Eye it returned goes on screen now and the lids move on
+      // it; the full status follows and fills in the rest.
+      setStatus((previous) => previous ? {
+        ...previous,
+        eye: result.eye ?? previous.eye,
+        blink: kind === 'blink' && previous.blink ? { ...previous.blink, doneToday: true } : previous.blink,
+      } : previous);
+      setMotion(kind === 'open' ? 'opening' : 'blink');
       setNote(kind === 'open' ? t('Your Eye is open.') : t('Blink witnessed.'));
       await read(true);
     } catch (caught) {
@@ -205,6 +245,7 @@ export function EyePanel({ wallet }: { wallet: string | null }) {
       : blink?.open
         ? t('Blink')
         : t('Blink is closed');
+  const count = shownWitnesses ?? blink?.witnesses ?? 0;
 
   return (
     <Panel style={styles.panel}>
@@ -212,7 +253,7 @@ export function EyePanel({ wallet }: { wallet: string | null }) {
         <Eyebrow>{t('Your Eye')}</Eyebrow>
         <Text numberOfLines={1} style={styles.serial}>{eye.name}</Text>
       </View>
-      <Image source={{ uri: eyeImageUrl(eye.image) }} style={styles.image} resizeMode="cover" accessibilityLabel={eye.name} />
+      <EyePicture uri={eyeImageUrl(eye.image)} label={eye.name} motion={motion} onSettled={settle} />
       <Text style={styles.line}>
         {eye.blinks === 1
           ? t('Streak {streak} · 1 Blink', { streak: eye.streak })
@@ -227,9 +268,9 @@ export function EyePanel({ wallet }: { wallet: string | null }) {
             {blink.event?.label ? <Text style={styles.event}>{`  ${blink.event.label}`}</Text> : null}
           </Text>
           <Text style={styles.lead}>
-            {blink.witnesses === 1
+            {count === 1
               ? t("1 Eye witnessed today's Blink")
-              : t("{count} Eyes witnessed today's Blink", { count: blink.witnesses })}
+              : t("{count} Eyes witnessed today's Blink", { count })}
           </Text>
         </>
       ) : null}
@@ -246,12 +287,11 @@ const styles = StyleSheet.create({
   panel: { padding: spacing.md, gap: spacing.sm },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, minHeight: 20 },
   serial: { color: colors.metal, fontFamily: font.monoBold, fontSize: 12, letterSpacing: 0.8, flexShrink: 1 },
-  image: { width: '100%', aspectRatio: 1, borderRadius: radius.inner, backgroundColor: colors.inset },
   title: { color: colors.text, fontFamily: font.bold, fontSize: 18, letterSpacing: -0.3 },
   line: { color: colors.text, fontFamily: font.medium, ...type.small, fontVariant: ['tabular-nums'] },
   clock: { color: colors.text, fontFamily: font.semibold, ...type.body, fontVariant: ['tabular-nums'] },
   event: { color: colors.muted, fontFamily: font.regular, ...type.small },
-  lead: { color: colors.muted, fontFamily: font.regular, ...type.small },
+  lead: { color: colors.muted, fontFamily: font.regular, ...type.small, fontVariant: ['tabular-nums'] },
   micro: { color: colors.faint, fontFamily: font.regular, ...type.micro },
   hint: { color: colors.pending, fontFamily: font.medium, ...type.small },
   button: { marginTop: spacing.xs },

@@ -27,6 +27,10 @@ const sources = {
   in: require('../assets/sound/in.wav'),
   out: require('../assets/sound/out.wav'),
   gone: require('../assets/sound/gone.wav'),
+  // The Eye's two moments, borrowed from the launch: the note the eye wakes
+  // on when it is first opened, and the wink for every Blink after that.
+  wake: require('../assets/sound/wake.wav'),
+  wink: require('../assets/sound/wink.wav'),
 } as const;
 
 export type Cue = keyof typeof sources;
@@ -58,6 +62,7 @@ export function cueHaptic(cue: Cue): void {
     case 'stake': impact(Haptics.ImpactFeedbackStyle.Light); break;
     case 'drop': impact(Haptics.ImpactFeedbackStyle.Light); break;
     case 'flip': break; // the flip board buzzes on its own, once per change
+    case 'wake': case 'wink': break; // the Eye times its own buzz to the lids
   }
 }
 
