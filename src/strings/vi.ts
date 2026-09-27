@@ -305,4 +305,16 @@ export const vi: Record<string, string> = {
   'The Eye service did not answer': 'Dịch vụ Mắt không trả lời',
   'The Eye service returned {status}': 'Dịch vụ Mắt trả về {status}',
   'The wallet did not return a signed transaction.': 'Ví không trả về giao dịch đã ký.',
+  // Eye: the finger
+  'Sign this Blink': 'Ký lần chớp này',
+  'Your Seeker signs with its own key': 'Seeker của bạn ký bằng khoá riêng của nó',
+  'The key cannot sign without your finger.': 'Không có ngón tay của bạn, khoá không thể ký.',
+  'Cancel': 'Huỷ',
+  'Set up a fingerprint on this phone first': 'Hãy cài vân tay trên điện thoại này trước',
+  'Too many tries. The fingerprint sensor is locked for now': 'Thử quá nhiều lần. Cảm biến vân tay tạm bị khoá',
+  'A new fingerprint was added to this phone, so the Eye key was reset. Try again to make a new one.': 'Điện thoại này vừa thêm vân tay mới nên khoá của Mắt đã được đặt lại. Thử lại để tạo khoá mới.',
+  'This phone cannot make a hardware key': 'Điện thoại này không tạo được khoá phần cứng',
+  'The attestor did not accept this phone: {reason}': 'Bên chứng thực không chấp nhận điện thoại này: {reason}',
+  'The attestor did not answer': 'Bên chứng thực không trả lời',
+  'The phone did not sign': 'Điện thoại chưa ký',
 };

@@ -306,4 +306,16 @@ export const ru: Record<string, string> = {
   'The Eye service did not answer': 'Сервис глаза не ответил',
   'The Eye service returned {status}': 'Сервис глаза вернул {status}',
   'The wallet did not return a signed transaction.': 'Кошелёк не вернул подписанную транзакцию.',
+  // Глаз: палец
+  'Sign this Blink': 'Подписать моргание',
+  'Your Seeker signs with its own key': 'Seeker подписывает своим ключом',
+  'The key cannot sign without your finger.': 'Без пальца ключ не подпишет.',
+  'Cancel': 'Отмена',
+  'Set up a fingerprint on this phone first': 'Сначала нужно добавить отпечаток пальца на этом телефоне',
+  'Too many tries. The fingerprint sensor is locked for now': 'Слишком много попыток. Сканер отпечатка пока заблокирован',
+  'A new fingerprint was added to this phone, so the Eye key was reset. Try again to make a new one.': 'На телефоне добавлен новый отпечаток, поэтому ключ глаза сброшен. Повторить, чтобы создать новый.',
+  'This phone cannot make a hardware key': 'Этот телефон не может создать аппаратный ключ',
+  'The attestor did not accept this phone: {reason}': 'Аттестор не принял этот телефон: {reason}',
+  'The attestor did not answer': 'Аттестор не ответил',
+  'The phone did not sign': 'Телефон не подписал',
 };

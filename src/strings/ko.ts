@@ -302,4 +302,16 @@ export const ko: Record<string, string> = {
   'The Eye service did not answer': '눈 서비스가 응답하지 않았습니다',
   'The Eye service returned {status}': '눈 서비스가 {status}을(를) 반환했습니다',
   'The wallet did not return a signed transaction.': '지갑이 서명된 트랜잭션을 반환하지 않았습니다.',
+  // Eye: the finger
+  'Sign this Blink': '이 깜빡임에 서명',
+  'Your Seeker signs with its own key': 'Seeker가 자체 키로 서명합니다',
+  'The key cannot sign without your finger.': '손가락 없이는 키가 서명할 수 없습니다.',
+  'Cancel': '취소',
+  'Set up a fingerprint on this phone first': '먼저 이 휴대폰에 지문을 등록하세요',
+  'Too many tries. The fingerprint sensor is locked for now': '시도 횟수가 너무 많습니다. 지문 센서가 잠시 잠겼습니다',
+  'A new fingerprint was added to this phone, so the Eye key was reset. Try again to make a new one.': '이 휴대폰에 새 지문이 추가되어 눈 키가 초기화되었습니다. 다시 시도하면 새 키가 만들어집니다.',
+  'This phone cannot make a hardware key': '이 휴대폰은 하드웨어 키를 만들 수 없습니다',
+  'The attestor did not accept this phone: {reason}': '증명 서버가 이 휴대폰을 받아들이지 않았습니다: {reason}',
+  'The attestor did not answer': '증명 서버가 응답하지 않았습니다',
+  'The phone did not sign': '휴대폰이 서명하지 않았습니다',
 };

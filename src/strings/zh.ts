@@ -305,4 +305,16 @@ export const zh: Record<string, string> = {
   'The Eye service did not answer': '眼服务没有响应',
   'The Eye service returned {status}': '眼服务返回了 {status}',
   'The wallet did not return a signed transaction.': '钱包没有返回已签名的交易。',
+  // Eye: the finger
+  'Sign this Blink': '签署这次眨眼',
+  'Your Seeker signs with its own key': '由 Seeker 用自己的密钥签署',
+  'The key cannot sign without your finger.': '没有你的指纹，密钥无法签署。',
+  'Cancel': '取消',
+  'Set up a fingerprint on this phone first': '请先在这台手机上录入指纹',
+  'Too many tries. The fingerprint sensor is locked for now': '尝试次数过多，指纹传感器暂时锁定',
+  'A new fingerprint was added to this phone, so the Eye key was reset. Try again to make a new one.': '这台手机新增了指纹，眼的密钥已重置。再试一次即可生成新密钥。',
+  'This phone cannot make a hardware key': '这台手机无法生成硬件密钥',
+  'The attestor did not accept this phone: {reason}': '认证服务未接受这台手机：{reason}',
+  'The attestor did not answer': '认证服务没有响应',
+  'The phone did not sign': '手机没有完成签署',
 };

@@ -301,4 +301,16 @@ export const id: Record<string, string> = {
   'The Eye service did not answer': 'Layanan Mata tidak menjawab',
   'The Eye service returned {status}': 'Layanan Mata mengembalikan {status}',
   'The wallet did not return a signed transaction.': 'Dompet tidak mengembalikan transaksi yang ditandatangani.',
+  // Eye: the finger
+  'Sign this Blink': 'Tanda tangani kedipan ini',
+  'Your Seeker signs with its own key': 'Seeker-mu menandatangani dengan kuncinya sendiri',
+  'The key cannot sign without your finger.': 'Tanpa jarimu, kunci tidak bisa menandatangani.',
+  'Cancel': 'Batal',
+  'Set up a fingerprint on this phone first': 'Daftarkan sidik jari di ponsel ini dulu',
+  'Too many tries. The fingerprint sensor is locked for now': 'Terlalu banyak percobaan. Sensor sidik jari terkunci untuk sementara',
+  'A new fingerprint was added to this phone, so the Eye key was reset. Try again to make a new one.': 'Sidik jari baru ditambahkan di ponsel ini, jadi kunci Mata disetel ulang. Coba lagi untuk membuat yang baru.',
+  'This phone cannot make a hardware key': 'Ponsel ini tidak bisa membuat kunci perangkat keras',
+  'The attestor did not accept this phone: {reason}': 'Atestor tidak menerima ponsel ini: {reason}',
+  'The attestor did not answer': 'Atestor tidak menjawab',
+  'The phone did not sign': 'Ponsel tidak menandatangani',
 };

@@ -310,4 +310,16 @@ export const de: Record<string, string> = {
   'The Eye service did not answer': 'Der Eye-Dienst hat nicht geantwortet',
   'The Eye service returned {status}': 'Der Eye-Dienst hat {status} zurückgegeben',
   'The wallet did not return a signed transaction.': 'Die Wallet hat keine signierte Transaktion zurückgegeben.',
+  // Eye: der Finger
+  'Sign this Blink': 'Diesen Blink signieren',
+  'Your Seeker signs with its own key': 'Ihr Seeker signiert mit seinem eigenen Schlüssel',
+  'The key cannot sign without your finger.': 'Ohne Ihren Finger kann der Schlüssel nicht signieren.',
+  'Cancel': 'Abbrechen',
+  'Set up a fingerprint on this phone first': 'Richten Sie zuerst einen Fingerabdruck auf diesem Telefon ein',
+  'Too many tries. The fingerprint sensor is locked for now': 'Zu viele Versuche. Der Fingerabdrucksensor ist vorerst gesperrt',
+  'A new fingerprint was added to this phone, so the Eye key was reset. Try again to make a new one.': 'Auf diesem Telefon wurde ein neuer Fingerabdruck hinzugefügt, darum wurde der Eye-Schlüssel zurückgesetzt. Versuchen Sie es noch einmal, um einen neuen zu erzeugen.',
+  'This phone cannot make a hardware key': 'Dieses Telefon kann keinen Hardware-Schlüssel erzeugen',
+  'The attestor did not accept this phone: {reason}': 'Der Attestor hat dieses Telefon nicht akzeptiert: {reason}',
+  'The attestor did not answer': 'Der Attestor hat nicht geantwortet',
+  'The phone did not sign': 'Das Telefon hat nicht signiert',
 };

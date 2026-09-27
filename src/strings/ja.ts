@@ -301,4 +301,16 @@ export const ja: Record<string, string> = {
   'The Eye service did not answer': '目のサービスが応答しませんでした',
   'The Eye service returned {status}': '目のサービスが {status} を返しました',
   'The wallet did not return a signed transaction.': 'ウォレットが署名済みトランザクションを返しませんでした。',
+  // Eye: the finger
+  'Sign this Blink': 'このまばたきに署名',
+  'Your Seeker signs with its own key': 'Seeker が自分の鍵で署名します',
+  'The key cannot sign without your finger.': '指がなければ鍵は署名できません。',
+  'Cancel': 'キャンセル',
+  'Set up a fingerprint on this phone first': 'まずこの端末に指紋を登録してください',
+  'Too many tries. The fingerprint sensor is locked for now': '試行回数が多すぎます。指紋センサーはしばらくロックされます',
+  'A new fingerprint was added to this phone, so the Eye key was reset. Try again to make a new one.': 'この端末に新しい指紋が追加されたため、目の鍵はリセットされました。もう一度試すと新しい鍵が作られます。',
+  'This phone cannot make a hardware key': 'この端末ではハードウェア鍵を作れません',
+  'The attestor did not accept this phone: {reason}': '認証サーバーがこの端末を受け付けませんでした: {reason}',
+  'The attestor did not answer': '認証サーバーが応答しませんでした',
+  'The phone did not sign': '端末が署名しませんでした',
 };

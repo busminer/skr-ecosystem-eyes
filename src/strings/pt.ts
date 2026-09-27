@@ -307,4 +307,16 @@ export const pt: Record<string, string> = {
   'The Eye service did not answer': 'O serviço do Olho não respondeu',
   'The Eye service returned {status}': 'O serviço do Olho devolveu {status}',
   'The wallet did not return a signed transaction.': 'A carteira não devolveu uma transação assinada.',
+  // Eye: the finger
+  'Sign this Blink': 'Assinar esta piscada',
+  'Your Seeker signs with its own key': 'Seu Seeker assina com a própria chave',
+  'The key cannot sign without your finger.': 'Sem o seu dedo, a chave não assina.',
+  'Cancel': 'Cancelar',
+  'Set up a fingerprint on this phone first': 'Cadastre primeiro uma digital neste telefone',
+  'Too many tries. The fingerprint sensor is locked for now': 'Tentativas demais. O sensor de digital está bloqueado por enquanto',
+  'A new fingerprint was added to this phone, so the Eye key was reset. Try again to make a new one.': 'Uma nova digital foi adicionada neste telefone, então a chave do Olho foi redefinida. Tente de novo para criar uma nova.',
+  'This phone cannot make a hardware key': 'Este telefone não consegue criar uma chave de hardware',
+  'The attestor did not accept this phone: {reason}': 'O atestador não aceitou este telefone: {reason}',
+  'The attestor did not answer': 'O atestador não respondeu',
+  'The phone did not sign': 'O telefone não assinou',
 };

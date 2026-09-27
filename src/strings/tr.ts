@@ -306,4 +306,16 @@ export const tr: Record<string, string> = {
   'The Eye service did not answer': 'Göz hizmeti yanıt vermedi',
   'The Eye service returned {status}': 'Göz hizmeti {status} döndürdü',
   'The wallet did not return a signed transaction.': 'Cüzdan imzalı bir işlem döndürmedi.',
+  // Eye: the finger
+  'Sign this Blink': 'Bu göz kırpmayı imzala',
+  'Your Seeker signs with its own key': 'Seeker kendi anahtarıyla imzalar',
+  'The key cannot sign without your finger.': 'Parmağın olmadan anahtar imzalayamaz.',
+  'Cancel': 'İptal',
+  'Set up a fingerprint on this phone first': 'Önce bu telefonda bir parmak izi tanımla',
+  'Too many tries. The fingerprint sensor is locked for now': 'Çok fazla deneme. Parmak izi sensörü şimdilik kilitli',
+  'A new fingerprint was added to this phone, so the Eye key was reset. Try again to make a new one.': 'Bu telefona yeni bir parmak izi eklendi, bu yüzden Göz anahtarı sıfırlandı. Yeni bir anahtar için yeniden dene.',
+  'This phone cannot make a hardware key': 'Bu telefon donanım anahtarı oluşturamıyor',
+  'The attestor did not accept this phone: {reason}': 'Doğrulayıcı bu telefonu kabul etmedi: {reason}',
+  'The attestor did not answer': 'Doğrulayıcı yanıt vermedi',
+  'The phone did not sign': 'Telefon imzalamadı',
 };
