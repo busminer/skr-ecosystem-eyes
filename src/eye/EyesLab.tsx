@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -166,6 +166,8 @@ export function EyesLab() {
   const scene = useRef<IrisHandle>(null);
   const ticket = useRef(0);
   const reading = useRef(false);
+  const wanted = useRef(false);
+  const latestRead = useRef<(visible?: boolean) => Promise<void>>(async () => undefined);
   const blinked = useRef<Set<number>>(new Set());
   const meSerial = useRef<number | null>(null);
   const reread = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -193,7 +195,9 @@ export function EyesLab() {
   }, [connecting]);
 
   const read = useCallback(async (visible = false) => {
-    if (reading.current) return;
+    // A read asked for while one is in flight runs right after it, with
+    // whatever wallet is current by then, rather than being dropped.
+    if (reading.current) { wanted.current = true; return; }
     reading.current = true;
     if (visible) setRefreshing(true);
     const mine = ticket.current;
@@ -209,8 +213,10 @@ export function EyesLab() {
     } finally {
       reading.current = false;
       if (mine === ticket.current && visible) setRefreshing(false);
+      if (wanted.current) { wanted.current = false; void latestRead.current(); }
     }
   }, [wallet]);
+  latestRead.current = read;
 
   // A new wallet means a new answer about which ring is yours.
   useEffect(() => { ticket.current += 1; void read(); }, [read]);
@@ -303,7 +309,13 @@ export function EyesLab() {
   const size = width;
   const pupil = Math.round(size * 0.165 * 2);
   const watching = network?.totals.watching ?? network?.totals.eyes ?? status?.network?.watching ?? status?.network?.eyes ?? null;
-  const blink = network?.window ?? (status?.blink ? { open: status.blink.open, opensAt: status.blink.opensAt, closesAt: status.blink.closesAt } : null);
+  // One object per window, not per render: the pupil restarts its clock on
+  // a new one.
+  const fallback = status?.blink;
+  const blink = useMemo(
+    () => network?.window ?? (fallback ? { open: fallback.open, opensAt: fallback.opensAt, closesAt: fallback.closesAt } : null),
+    [network?.window, fallback?.open, fallback?.opensAt, fallback?.closesAt],
+  );
   const eventLabel = network?.event?.label ?? status?.blink?.event?.label ?? null;
   const blinkedToday = network ? network.totals.blinkedToday + liveBlinks : null;
   const received = network?.gazes.received ?? [];

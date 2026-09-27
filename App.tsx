@@ -15,6 +15,7 @@ import { langReady, t, useLang } from './src/i18n';
 import { askNotificationPermissionOnce, configureNotifications, scheduleDailyNudge } from './src/notifications';
 import { hydratePrefs, prefValue, prefsReady } from './src/prefs';
 import { prepareSound } from './src/sound';
+import { walletReady } from './src/wallet';
 import { useEventCues } from './src/lab/cues';
 import { colors, font, radius, spacing, type } from './src/theme';
 import type { Freshness, FreshnessDetail } from './src/types';
@@ -135,6 +136,9 @@ export default function App() {
   // language: an opening that starts as one thing and becomes another is
   // worse than a moment's delay.
   const [prefsLoaded, setPrefsLoaded] = useState(false);
+  // The connected wallet too: the Eyes tab opens on it, and a panel that
+  // offers to connect and then swaps to your Eye is the wrong first frame.
+  const [walletLoaded, setWalletLoaded] = useState(false);
   // Nothing on screen may be drawn in the wrong language and then swapped, so
   // the saved choice is read before the first frame, beside the fonts.
   useLang();
@@ -157,6 +161,7 @@ export default function App() {
   useEffect(() => { void hydratePrefs(); void configureNotifications(); void prepareSound(); }, []);
   useEffect(() => { void langReady.then(() => setLangLoaded(true)); }, []);
   useEffect(() => { void prefsReady.then(() => setPrefsLoaded(true)); }, []);
+  useEffect(() => { void walletReady.then(() => setWalletLoaded(true)); }, []);
   // Nothing else hides the native splash, so the first painted frame does it.
   useEffect(() => { if (fontsLoaded) void SplashScreen.hideAsync().catch(() => undefined); }, [fontsLoaded]);
   useEffect(() => {
@@ -208,7 +213,7 @@ export default function App() {
   // Me with the card.
   useTabRequests(useCallback((request) => setTab(request.tab), []));
 
-  if (!fontsLoaded || !langLoaded || !prefsLoaded) return <View style={styles.boot} />;
+  if (!fontsLoaded || !langLoaded || !prefsLoaded || !walletLoaded) return <View style={styles.boot} />;
 
   const source = TAB_SOURCE[tab];
   const freshness: Freshness | null = detail ? detail[source] : null;
