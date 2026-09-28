@@ -31,7 +31,9 @@ const sources = {
   // on when it is first opened, and the wink for every Blink after that.
   wake: require('../assets/sound/wake.wav'),
   wink: require('../assets/sound/wink.wav'),
-  // The walk-through of the Eye. The first set (27.09) sat at 85-110 Hz, which
+  // The walk-through of the Eye: since 28.09 evening, recorded sounds from
+  // Mixkit (assets/sound/SOURCES.md) after Alex turned down three synthesised
+  // sets. What follows is the history. The first set (27.09) sat at 85-110 Hz, which
   // a phone speaker rattles instead of playing; Alex called it unpleasant. The
   // set of 28.09 (scripts/make-eye-sounds.py) is a glass mallet from 440 Hz up,
   // in the register of the stake sound he picked: a faint pad once when the
