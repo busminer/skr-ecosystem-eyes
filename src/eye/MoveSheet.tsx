@@ -12,7 +12,9 @@ import { EyeApiError, type EyeIntent, type EyeSubmitResult } from './api';
 import { EYE_FINGER_ENABLED } from './config';
 import { isFingerCancel } from './finger';
 import { fontScale } from './fit';
-import { intentFresh, runMove, stepFor, type MoveKind, type MoveResume, type MoveStage, type MoveStep } from './move';
+import { intentFresh, MoveRefused, runMove, stepFor, type MoveExpect, type MoveKind, type MoveResume, type MoveStage, type MoveStep } from './move';
+import { sol } from './money';
+import type { EyeTxSummary } from './txCheck';
 import { BEAT_MS, Stepper, keyFingerprint, shorten, usePaced, type Failure, type StepModel, type StepStatus } from './Stepper';
 import { epochMs } from './time';
 import { PortalEye } from './PortalEye';
@@ -42,6 +44,12 @@ import { ritual } from '../sound';
 //
 // Every call move.ts makes, and the order of the calls, is exactly as
 // before; the sheet only holds the listener between two of them.
+//
+// While it holds at the wallet, the sheet says what the wallet is about to
+// be asked for, read from the transaction itself rather than from the price
+// the server quoted: the SOL to the maker and, for an open, what goes into
+// the new Eye's own account. A transaction the app would not sign never gets
+// that far; the Wallet card says so in red and the wallet is never opened.
 //
 // A failure lands on the step it happened in, in the words of whoever
 // refused: the server, the wallet, or the phone. Try again picks the move up
@@ -74,10 +82,22 @@ function describe(error: unknown): Failure {
     return { title: t('Your Eye is resting'), body: time ? t('The next Blink opens at {time}.', { time }) : null, detail: null };
   }
   if (error instanceof EyeApiError) return { title: error.message, body: null, detail: error.code };
+  if (error instanceof MoveRefused) return { title: error.message, body: null, detail: error.code };
   return { title: error instanceof Error && error.message ? error.message : t('The Eye service did not answer'), body: null, detail: null };
 }
 
-export function MoveSheet({ kind, wallet, onDone, onClose }: { kind: MoveKind; wallet: string; onDone: (result: EyeSubmitResult) => void; onClose: () => void }) {
+// What the wallet will be asked for, in one sentence, from the transaction's
+// own bytes.
+function askLine(summary: EyeTxSummary): string {
+  const toMaker = sol(summary.toMaker + summary.priorityFee);
+  return summary.storage > 0
+    ? t("Read from the transaction: {sol} SOL to the maker of SKR Eyes, about {rent} SOL into your Eye's own account on Solana, and the network fee your wallet sets.", { sol: toMaker, rent: sol(summary.storage) })
+    : t('Read from the transaction: {sol} SOL to the maker of SKR Eyes, and the network fee your wallet sets.', { sol: toMaker });
+}
+
+// `expect` is what the card showed before the move (move.ts MoveExpect): the
+// transaction is held to it.
+export function MoveSheet({ kind, wallet, expect, onDone, onClose }: { kind: MoveKind; wallet: string; expect: MoveExpect; onDone: (result: EyeSubmitResult) => void; onClose: () => void }) {
   const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
   const paced = usePaced(reduced ? 0 : BEAT_MS);
@@ -101,6 +121,7 @@ export function MoveSheet({ kind, wallet, onDone, onClose }: { kind: MoveKind; w
   const [note, setNote] = useState<string | null>(null);
   const [p256, setP256] = useState<string | null>(null);
   const [intent, setIntent] = useState<EyeIntent | null>(null);
+  const [summary, setSummary] = useState<EyeTxSummary | null>(null);
   const [signed, setSigned] = useState<string | null>(null);
   const [result, setResult] = useState<EyeSubmitResult | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
@@ -122,9 +143,11 @@ export function MoveSheet({ kind, wallet, onDone, onClose }: { kind: MoveKind; w
   const lids = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The panel's callbacks, always the latest ones, read through a ref so
   // the panel redrawing around the sheet (its clock ticks once a second)
-  // never restarts the move.
+  // never restarts the move. What the card showed is read the same way.
   const handlers = useRef({ onDone, onClose });
   handlers.current = { onDone, onClose };
+  const expected = useRef(expect);
+  expected.current = expect;
 
   // Lets a held move go, with a refusal it will never show: whoever is
   // waiting on it has a ticket that no longer matches.
@@ -143,6 +166,7 @@ export function MoveSheet({ kind, wallet, onDone, onClose }: { kind: MoveKind; w
     setFailedAt(-1);
     setStopped(false);
     setResult(null);
+    setSummary(null);
     setHeld(false);
     setOpened(false);
     const from: Key = resume ? (resume.signed ? 'network' : 'wallet') : keys[0] ?? 'wallet';
@@ -175,14 +199,16 @@ export function MoveSheet({ kind, wallet, onDone, onClose }: { kind: MoveKind; w
           return;
         case 'wallet': {
           const built = event.intent;
+          const asked = event.summary;
           if (skipGate.current) {
             skipGate.current = false;
-            push(() => { setIntent(built); setActive(idx('wallet')); setCurrent(idx('wallet')); setSub('wallet'); });
+            push(() => { setIntent(built); setSummary(asked); setActive(idx('wallet')); setCurrent(idx('wallet')); setSub('wallet'); });
             return;
           }
           // The transaction is in hand. The move waits here for the person.
           push(() => {
             setIntent(built);
+            setSummary(asked);
             if (finger) { setDone(idx('finger') + 1); setActive(-1); buzz(); }
             setSub('ready');
             setHeld(true);
@@ -199,7 +225,7 @@ export function MoveSheet({ kind, wallet, onDone, onClose }: { kind: MoveKind; w
     };
 
     try {
-      const answer = await runMove(kind, wallet, onStage, resume);
+      const answer = await runMove(kind, wallet, onStage, resume, expected.current);
       if (mine !== ticket.current) return;
       push(() => {
         setResult(answer);
@@ -212,7 +238,7 @@ export function MoveSheet({ kind, wallet, onDone, onClose }: { kind: MoveKind; w
       if (mine !== ticket.current) return;
       let step = stepFor(stage.current);
       if (step === 'finger' && !finger) step = 'wallet';
-      const quiet = isWalletCancel(caught) || isFingerCancel(caught);
+      const quiet = !(caught instanceof MoveRefused) && (isWalletCancel(caught) || isFingerCancel(caught));
       transport.current = !(caught instanceof EyeApiError);
       const told: Failure = quiet
         ? { title: step === 'finger' ? t('The fingerprint prompt was closed') : t('The wallet request was cancelled'), body: null, detail: null }
@@ -395,6 +421,7 @@ export function MoveSheet({ kind, wallet, onDone, onClose }: { kind: MoveKind; w
             <PortalEye size={eye} open={eyeOpen} blink={eyeBlink} instant={reduced} />
           </View>
           <Stepper steps={steps} current={current} reduced={reduced} eyebrow={kind === 'open' ? t('Open my Eye') : t('Blink')} note={note} />
+          {held && summary ? <Text style={styles.ask}>{askLine(summary)}</Text> : null}
         </ScrollView>
         {action ? <View style={styles.actions}>{action}</View> : null}
       </View>
@@ -413,4 +440,6 @@ const styles = StyleSheet.create({
   eyeTop: { alignItems: 'center', marginBottom: -spacing.xs },
   line: { color: colors.muted, fontFamily: font.regular, fontSize: 14.5, lineHeight: 21 },
   mono: { color: colors.text, fontFamily: font.mono, fontSize: 13, lineHeight: 19, letterSpacing: 0.3 },
+  // What the wallet will be asked for, just above the button that opens it.
+  ask: { color: colors.text, fontFamily: font.medium, fontSize: 14.5, lineHeight: 21, fontVariant: ['tabular-nums'] },
 });

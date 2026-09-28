@@ -1,8 +1,10 @@
+import { t } from '../i18n';
 import { signTransactionBase64 } from '../mwa';
 import { blinkEye, openEye, submitEye, type EyeIntent, type EyeSubmitResult, type WitnessProof } from './api';
-import { EYE_FINGER_ENABLED } from './config';
+import { EYE_COLLECTION, EYE_FINGER_ENABLED } from './config';
 import { witnessProof } from './finger';
 import { epochMs } from './time';
+import { checkEyeTransaction, EyeTxRefused, type EyeTxSummary } from './txCheck';
 
 // A move: opening the Eye, or one Blink. The same road every time, and every
 // step of it announced, so the sheet that shows it (MoveSheet.tsx) turns the
@@ -12,6 +14,10 @@ import { epochMs } from './time';
 // the key in the phone's StrongBox (only while EYE_FINGER_ENABLED). Wallet:
 // the server builds the transaction, the Seeker wallet signs it. Network: the
 // server verifies, co-signs and sends it, and answers once it has confirmed.
+// Between the server and the wallet the app reads the transaction itself
+// (txCheck.ts): who pays, which programs, how much SOL goes where. One that
+// is not the mint or the Blink the server always builds never reaches the
+// wallet, and the amounts the last screen shows are read from its bytes.
 //
 // The listener may hold the move. `onStage` is awaited, so the sheet that
 // shows the move can wait for the person to read a step before the next
@@ -37,8 +43,10 @@ export type MoveStage =
   | { stage: 'signed'; p256: string }
   // Wallet: asking the Eye service to build the transaction.
   | { stage: 'intent' }
-  // Wallet: the transaction is in hand and the Seeker wallet is opening.
-  | { stage: 'wallet'; intent: EyeIntent }
+  // Wallet: the transaction is in hand, read and found to be what it should
+  // be, and the Seeker wallet is opening. `summary` is what it asks of the
+  // wallet, from its own bytes.
+  | { stage: 'wallet'; intent: EyeIntent; summary: EyeTxSummary }
   // Network: signed; handing it to the server to verify, co-sign and send.
   | { stage: 'network'; intent: EyeIntent; signed: string };
 
@@ -55,7 +63,41 @@ export function intentFresh(intent: EyeIntent): boolean {
   return at == null || at - Date.now() > EXPIRY_MARGIN_MS;
 }
 
-export async function runMove(kind: MoveKind, wallet: string, onStage: MoveStageListener, resume: MoveResume | null = null): Promise<EyeSubmitResult> {
+// What the screen told the person before the move: the SOL to the maker it
+// showed (the status's open or Blink amount), and for a Blink, which Eye.
+// The transaction may not ask for more than that plus a tenth.
+export type MoveExpect = { shownLamports: number | null; asset?: string | null };
+
+// A transaction the app would not hand to the wallet. The message is the
+// person's, in their language; `code` is txCheck's short reason, shown small
+// under it, and `why` the whole reason, for a log.
+export class MoveRefused extends Error {
+  readonly code: string;
+  readonly why: string;
+  constructor(kind: MoveKind, refusal: EyeTxRefused) {
+    super(kind === 'open'
+      ? t('This transaction does not look like an SKR Eyes mint. Nothing was signed.')
+      : t('This transaction does not look like an SKR Eyes Blink. Nothing was signed.'));
+    this.name = 'MoveRefused';
+    this.code = refusal.code;
+    this.why = refusal.why;
+  }
+}
+
+// The app's own reading of the transaction, done every time it is about to
+// go to the wallet, a retry with the same intent included: the check is
+// cheap, and the wallet is the one place a wrong transaction costs money.
+function inspect(kind: MoveKind, wallet: string, intent: EyeIntent, expect: MoveExpect): EyeTxSummary {
+  try {
+    if (intent.kind !== kind) throw new EyeTxRefused('shape', `the service answered a ${kind} with a ${String(intent.kind)}`);
+    return checkEyeTransaction(intent.transaction, { kind, wallet, collection: EYE_COLLECTION, shownLamports: expect.shownLamports, asset: expect.asset ?? null });
+  } catch (caught) {
+    if (caught instanceof EyeTxRefused) throw new MoveRefused(kind, caught);
+    throw caught;
+  }
+}
+
+export async function runMove(kind: MoveKind, wallet: string, onStage: MoveStageListener, resume: MoveResume | null = null, expect: MoveExpect = { shownLamports: null }): Promise<EyeSubmitResult> {
   let intent = resume && intentFresh(resume.intent) ? resume.intent : null;
   let signed = intent ? resume?.signed ?? null : null;
 
@@ -70,8 +112,9 @@ export async function runMove(kind: MoveKind, wallet: string, onStage: MoveStage
   }
 
   if (!signed) {
-    await onStage({ stage: 'wallet', intent });
-    signed = await signTransactionBase64(intent.transaction);
+    const summary = inspect(kind, wallet, intent, expect);
+    await onStage({ stage: 'wallet', intent, summary });
+    signed = await signTransactionBase64(wallet, intent.transaction);
   }
 
   await onStage({ stage: 'network', intent, signed });

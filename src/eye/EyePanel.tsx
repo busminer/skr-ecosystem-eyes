@@ -337,8 +337,22 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
     </>
   );
   // The sheet is a Modal, so where it sits in the tree does not matter; it
-  // is keyed by the move so a Blink after an open starts from nothing.
-  const sheet = move ? <MoveSheet key={move} kind={move} wallet={wallet} onDone={(result) => onMoved(move, result)} onClose={() => setMove(null)} /> : null;
+  // is keyed by the move so a Blink after an open starts from nothing. It is
+  // told what this card shows for the move, the SOL to the maker and the Eye
+  // a Blink is for, and holds the transaction to that before the wallet sees
+  // it. Closed without a result, the card reads its status again, so a price
+  // that moved under it (the first thousand running out) is on screen before
+  // the next try.
+  const sheet = move ? (
+    <MoveSheet
+      key={move}
+      kind={move}
+      wallet={wallet}
+      expect={{ shownLamports: move === 'open' ? prices.openLamports : prices.blinkLamports, asset: eye?.asset ?? null }}
+      onDone={(result) => onMoved(move, result)}
+      onClose={() => { setMove(null); void read(true); }}
+    />
+  ) : null;
 
   const hours = cooldownHours(prices, blink?.cooldownSeconds);
 

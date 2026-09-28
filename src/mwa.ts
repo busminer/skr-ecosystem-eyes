@@ -81,22 +81,35 @@ export async function connectReadOnlyWallet(): Promise<ConnectedAccount> {
 // Sign a transaction somebody else built, and hand the signed bytes back
 // without sending them. The server that built it verifies and co-signs before
 // anything reaches the chain, which is why this is `signTransactions` and not
-// `signAndSendTransactions`.
+// `signAndSendTransactions`. The app has already read the transaction and
+// found it to be the mint or the Blink it should be (move.ts, txCheck.ts).
+//
+// The account that signs must be the wallet the app is working for, as with
+// a text below: the transaction names that wallet as its fee payer, and a
+// wallet signed in with another account would sign nothing useful, or worse,
+// something the person did not mean. So the session's accounts are checked
+// before the wallet is asked, and the bytes that come back must carry that
+// wallet's signature as the fee payer.
 //
 // The Seeker wallet rewrites what it is given before signing — a ComputeBudget
 // pair and a Lighthouse guard go in front — so the bytes that come back are
 // not the bytes that went in. That is expected; the server knows to look past
 // them. Serialized with `requireAllSignatures: false` because the server's own
 // signature is still missing at this point, and `verifySignatures: false`
-// because there is nothing here to verify against.
-export async function signTransactionBase64(base64: string): Promise<string> {
+// because the server checks every signature itself.
+export async function signTransactionBase64(wallet: string, base64: string): Promise<string> {
   const stored = await AsyncStorage.getItem(AUTH_KEY).catch(() => null);
 
-  return transact(async (wallet) => {
-    await authorizeSession(wallet, stored);
+  return transact(async (session) => {
+    const authorization = await authorizeSession(session, stored);
+    const account = authorization.accounts.find((entry) => new PublicKey(base64ToUint8Array(entry.address)).toBase58() === wallet);
+    if (!account) throw new Error(t('The wallet is signed in with another account.'));
     const transaction = Transaction.from(Buffer.from(base64, 'base64'));
-    const [signed] = await wallet.signTransactions({ transactions: [transaction] });
+    const [signed] = await session.signTransactions({ transactions: [transaction] });
     if (!signed) throw new Error(t('The wallet did not return a signed transaction.'));
+    const payer = signed.feePayer?.toBase58();
+    const slot = signed.signatures.find((entry) => entry.publicKey.toBase58() === wallet);
+    if (payer !== wallet || !slot?.signature) throw new Error(t('The wallet did not return a signed transaction.'));
     return signed.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64');
   });
 }

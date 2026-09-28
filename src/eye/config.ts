@@ -10,10 +10,20 @@
 // package, read from the witness module (the only native module that knows
 // the applicationId at runtime).
 import { getSeekerWitness } from '../../modules/seeker-witness';
+import { PRODUCTION_COLLECTION } from './txCheck';
 
 export const LAB_PACKAGE = 'dev.alexkosa.skreyes.lab';
 export const IS_LAB_BUILD = getSeekerWitness()?.PACKAGE === LAB_PACKAGE;
 export const EYE_BASE_URL = IS_LAB_BUILD ? 'https://skr.alexkosa.dev/eye-lab' : 'https://skr.alexkosa.dev';
+
+// The collection every Eye of this build lives in. The app reads each
+// transaction the Eye service hands it and refuses one that creates or
+// touches an asset anywhere else (txCheck.ts), so this is written here and
+// never taken from the server. Production: "SKR Eyes", owned by kosa.skr.
+// Lab: "SKR Eyes lab", the lab service's own throwaway collection (its
+// config on 28.09.2026); change it here when the lab gets a new one.
+export const LAB_COLLECTION = 'FCB6vdAbVoerZWd97JQaMSEc2hzPFYgukyVpqd3Jrwd9';
+export const EYE_COLLECTION = IS_LAB_BUILD ? LAB_COLLECTION : PRODUCTION_COLLECTION;
 
 // The attestor that reads Google's key-attestation chain and says whether the
 // key was born in a real Seeker's StrongBox, under a fingerprint, inside our
