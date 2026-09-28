@@ -217,38 +217,19 @@ function Row({ label, value, note, strong = false }: { label: string; value: str
   );
 }
 
-// Where the price steps up, drawn: the first tier lit, the next one dim, and
-// a mark where the next Eye will land. At large type, one line instead.
-function Ladder({ tier, open, nextSerial, left, compact }: { tier: { serial: number; afterLamports: number }; open: number; nextSerial: number | null; left: number | null; compact: boolean }) {
-  const price = `${sol(open)} SOL`;
-  if (compact) {
-    return (
-      <Text style={styles.ladderNote}>
-        {left != null
-          ? t('{count} left at {price}, then {after} SOL', { count: integer(left), price, after: sol(tier.afterLamports) })
-          : t('#1 to #{last} at {price}, then {after} SOL', { last: integer(tier.serial), price, after: sol(tier.afterLamports) })}
-      </Text>
-    );
-  }
-  const at = nextSerial != null ? Math.max(0.02, Math.min(0.98, nextSerial / Math.max(1, tier.serial))) : null;
+// The mint by Eye number, in words: the first thousand and how many of them
+// are left, then the mint after them. No bar: a person reads the two lines.
+function Ladder({ tier, open, left }: { tier: { serial: number; afterLamports: number }; open: number; left: number | null }) {
   return (
     <View style={styles.ladder}>
-      <View style={styles.ladderBar}>
-        <View style={styles.ladderTier}>
-          {at != null ? <View style={[styles.ladderYou, { left: `${at * 100}%` }]} /> : null}
-        </View>
-        <View style={styles.ladderNext} />
+      <View style={styles.row}>
+        <Text style={styles.rowLabel}>{t('Eyes #1 to #{last}', { last: integer(tier.serial) })}</Text>
+        <Text style={styles.rowValue}>{`${sol(open)} SOL`}</Text>
       </View>
-      <View style={styles.ladderRow}>
-        <View style={styles.ladderCell}>
-          <Text style={styles.ladderText}>{t('#1 to #{last}', { last: integer(tier.serial) })}</Text>
-          <Text style={styles.ladderPrice}>{price}</Text>
-          {left != null ? <Text style={styles.ladderNote}>{t('{count} left at this price', { count: integer(left) })}</Text> : null}
-        </View>
-        <View style={[styles.ladderCell, styles.ladderCellRight]}>
-          <Text style={[styles.ladderText, styles.ladderDim]}>{t('From #{first}', { first: integer(tier.serial + 1) })}</Text>
-          <Text style={[styles.ladderPrice, styles.ladderDim]}>{`${sol(tier.afterLamports)} SOL`}</Text>
-        </View>
+      {left != null ? <Text style={styles.ladderNote}>{left === 1 ? t('1 of them left') : t('{count} of them left', { count: integer(left) })}</Text> : null}
+      <View style={styles.row}>
+        <Text style={[styles.rowLabel, styles.ladderDim]}>{t('From Eye #{first}', { first: integer(tier.serial + 1) })}</Text>
+        <Text style={[styles.rowValue, styles.ladderDim]}>{`${sol(tier.afterLamports)} SOL`}</Text>
       </View>
     </View>
   );
@@ -352,18 +333,18 @@ export function EyeOnboarding({
   const blocked = Boolean(status && !hasEye && (gates?.staked === false || gates?.sgt === false));
   const ready = page === PAGES - 1;
 
-  // The hook: what the first Eyes cost and how many are left at that price,
-  // as the server says it right now, in SOL. Never a zero as a hook: past
-  // the first tier it says the price of the day instead, and without a count
-  // it says only the price.
+  // The hook: one of the first Eyes and how many of them are left, as the
+  // server says it right now. No money on the first page (Alex, 28.09: never
+  // scare a person with what something costs), and never a zero as a hook:
+  // past the first thousand there is no hook at all.
   const inTier = tier != null && (nextSerial == null || nextSerial <= tier.serial);
-  const hook = open == null
+  const hook = open == null || !tier || !inTier
     ? null
-    : tier && inTier && left != null && left > 0
-      ? t('The first {count} Eyes cost {sol} SOL each. {left} left.', { count: integer(tier.serial), sol: sol(open), left: integer(left) })
-      : tier && inTier && left == null
-        ? t('The first {count} Eyes cost {sol} SOL each.', { count: integer(tier.serial), sol: sol(open) })
-        : t('An Eye costs {sol} SOL to mint.', { sol: sol(open) });
+    : left != null && left > 0
+      ? t('Mint one of the first {count} Eyes. {left} left.', { count: integer(tier.serial), left: integer(left) })
+      : left == null
+        ? t('Mint one of the first {count} Eyes.', { count: integer(tier.serial) })
+        : null;
 
   // The checks that pass light on their notes as the last page arrives.
   const passes = [Boolean(wallet), Boolean(wallet && status && gates?.sgt), Boolean(wallet && status && staked), finger ? verified : false].filter(Boolean).length;
@@ -561,16 +542,17 @@ export function EyeOnboarding({
 
           {open != null && total != null ? (
             <View style={[styles.card, big && styles.cardTight]}>
-              {big ? null : <Overline tone={colors.faint}>{t('The mint')}</Overline>}
+              {big ? null : <Overline tone={colors.faint}>{t('To mint your Eye')}</Overline>}
+              <Row label={t('Once, from your wallet')} value={t('about {sol} SOL', { sol: sol(total) })} strong />
+              {big ? null : <Text style={styles.rowNote}>{t('It is made of three parts:')}</Text>}
               <Row label={t('Mint')} value={`${sol(open)} SOL`} note={t('to the maker of SKR Eyes')} />
-              <Row label={t('Storage deposit')} value={t('about {sol} SOL', { sol: sol(rent) })} note={t('kept inside your Eye on Solana, not paid to anyone')} />
-              <Row label={t('Network fee')} value={t('tiny, set by your wallet')} note={t('to Solana validators')} />
+              <Row label={t('Storage deposit')} value={t('about {sol} SOL', { sol: sol(rent) })} note={t('stays inside your Eye on Solana, nobody receives it')} />
+              <Row label={t('Network fee')} value={t('tiny')} note={t('to Solana validators, set by your wallet')} />
+              {tier ? <View style={styles.rule} /> : null}
+              {tier && !big ? <Overline tone={colors.faint}>{t('Early Eyes')}</Overline> : null}
+              {tier ? <Ladder tier={tier} open={open} left={left} /> : null}
               <View style={styles.rule} />
-              <Row label={t('Total')} value={t('about {sol} SOL', { sol: sol(total) })} strong />
-              {tier ? <Ladder tier={tier} open={open} nextSerial={nextSerial} left={left} compact={big} /> : null}
-              <View style={styles.rule} />
-              {blinkSol ? <Text style={styles.rowNote}>{t('{sol} SOL per Blink to the maker of SKR Eyes, every {hours} hours.', { sol: blinkSol, hours })}</Text> : null}
-              {big ? null : <Text style={styles.micro}>{t('The first Blink is included in the mint.')}</Text>}
+              {blinkSol ? <Text style={styles.rowNote}>{t('After the mint, each Blink is {sol} SOL to the maker of SKR Eyes, once every {hours} hours. Your first Blink comes with the mint.', { sol: blinkSol, hours })}</Text> : null}
             </View>
           ) : (
             <View style={styles.card}><ActivityIndicator size="small" color={colors.faint} /></View>

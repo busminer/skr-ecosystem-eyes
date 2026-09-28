@@ -276,7 +276,9 @@ export function EyesLab() {
       // The finger came off the wallet: nothing went wrong, so nothing is said.
       if (!isWalletCancel(caught)) {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        setConnectError(caught instanceof Error && caught.message ? caught.message : t('The wallet request was cancelled'));
+        // A Java class name is not a sentence: say what happened instead.
+        const said = caught instanceof Error ? caught.message : '';
+        setConnectError(said && !/^[a-z]+(\.[A-Za-z$]+)+(Exception|Error)\b/.test(said) ? said : t('The wallet did not connect. Try again.'));
       }
     } finally {
       setConnecting(false);

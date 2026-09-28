@@ -34,3 +34,8 @@ set is replaced by a harp:
 
 Made by scripts/make-eye-sounds-harp.py (mono, 6 kHz soft low-pass, fades, peak-normalised);
 it reads the two Mixkit WAVs from a folder given on the command line.
+
+Same night, second pass: the harp was «немножко звонкий» (a little ringing). Now a fourth
+lower (tones -5, -3, -2, 0, 2, 3, 5 semitones; hum -5; chime -2; heart unshifted so its peak
+still lands on the lids), a 4th-order low-pass at 2.4 kHz (2.8 kHz for the chime), a slower
+fade-in to soften the pluck, and a soft dark room tail. Same script, same two recordings.

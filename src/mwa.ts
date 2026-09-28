@@ -130,12 +130,14 @@ export async function signTextWithWallet(wallet: string, text: string): Promise<
 export function isWalletCancel(error: unknown): boolean {
   if (error instanceof SolanaMobileWalletAdapterProtocolError) {
     const code = error.code as number;
-    return code === -1 || code === -3;
+    if (code === -1 || code === -3) return true;
   }
   if (error instanceof SolanaMobileWalletAdapterError) {
     const code = error.code as string;
-    return code === 'ERROR_SESSION_CLOSED' || code === 'ERROR_SESSION_TIMEOUT' || code === 'ERROR_ASSOCIATION_CANCELLED';
+    if (code === 'ERROR_SESSION_CLOSED' || code === 'ERROR_SESSION_TIMEOUT' || code === 'ERROR_ASSOCIATION_CANCELLED') return true;
   }
-  const message = error instanceof Error ? error.message.toLowerCase() : '';
+  // Whatever the class, a message that says cancel is a cancel: closing the
+  // wallet mid-connect comes back as java.util.concurrent.CancellationException.
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error ?? '').toLowerCase();
   return /cancel|declin|reject|dismiss/.test(message);
 }

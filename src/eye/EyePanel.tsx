@@ -55,12 +55,12 @@ export function offerLines(prices: EyePrices, nextSerial: number | null, eyesNow
     t('About {sol} SOL in all.', { sol: sol(prices.openLamports + rentOf(prices)) }),
   ].join(' ');
   if (!tier || left === 0) {
-    return [t('An Eye costs {sol} SOL to mint.', { sol: price }), cost];
+    return [t('An Eye mints for {sol} SOL.', { sol: price }), cost];
   }
-  const first = t('The first {count} Eyes cost {sol} SOL each.', { count: integer(tier.serial), sol: price });
+  const first = t('The first {count} Eyes mint for {sol} SOL each.', { count: integer(tier.serial), sol: price });
   const rest = [
-    left == null ? null : left === 1 ? t('1 left at this price.') : t('{count} left at this price.', { count: integer(left) }),
-    t('Then {sol} SOL.', { sol: sol(tier.afterLamports) }),
+    left == null ? null : left === 1 ? t('1 of them left.') : t('{count} of them left.', { count: integer(left) }),
+    t('After them, {sol} SOL.', { sol: sol(tier.afterLamports) }),
   ].filter((line): line is string => Boolean(line)).join(' ');
   return [first, rest, cost];
 }
