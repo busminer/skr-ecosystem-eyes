@@ -15,14 +15,18 @@ import type { EyeStatus } from './api';
 // keeps at most two local notifications, replaced every time the status is
 // read or a Blink lands:
 //
-//   1. at nextAt: the Eye can blink again;
+//   1. at nextAt, when that Blink would count for a new UTC day: the Eye can
+//      blink again;
 //   2. three hours before the UTC day ends, if today has no Blink yet and one
-//      is possible by then: the streak ends tonight.
+//      is possible by then: a calm note that today is still open.
 //
 // The words change with the moment and turn with every Blink (Alex, 28.09:
 // the app should talk to the person, not repeat one sentence): day 2 after the
 // mint, the new ring on day 7, gold on day 30, the next ring or gold coming
-// close, an extra Blink on a day already kept, and the streak at stake tonight.
+// close. Never a second Blink on a day already kept (a Blink is paid, and a
+// reminder does not sell one), and never pressure about losing the streak:
+// the evening note says where the streak is, not what would be lost (audit
+// R-6, 28.09).
 //
 // Nothing leaves the phone. The alarms are exact (USE_EXACT_ALARM in the
 // manifest), so "in eight hours" means eight hours, not whenever Android
@@ -89,12 +93,10 @@ export function remindersFor(status: EyeStatus, now = Date.now()): Array<{ at: n
     const day = streak + 1;
     const toRing = (RING_DAYS.find((d) => d > streak) ?? 30) - streak;
     const toGold = Math.max(0, 30 - streak);
-    let line: { title: string; body: string };
+    // A Blink that would land on a day already kept gets no reminder at all.
+    let line: { title: string; body: string } | null = null;
     if (!newDay) {
-      line = pick([
-        { title: t('Your Blink is ready'), body: t('Today is already counted. Another Blink adds to your total.') },
-        { title: t('{name} can blink', { name: eye.name }), body: t('This would be Blink number {count}.', { count: blinks + 1 }) },
-      ]);
+      line = null;
     } else if (day === 30) {
       line = { title: t('Day 30'), body: t('One Blink today and your Eye turns gold.') };
     } else if (day === 7) {
@@ -111,7 +113,7 @@ export function remindersFor(status: EyeStatus, now = Date.now()): Array<{ at: n
       if (toGold > 0 && toGold <= 7) lines.push({ title: toGold === 1 ? t('1 day to gold') : t('{count} days to gold', { count: toGold }), body: t('Day 30 turns your Eye gold.') });
       line = pick(lines);
     }
-    plans.push({ at: nextAt, ...line });
+    if (line) plans.push({ at: nextAt, ...line });
   }
 
   // The end of the current UTC day, and whether it still needs its Blink.
@@ -122,8 +124,8 @@ export function remindersFor(status: EyeStatus, now = Date.now()): Array<{ at: n
     const at = Math.max(warnAt, blinkPossibleBy);
     const line = streak > 1
       ? pick([
-        { title: t('Your streak ends tonight'), body: t('{count} days in a row. Blink before the day ends.', { count: streak }) },
-        { title: t('3 hours left'), body: t('Blink now to keep your {count}-day streak.', { count: streak }) },
+        { title: t('Your Eye has not blinked today'), body: t('{count} days in a row so far.', { count: streak }) },
+        { title: t('Today is still open'), body: t('Your streak is at {count} days.', { count: streak }) },
       ])
       : { title: t('You have not blinked today'), body: t('One tap keeps your Eye going.') };
     plans.push({ at, ...line });

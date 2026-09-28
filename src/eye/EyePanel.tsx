@@ -303,7 +303,7 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
         {tabPrices ? <Offer lines={offerLines(tabPrices, nextSerial, eyesNow)} /> : null}
         {onConnect ? (
           <View style={styles.button}>
-            <Button label={connecting ? t('Connecting…') : t('Connect Solana Mobile')} onPress={onConnect} disabled={connecting} />
+            <Button label={connecting ? t('Connecting…') : t('Connect wallet')} onPress={onConnect} disabled={connecting} />
           </View>
         ) : null}
         {onHowItWorks ? <Button label={t('How it works')} onPress={onHowItWorks} quiet /> : null}
@@ -362,7 +362,7 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
         <Eyebrow>{t('Your Eye')}</Eyebrow>
         <Text style={styles.title}>{t('Open your Eye')}</Text>
         <Offer lines={offerLines(prices, nextSerial, eyesNow)} />
-        {gates.staked ? null : <Text style={styles.hint}>{t('Needs an active SKR position')}</Text>}
+        {gates.staked ? null : <Text style={styles.hint}>{t('For SKR stakers')}</Text>}
         <View style={styles.button}>
           <Button label={move === 'open' || gate ? t('Opening…') : t('Open my Eye')} onPress={() => void act('open')} disabled={!gates.staked || move != null || gate} />
         </View>

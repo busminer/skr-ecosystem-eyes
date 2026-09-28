@@ -354,10 +354,10 @@ export function EyeOnboarding({
   }, [ready, reduced, passes]);
 
   let action: { label: string; onPress?: () => void; disabled?: boolean };
-  if (!wallet) action = { label: connecting ? t('Connecting…') : t('Connect Solana Mobile'), onPress: onConnect, disabled: connecting };
+  if (!wallet) action = { label: connecting ? t('Connecting…') : t('Connect wallet'), onPress: onConnect, disabled: connecting };
   else if (!status) action = { label: t('Reading your Eye…'), disabled: true };
   else if (hasEye) action = { label: t('See my Eye'), onPress: onClose };
-  else if (gates?.staked === false) action = { label: t('Needs an active SKR position'), disabled: true };
+  else if (gates?.staked === false) action = { label: t('For SKR stakers'), disabled: true };
   else if (gates?.sgt === false) action = { label: t('Needs a Seeker Genesis Token'), disabled: true };
   else action = { label: finger && !verified ? t('Verify my Seeker') : t('Open my Eye'), onPress: onOpen };
 
@@ -414,8 +414,8 @@ export function EyeOnboarding({
       overline: t('The Blink'),
       title: t('Blink every {hours} hours', { hours }),
       body: big
-        ? t('One Blink a day keeps your streak alive. Miss a day and it starts over.')
-        : t('One Blink a day keeps your streak alive. Every Blink is written on Solana into your Eye. Miss a day and the streak starts over.'),
+        ? t('One Blink a day keeps your streak going.')
+        : t('One Blink a day keeps your streak going. Every Blink is written on Solana into your Eye. The streak counts the days in a row.'),
       art: (box) => <BlinkDial active={page === 3} reduced={reduced} width={box.width} height={box.height} slots={slots} hours={hours} />,
       foot: (
         <View style={styles.footBlock}>
@@ -525,7 +525,7 @@ export function EyeOnboarding({
               active={ready}
               state={!wallet ? 'later' : !status ? 'wait' : staked ? 'yes' : staked === false ? 'no' : 'later'}
               label={t('Staked SKR')}
-              detail={staked && gates?.activeStaked ? `${integer(Number(gates.activeStaked))} SKR` : staked === false ? t('No active SKR position') : big ? null : !wallet ? t('You need SKR in staking') : null}
+              detail={staked && gates?.activeStaked ? `${integer(Number(gates.activeStaked))} SKR` : staked === false ? t('Not found in this wallet') : big ? null : !wallet ? t('For SKR stakers') : null}
             />
             {finger ? (
               <Check
@@ -558,9 +558,8 @@ export function EyeOnboarding({
             <View style={styles.card}><ActivityIndicator size="small" color={colors.faint} /></View>
           )}
 
-          <Text style={styles.fine}>{big ? t('The first Blink is included. No token is sold here.') : t('No token is sold here.')}</Text>
           {connectError ? <Text style={styles.error}>{connectError}</Text> : null}
-          {blocked ? <Text style={styles.fine}>{t('An Eye opens for a wallet on a Seeker with an active SKR position.')}</Text> : null}
+          {blocked ? <Text style={styles.fine}>{t('An Eye opens for SKR stakers on a Seeker.')}</Text> : null}
         </Page>
       </ScrollView>
 

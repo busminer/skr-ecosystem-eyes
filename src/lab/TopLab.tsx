@@ -28,7 +28,7 @@ import { RADAR_SCENE_HTML } from './radarSceneHtml';
 const PAGE = 100;
 const LISTS: Array<{ key: TopList; label: string; note: string }> = [
   { key: 'stake', label: 'BY STAKE', note: 'Active stake in the vault. Treasury-size wallets are set aside.' },
-  { key: 'earned', label: 'BY EARNED', note: 'Rewards since each wallet\'s last stake or unstake, from the share price at entry. Read from the chain.' },
+  { key: 'earned', label: 'BY REWARDS', note: 'Rewards since each wallet\'s last stake or unstake, from the share price at entry. Read from the chain.' },
   { key: 'movers', label: 'MOVERS · 24H', note: 'Places gained or lost since yesterday\'s scan, among the top 1 000 people.' },
 ];
 
@@ -405,7 +405,7 @@ export function TopLab() {
               <Text style={[styles.youFact, styles.youFactGold]}>{tierLabel(meFound.tier).toUpperCase()}</Text>
               {moversKnown ? <Text style={[styles.youFact, meFound.prevRank != null && meFound.prevRank !== meFound.rank && { color: meFound.prevRank > meFound.rank ? colors.positive : colors.negative }]}>{meFound.prevRank == null ? t('NEW') : meFound.prevRank === meFound.rank ? '— 24H' : `${meFound.prevRank > meFound.rank ? '▲' : '▼'}${Math.abs(meFound.prevRank - meFound.rank)} 24H`}</Text> : null}
               <Text style={styles.youFact}>{`${compact(meFound.staked)} SKR`}</Text>
-              <Text style={[styles.youFact, { color: colors.positive }]}>{`+${compact(meFound.earned)} ${t('EARNED')} · #${integer(meFound.earnedRank)}`}</Text>
+              <Text style={[styles.youFact, { color: colors.positive }]}>{`+${compact(meFound.earned)} ${t('REWARDS RECEIVED')} · #${integer(meFound.earnedRank)}`}</Text>
             </View>
           </View>
           {/* The dial is the door to the radar, so it says so: a bare circle
@@ -462,7 +462,7 @@ export function TopLab() {
           {list === 'movers'
             ? <Text style={styles.delta}>{t('was #{rank}', { rank: integer(item.prevRank ?? item.rank) })}</Text>
             : list === 'earned'
-              ? <Text style={styles.delta}>{t('by earned')}</Text>
+              ? <Text style={styles.delta}>{t('by rewards')}</Text>
               : <Delta row={item} known={moversKnown} />}
         </View>
         <PhoneMark me={mine} />
@@ -470,7 +470,7 @@ export function TopLab() {
           <Text numberOfLines={1} style={[styles.name, !item.name && styles.nameAddr]}>{who(item)}</Text>
           <Text numberOfLines={1} style={styles.sub}>
             {list === 'stake'
-              ? `${tierLabel(item.tier)} · ${t('earned')} +${compact(item.earned)}`
+              ? `${tierLabel(item.tier)} · ${t('rewards')} +${compact(item.earned)}`
               : list === 'earned'
                 ? `${compact(item.staked)} SKR ${t('staked')} · #${integer(item.rank)} ${t('by stake')}`
                 : `${compact(item.staked)} SKR · ${tierLabel(item.tier)}`}
@@ -485,7 +485,7 @@ export function TopLab() {
           ) : list === 'earned' ? (
             <>
               <Text style={[styles.amountValue, { color: colors.positive }]}>{`+${compact(item.earned)}`}</Text>
-              <Text style={styles.amountUnit}>{`SKR ${t('earned')}`}</Text>
+              <Text style={styles.amountUnit}>{`SKR ${t('received')}`}</Text>
             </>
           ) : (
             <>

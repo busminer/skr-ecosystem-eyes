@@ -332,7 +332,7 @@ export function MyLab() {
         <>
           {/* A pasted address is somebody being looked at. Connecting turns
               this card into your own, which is what the alerts hang on. */}
-          {connected ? null : <Button label={t('Connect Solana Mobile')} onPress={() => void connect()} disabled={busy} />}
+          {connected ? null : <Button label={t('Connect wallet')} onPress={() => void connect()} disabled={busy} />}
 
 
           <Panel style={styles.sharePanel}>
@@ -359,12 +359,12 @@ export function MyLab() {
             ) : null}
             {profile!.totals.earned != null ? (
               <Pressable accessibilityRole="button" accessibilityState={{ expanded: explainEarned }} onPress={() => { void Haptics.selectionAsync(); setExplainEarned((open) => !open); }} style={({ pressed }) => [styles.earnedRow, pressed && { opacity: 0.7 }]}>
-                <View style={styles.earnedHead}><Eyebrow>{t('Earned on staking')}</Eyebrow><Chevron open={explainEarned} /></View>
+                <View style={styles.earnedHead}><Eyebrow>{t('Rewards received')}</Eyebrow><Chevron open={explainEarned} /></View>
                 <Text style={styles.earnedValue}>{`+${compact(profile!.totals.earned)} SKR`}</Text>
               </Pressable>
             ) : null}
             {profile!.totals.earned != null && explainEarned ? (
-              <Inset style={styles.earnedExplain}><Text style={styles.insetNote}>{t('An estimate from the share price at your last stake or unstake. Rewards banked before that move are folded into your position and not counted here.')}</Text></Inset>
+              <Inset style={styles.earnedExplain}><Text style={styles.insetNote}>{t('An estimate from the share price at your last stake or unstake. Rewards received before that move are folded into your position and not counted here.')}</Text></Inset>
             ) : null}
             {/* What used to be two more cards of the same weight as everything
                 else: the queue, recessed into the panel it always belonged to. */}
@@ -467,7 +467,7 @@ export function MyLab() {
           {/* Already connected and holding nothing: no button to offer, so
               the OR divider goes too and the paste field stands alone. */}
           {profile && !profile.found && connected ? null : (<>
-            <Button label={t('Connect Solana Mobile')} onPress={() => void connect()} disabled={busy} />
+            <Button label={t('Connect wallet')} onPress={() => void connect()} disabled={busy} />
             <View style={styles.orRow}>
               <View style={styles.orLine} />
               <Text style={styles.or}>{t('OR')}</Text>
