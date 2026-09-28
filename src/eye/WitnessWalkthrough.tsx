@@ -55,7 +55,7 @@ export type WitnessState =
   // Not Android, or a build without the module: the Eye works unwitnessed.
   | { kind: 'unavailable' }
   // Never verified on this phone, or the key is gone (new fingerprint,
-  // reinstall), or the phone's key now belongs to another wallet's enrolment.
+  // reinstall), or the phone's key now belongs to another wallet's enrollment.
   | { kind: 'none' }
   | { kind: 'verified'; record: WitnessRecord };
 

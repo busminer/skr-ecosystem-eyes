@@ -100,7 +100,7 @@ class SeekerWitnessModule : Module() {
 
     // The compressed public key of the key in this phone right now, hex, or
     // null when there is none. The phone holds one key under one alias while
-    // the JS side keeps one enrolment per wallet, so a second wallet enrolled
+    // the JS side keeps one enrollment per wallet, so a second wallet enrolled
     // here replaces the first one's key. The JS side compares this with the
     // record it is about to use and enrolls again when they differ, instead
     // of signing for a key the server no longer has for that wallet.
