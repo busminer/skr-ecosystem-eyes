@@ -28,6 +28,7 @@ export const ATTESTOR_LAB_BASE_URL = ATTESTOR_BASE_URL;
 // The finger. When on, the Eye is enrolled with the attestor before it is
 // first opened, and every open and every Blink carries a signature from the
 // StrongBox key that only a living fingerprint can use (src/eye/finger.ts).
-// On in the lab build first; the store build follows once the lab has proven
-// it on a living Seeker.
-export const EYE_FINGER_ENABLED = IS_LAB_BUILD;
+// On in the lab build first (27.09); the lab proved it on Alex's Seekers on
+// 27-28.09, so the store build carries it too from 2.0 (the server answers
+// with EYE_REQUIRE_FINGER=1 in production).
+export const EYE_FINGER_ENABLED = true;
