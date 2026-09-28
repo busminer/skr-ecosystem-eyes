@@ -522,7 +522,6 @@ export const id: Record<string, string> = {
   'to the maker of SKR Eyes': 'untuk pembuat SKR Eyes',
   'about {sol} SOL': 'sekitar {sol} SOL',
   'About {sol} SOL in all.': 'Total sekitar {sol} SOL.',
-  '{sol} SOL to the maker of SKR Eyes, plus a storage deposit of about {rent} SOL kept inside your Eye on Solana, not paid to anyone, and a tiny network fee to Solana validators, set by your wallet.': '{sol} SOL untuk pembuat SKR Eyes, ditambah deposit penyimpanan sekitar {rent} SOL yang tersimpan di dalam Matamu di Solana dan tidak dibayarkan ke siapa pun, serta biaya jaringan yang sangat kecil untuk validator Solana, ditentukan oleh dompetmu.',
   '{sol} SOL per Blink to the maker of SKR Eyes, every {hours} hours.': '{sol} SOL per kedipan untuk pembuat SKR Eyes, setiap {hours} jam.',
   '{sol} SOL per Blink to the maker of SKR Eyes.': '{sol} SOL per kedipan untuk pembuat SKR Eyes.',
   '{sol} SOL per Blink, every {hours} hours': '{sol} SOL per kedipan, setiap {hours} jam',
@@ -554,7 +553,6 @@ export const id: Record<string, string> = {
   'Fingerprint': 'Sidik jari',
   'From Eye #{first}': 'Mulai Mata #{first}',
   'In the side button. Your key signs only after it.': 'Di tombol samping. Kuncimu hanya menandatangani setelahnya.',
-  'It is made of three parts:': 'Terdiri dari tiga bagian:',
   'Keys never leave the secure element.': 'Kunci tidak pernah keluar dari elemen aman.',
   'Keys never leave the secure element. Double-tap the side button to approve.': 'Kunci tidak pernah keluar dari elemen aman. Ketuk dua kali tombol samping untuk menyetujui.',
   'Mint one of the first {count} Eyes.': 'Cetak satu dari {count} Mata pertama.',
@@ -571,5 +569,9 @@ export const id: Record<string, string> = {
   'to Solana validators, set by your wallet': 'untuk validator Solana, ditentukan dompetmu',
   '{count} of them left': 'sisa {count}',
   '{count} of them left.': 'Sisa {count}.',
+  'It is made of these parts:': 'Terdiri dari bagian-bagian ini:',
+  'Metaplex fee': 'Biaya Metaplex',
+  'to Metaplex, the NFT standard your Eye is built on': 'untuk Metaplex, standar NFT tempat Matamu dibangun',
+  '{sol} SOL to the maker of SKR Eyes, a storage deposit of about {rent} SOL that stays inside your Eye on Solana, a {fee} SOL fee to Metaplex, the NFT standard it is built on, and a tiny network fee to Solana validators, set by your wallet.': '{sol} SOL untuk pembuat SKR Eyes, deposit penyimpanan sekitar {rent} SOL yang tetap di dalam Matamu di Solana, biaya {fee} SOL untuk Metaplex, standar NFT tempat Mata itu dibangun, dan biaya jaringan sangat kecil untuk validator Solana, ditentukan dompetmu.',
 };
 

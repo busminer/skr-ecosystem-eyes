@@ -9,7 +9,7 @@ import { EyePicture, type Motion } from './EyePicture';
 import { clock, epochMs } from './time';
 import { MoveSheet } from './MoveSheet';
 import type { MoveKind } from './move';
-import { cooldownHours, leftAtPrice, rentOf, sol } from './money';
+import { CORE_CREATE_FEE, cooldownHours, depositOf, leftAtPrice, rentOf, sol } from './money';
 import { askForEyeRemindersOnce, syncEyeReminders } from './reminders';
 import { shareEye, type ShareMoment } from './shareEye';
 
@@ -51,7 +51,7 @@ export function offerLines(prices: EyePrices, nextSerial: number | null, eyesNow
   // The live count when the network has been read, the server's word otherwise.
   const left = tier ? (eyesNow != null ? Math.max(0, tier.serial - eyesNow) : leftAtPrice(prices, nextSerial)) : null;
   const cost = [
-    t('{sol} SOL to the maker of SKR Eyes, plus a storage deposit of about {rent} SOL kept inside your Eye on Solana, not paid to anyone, and a tiny network fee to Solana validators, set by your wallet.', { sol: price, rent: sol(rentOf(prices)) }),
+    t('{sol} SOL to the maker of SKR Eyes, a storage deposit of about {rent} SOL that stays inside your Eye on Solana, a {fee} SOL fee to Metaplex, the NFT standard it is built on, and a tiny network fee to Solana validators, set by your wallet.', { sol: price, rent: sol(depositOf(prices)), fee: sol(CORE_CREATE_FEE) }),
     t('About {sol} SOL in all.', { sol: sol(prices.openLamports + rentOf(prices)) }),
   ].join(' ');
   if (!tier || left === 0) {

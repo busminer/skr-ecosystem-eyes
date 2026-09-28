@@ -10,7 +10,7 @@ import { colors, font, radius, spacing } from '../theme';
 import { fetchEyeHealth, type Eye, type EyePrices, type EyeStatus } from './api';
 import { EYE_FINGER_ENABLED } from './config';
 import { isBig } from './fit';
-import { cooldownHours, leftAtPrice, rentOf, sol } from './money';
+import { CORE_CREATE_FEE, cooldownHours, depositOf, leftAtPrice, rentOf, sol } from './money';
 import { eyeCaption } from './shareEye';
 import { Glyph, Overline, type GlyphName } from './glyphs';
 import { Awakening, BlinkDial, Breath, CardShare, IrisClimb, NightSky, OpeningRoad, SeekerParts, cue, note, schedule, tick } from './OnboardingArt';
@@ -544,9 +544,10 @@ export function EyeOnboarding({
             <View style={[styles.card, big && styles.cardTight]}>
               {big ? null : <Overline tone={colors.faint}>{t('To mint your Eye')}</Overline>}
               <Row label={t('Once, from your wallet')} value={t('about {sol} SOL', { sol: sol(total) })} strong />
-              {big ? null : <Text style={styles.rowNote}>{t('It is made of three parts:')}</Text>}
+              {big ? null : <Text style={styles.rowNote}>{t('It is made of these parts:')}</Text>}
               <Row label={t('Mint')} value={`${sol(open)} SOL`} note={t('to the maker of SKR Eyes')} />
-              <Row label={t('Storage deposit')} value={t('about {sol} SOL', { sol: sol(rent) })} note={t('stays inside your Eye on Solana, nobody receives it')} />
+              <Row label={t('Storage deposit')} value={t('about {sol} SOL', { sol: sol(depositOf(prices)) })} note={t('stays inside your Eye on Solana, nobody receives it')} />
+              <Row label={t('Metaplex fee')} value={`${sol(CORE_CREATE_FEE)} SOL`} note={t('to Metaplex, the NFT standard your Eye is built on')} />
               <Row label={t('Network fee')} value={t('tiny')} note={t('to Solana validators, set by your wallet')} />
               {tier ? <View style={styles.rule} /> : null}
               {tier && !big ? <Overline tone={colors.faint}>{t('Early Eyes')}</Overline> : null}

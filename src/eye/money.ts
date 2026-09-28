@@ -6,10 +6,17 @@ import type { EyePrices } from './api';
 // mint out as a dollar in SOL, and the app shows the SOL and says who gets
 // each part of it.
 
-// The storage the wallet pays the chain when the Eye is born, measured on
-// mainnet on 27.09.2026 (3,648,840 lamports) and rounded up. Used only when
-// the server does not say it itself.
-export const OPEN_RENT_FALLBACK = 3_700_000;
+// What the wallet puts into the Eye's own account when it is born, measured
+// on mainnet (3,648,840 lamports for a lab Eye on 27.09.2026; a frozen
+// production Eye is a little larger, about 3.84 million) and rounded up. Used
+// only when the server does not say it itself.
+export const OPEN_RENT_FALLBACK = 3_850_000;
+// Of that, Metaplex Core's create fee: it sits in the new account with the
+// rent, but Metaplex can collect it, so it is not a deposit and the screens
+// name it apart (found by the transaction check, 28.09.2026).
+export const CORE_CREATE_FEE = 1_500_000;
+// The part that really stays inside the Eye as its storage.
+export const depositOf = (prices: EyePrices | null | undefined) => Math.max(0, rentOf(prices) - CORE_CREATE_FEE);
 // A Blink every eight hours, unless the server says otherwise.
 export const BLINK_COOLDOWN_FALLBACK = 8 * 3_600;
 
