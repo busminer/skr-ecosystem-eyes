@@ -1,33 +1,39 @@
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
-import Animated, { Easing, ZoomIn, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, ZoomIn, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { t } from '../i18n';
-import { Eyebrow, Panel } from '../lab/kit';
-import { colors, font, spacing, type } from '../theme';
+import { Panel } from '../lab/kit';
+import { colors, font, spacing } from '../theme';
 import { Glyph, Overline, type GlyphName } from './glyphs';
 
 // A stepper: the one way this app shows a thing that takes several steps and
 // real time, so a person is never left with a spinner and a guess.
 //
-// Every step is a row: a station on a rail down the left, and a card. The
-// card carries the step's name, and while the step runs, one plain sentence
-// saying what the phone is doing right now and a bar sweeping under it. When
-// the step ends the bar fills to the end, the ring on the rail becomes a
-// check, and what was found is revealed under the name: a key fingerprint, a
-// model, a mint, a signature. A step that has not started yet is a muted name
-// and a dot. One that failed is the same card edged red, with the words of
-// whoever refused. At the top: "Step 2 of 4" and one segment per step.
+// One step on screen at a time. At the top, "Step 2 of 4" and the road: every
+// step as a station with its glyph and its name, the same stations and the
+// same glyphs the walk-through of the Eye showed, so the person knows where
+// they are. Under the road, one card, for the step the person is on. While
+// the step runs the card says in one plain sentence what the phone is doing
+// right now, with a bar sweeping under it. When the step ends the card says
+// what was done, with a check, and shows what was found: a key fingerprint,
+// a model, a mint, a signature. Then the caller's button appears, and the
+// person moves on when they have read it. Nothing moves on by itself past a
+// finished step, unless waiting would let something expire, and then the
+// caller says so in the next card.
+//
+// A step that failed is the same card edged red, with the words of whoever
+// refused. A step the person stopped is edged amber. A step that waits for
+// the person before it starts (the wallet, which has to be opened by them)
+// holds a still ring and a still bar.
 //
 // The steps are driven by the caller's real events, never by a clock alone.
 // The one thing the clock adds is a beat between transitions, through
-// `usePaced`: a check lands, four hundred milliseconds pass, the next ring
-// starts turning. Fast enough to feel live, slow enough for an eye to follow.
-// Reduced motion: no ring, no sweep, no beat, and the cards fill in as the
-// data lands.
+// `usePaced`: a check lands, four hundred milliseconds pass, the next card
+// comes. Reduced motion: no ring, no sweep, no beat.
 
-export type StepStatus = 'pending' | 'working' | 'done' | 'failed' | 'stopped';
+export type StepStatus = 'pending' | 'working' | 'ready' | 'done' | 'failed' | 'stopped';
 
 // What went wrong, in words the person can act on. `title` is the sentence
 // that was actually said, by the attestor, the server or the wallet.
@@ -35,18 +41,18 @@ export type Failure = { title: string; body: string | null; detail: string | nul
 
 export type StepModel = {
   key: string;
-  // The step's name; what was found may replace it once the step is done.
-  title: string;
-  // The step's glyph (src/eye/glyphs.tsx): the same drawing the walk-through
-  // of the Eye showed next to this step, so the person recognises it.
-  icon?: GlyphName;
-  // The short name the walk-through used for this step, when the title is a
-  // sentence that changes as the step runs; shown small above the title.
-  name?: string;
-  // One line, present tense: what the phone is doing right now.
-  copy: string | null;
+  // The step's glyph (src/eye/glyphs.tsx): the drawing the walk-through of
+  // the Eye showed next to this step.
+  icon: GlyphName;
+  // The step's short name, the one the walk-through used: Finger, Wallet.
+  name: string;
+  // One plain sentence: what the phone is doing right now (working), or
+  // what it is waiting for (ready).
+  doing: string | null;
+  // One plain sentence: what was done, shown with the check.
+  done: string | null;
   status: StepStatus;
-  // Revealed under the name once the step is done.
+  // The facts found, revealed under the sentence once the step is done.
   result?: ReactNode;
   // Shown on a failed or stopped step.
   failure?: Failure | null;
@@ -101,73 +107,106 @@ export function usePaced(beat: number) {
   return useMemo(() => ({ push, clear }), [push, clear]);
 }
 
-export function Stepper({ steps, reduced, eyebrow }: { steps: StepModel[]; reduced: boolean; eyebrow?: string }) {
-  const total = steps.length;
-  const open = steps.findIndex((step) => step.status !== 'done');
-  const current = open === -1 ? total : open + 1;
+const toneOf = (status: StepStatus) =>
+  status === 'done' ? colors.positive
+    : status === 'working' || status === 'ready' ? colors.accent
+      : status === 'failed' ? colors.negative
+        : status === 'stopped' ? colors.pending
+          : colors.dim;
+
+// ------------------------------------------------------------------- road --
+
+export type RoadStop = { key: string; icon: GlyphName; name: string; status: StepStatus };
+
+// The road: every step as a station with its glyph and its name, a rail
+// between them that fills as steps land. The walk-through of the Eye draws
+// the very same road on its third page, so nothing here is new to the eye.
+export function Road({ overline, stops, current, reduced }: { overline?: string; stops: RoadStop[]; current?: number; reduced: boolean }) {
   return (
-    <View style={styles.stepper}>
-      <View style={styles.head}>
-        {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : <View />}
-        <Eyebrow tone={colors.muted}>{t('Step {step} of {total}', { step: current, total })}</Eyebrow>
-      </View>
-      <View style={styles.segments}>
-        {steps.map((step) => (
-          <View
-            key={step.key}
-            style={[
-              styles.segment,
-              step.status === 'done' && { backgroundColor: colors.positive },
-              step.status === 'working' && { backgroundColor: colors.accentDim },
-              step.status === 'failed' && { backgroundColor: colors.negative },
-              step.status === 'stopped' && { backgroundColor: colors.pending },
-            ]}
-          />
-        ))}
-      </View>
-      <View>
-        {steps.map((step, index) => <Step key={step.key} model={step} last={index === total - 1} reduced={reduced} />)}
+    <View style={styles.road}>
+      {overline ? <Overline tone={colors.faint}>{overline}</Overline> : null}
+      <View style={styles.roadRow}>
+        {stops.map((stop, i) => {
+          const tone = toneOf(stop.status);
+          const lit = stop.status !== 'pending';
+          const here = current === i;
+          return (
+            <Fragment key={stop.key}>
+              {i > 0 ? (
+                <View style={styles.rail}>
+                  <View style={[styles.railFill, { width: stop.status !== 'pending' ? '100%' : '0%' }]} />
+                </View>
+              ) : null}
+              <View style={styles.stop}>
+                <Station status={stop.status} reduced={reduced} flush />
+                <View style={[styles.stopIcon, lit && { borderColor: tone }, here && styles.stopIconHere]}>
+                  <Glyph name={stop.icon} size={18} tone={tone} />
+                </View>
+                <Text maxFontSizeMultiplier={1.35} style={[styles.stopName, lit && styles.stopNameOn, here && styles.stopNameHere]}>{stop.name}</Text>
+              </View>
+            </Fragment>
+          );
+        })}
       </View>
     </View>
   );
 }
 
-function Step({ model, last, reduced }: { model: StepModel; last: boolean; reduced: boolean }) {
-  const { status, title, copy, result, failure, icon, name } = model;
-  const pending = status === 'pending';
+// ---------------------------------------------------------------- stepper --
+
+// `current` is the step on screen. `note` is one line under the card for a
+// thing the person should know about the whole move ("The transaction
+// expired while you were reading. Starting again."). `action` is the
+// caller's buttons for this moment, rendered under the card.
+export function Stepper({ steps, current, reduced, eyebrow, note, action }: { steps: StepModel[]; current: number; reduced: boolean; eyebrow?: string; note?: string | null; action?: ReactNode }) {
+  const total = steps.length;
+  const at = Math.max(0, Math.min(total - 1, current));
+  const step = steps[at];
+  return (
+    <View style={styles.stepper}>
+      <View style={styles.head}>
+        {eyebrow ? <Overline tone={colors.faint}>{eyebrow}</Overline> : <View />}
+        <Overline tone={colors.muted}>{t('Step {step} of {total}', { step: at + 1, total })}</Overline>
+      </View>
+      <Road stops={steps.map((item) => ({ key: item.key, icon: item.icon, name: item.name, status: item.status }))} current={at} reduced={reduced} />
+      {step ? <Card model={step} reduced={reduced} /> : null}
+      {note ? <Text style={styles.note}>{note}</Text> : null}
+      {action ? <View style={styles.action}>{action}</View> : null}
+    </View>
+  );
+}
+
+// The one card on screen: the step's glyph, its name, and the sentence for
+// this moment. A new status brings the card in fresh, so the eye catches it.
+function Card({ model, reduced }: { model: StepModel; reduced: boolean }) {
+  const { status, name, icon, doing, done, result, failure } = model;
   const failed = status === 'failed';
   const stopped = status === 'stopped';
-  const tone = status === 'done' ? colors.positive : status === 'working' ? colors.accent : failed ? colors.negative : stopped ? colors.pending : colors.dim;
+  const tone = toneOf(status);
+  const sentence = status === 'done' ? done : status === 'working' || status === 'ready' ? doing : (failed || stopped) && failure ? failure.title : null;
   return (
-    <View style={styles.row}>
-      <View style={styles.railCol}>
-        <Station status={status} reduced={reduced} />
-        {last ? null : <Rail filled={status === 'done'} reduced={reduced} />}
-      </View>
-      <Panel style={styles.card} flat={pending} tone={failed ? colors.negative : stopped ? colors.pending : undefined}>
-        <View style={styles.titleRow}>
-          {icon ? (
-            <View style={[styles.glyph, !pending && { borderColor: tone }]}>
-              <Glyph name={icon} size={17} tone={tone} />
-            </View>
-          ) : null}
-          <View style={styles.titleText}>
-            {name ? <Overline tone={pending ? colors.dim : colors.faint}>{name}</Overline> : null}
-            <Text style={[styles.title, pending && styles.titlePending]}>{title}</Text>
+    <Animated.View key={`${model.key}-${status}`} entering={reduced ? undefined : FadeIn.duration(260)}>
+      <Panel style={styles.card} tone={failed ? colors.negative : stopped ? colors.pending : status === 'done' ? colors.positive : undefined}>
+        <View style={styles.cardHead}>
+          <View style={[styles.glyph, { borderColor: tone }]}>
+            <Glyph name={icon} size={22} tone={tone} />
           </View>
+          <View style={styles.cardTitle}>
+            <Overline tone={tone}>{name}</Overline>
+            {sentence ? <Text style={[styles.sentence, (failed || stopped) && { color: tone }]}>{sentence}</Text> : null}
+          </View>
+          <View style={styles.mark}><Station status={status} reduced={reduced} flush /></View>
         </View>
-        {status === 'working' && copy ? <Text style={styles.copy}>{copy}</Text> : null}
         {status === 'done' && result ? <View style={styles.result}>{result}</View> : null}
         {(failed || stopped) && failure ? (
-          <>
-            <Text style={[styles.said, { color: failed ? colors.negative : colors.pending }]}>{failure.title}</Text>
+          <View style={styles.result}>
             {failure.body ? <Text style={styles.copy}>{failure.body}</Text> : null}
             {failure.detail ? <Text style={styles.mono}>{failure.detail}</Text> : null}
-          </>
+          </View>
         ) : null}
-        {pending ? null : <Progress status={status} reduced={reduced} />}
+        {status === 'pending' ? null : <Progress status={status} reduced={reduced} />}
       </Panel>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -175,7 +214,8 @@ function Step({ model, last, reduced }: { model: StepModel; last: boolean; reduc
 // sweeps the track, over and over: something is happening, and how long it
 // takes is not known. When the step ends the whole track fills, mint for a
 // step that passed, red for one that failed, amber for one the person
-// stopped. Under reduced motion the sweep is a still, dim fill.
+// stopped. A step waiting for the person holds a still, dim fill, as does a
+// running one under reduced motion.
 function Progress({ status, reduced }: { status: StepStatus; reduced: boolean }) {
   const [width, setWidth] = useState(0);
   const sweep = useSharedValue(0);
@@ -194,13 +234,13 @@ function Progress({ status, reduced }: { status: StepStatus; reduced: boolean })
   }, [live, sweep]);
 
   useEffect(() => {
-    const target = status === 'done' || status === 'failed' || status === 'stopped' ? 1 : status === 'working' && reduced ? 0.4 : 0;
+    const target = status === 'done' || status === 'failed' || status === 'stopped' ? 1 : status === 'ready' || (status === 'working' && reduced) ? 0.4 : 0;
     fill.value = reduced ? target : withTiming(target, { duration: FILL_MS, easing: Easing.out(Easing.cubic) });
   }, [status, reduced, fill]);
 
   const sweepStyle = useAnimatedStyle(() => ({ transform: [{ translateX: -width * 0.35 + sweep.value * width * 1.35 }] }), [width]);
   const fillStyle = useAnimatedStyle(() => ({ width: fill.value * width }), [width]);
-  const tone = status === 'failed' ? colors.negative : status === 'stopped' ? colors.pending : status === 'working' ? colors.dim : colors.positive;
+  const tone = status === 'failed' ? colors.negative : status === 'stopped' ? colors.pending : status === 'working' ? colors.dim : status === 'ready' ? colors.accentDim : colors.positive;
 
   return (
     <View style={styles.track} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
@@ -210,19 +250,25 @@ function Progress({ status, reduced }: { status: StepStatus; reduced: boolean })
   );
 }
 
-// The mark on the rail beside a card: a dot for a step still to come, a ring
-// turning while it runs, a mint check once it is done, a red cross if it
-// failed, an amber ring if the person stopped it. The change from one to the
-// next is the moment the person is meant to catch. Exported so the
-// walk-through of the Eye can draw the very same marks on its road; `flush`
-// drops the margin that lines a station up with a card's title here.
+// The mark beside a step: a dot for a step still to come, a ring turning
+// while it runs, a still ring while it waits for the person, a mint check
+// once it is done, a red cross if it failed, an amber ring if the person
+// stopped it. The change from one to the next is the moment the person is
+// meant to catch. `flush` drops the margin that once lined a station up with
+// a card's title; every use is flush now, and the prop stays for the road.
 export function Station({ status, reduced, flush = false }: { status: StepStatus; reduced: boolean; flush?: boolean }) {
-  const pop = reduced || status === 'working' || status === 'pending' ? undefined : ZoomIn.duration(220);
+  const pop = reduced || status === 'working' || status === 'ready' || status === 'pending' ? undefined : ZoomIn.duration(220);
   return (
     <View style={[styles.station, flush && styles.stationFlush]}>
       <Animated.View key={status} entering={pop}>
         {status === 'pending' ? <View style={styles.dot} /> : null}
         {status === 'working' ? <Ring reduced={reduced} /> : null}
+        {status === 'ready' ? (
+          <Svg width={STATION} height={STATION} viewBox="0 0 20 20">
+            <Circle cx={10} cy={10} r={8} fill="none" stroke={colors.accent} strokeWidth={2} />
+            <Circle cx={10} cy={10} r={2.4} fill={colors.accent} />
+          </Svg>
+        ) : null}
         {status === 'done' ? (
           <Svg width={STATION} height={STATION} viewBox="0 0 20 20">
             <Circle cx={10} cy={10} r={9} fill={colors.positive} />
@@ -272,46 +318,36 @@ function Ring({ reduced }: { reduced: boolean }) {
   );
 }
 
-// The rail under a station, down to the next card. A dim track, and a mint
-// fill that grows from the top the moment this step settles.
-function Rail({ filled, reduced }: { filled: boolean; reduced: boolean }) {
-  const fill = useSharedValue(filled ? 1 : 0);
-  useEffect(() => {
-    fill.value = reduced ? (filled ? 1 : 0) : withTiming(filled ? 1 : 0, { duration: 420, easing: Easing.out(Easing.cubic) });
-  }, [filled, reduced, fill]);
-  const grow = useAnimatedStyle(() => ({ transform: [{ scaleY: fill.value }] }));
-  return (
-    <View style={styles.rail}>
-      <Animated.View style={[styles.railFill, grow]} />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  stepper: { gap: spacing.sm },
+  stepper: { gap: spacing.md },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
-  segments: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.xs },
-  segment: { flex: 1, height: 3, borderRadius: 1.5, backgroundColor: colors.line },
-  // The rows carry their own spacing, so the rail runs through the gaps.
-  row: { flexDirection: 'row', gap: spacing.sm },
-  railCol: { width: STATION, alignItems: 'center' },
-  // Level with the card's title line.
+  // The road.
+  road: { gap: spacing.xs },
+  roadRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  rail: { width: 14, height: 2, marginTop: 9, borderRadius: 1, backgroundColor: colors.line, overflow: 'hidden' },
+  railFill: { height: 2, backgroundColor: colors.positive },
+  stop: { flex: 1, minWidth: 56, alignItems: 'center', gap: 5 },
+  stopIcon: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: colors.line, backgroundColor: 'rgba(6, 12, 18, 0.9)', alignItems: 'center', justifyContent: 'center' },
+  stopIconHere: { backgroundColor: 'rgba(86, 224, 255, 0.1)' },
+  stopName: { color: colors.faint, fontFamily: font.semibold, fontSize: 12, lineHeight: 15, textAlign: 'center' },
+  stopNameOn: { color: colors.muted },
+  stopNameHere: { color: colors.text },
+  // The card.
+  card: { padding: spacing.md, gap: spacing.sm },
+  cardHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  glyph: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.inset, alignItems: 'center', justifyContent: 'center' },
+  cardTitle: { flex: 1, gap: 3, paddingTop: 2 },
+  sentence: { color: colors.text, fontFamily: font.semibold, fontSize: 17, lineHeight: 23, letterSpacing: -0.2 },
+  mark: { paddingTop: 2 },
   station: { width: STATION, height: STATION, marginTop: spacing.md, alignItems: 'center', justifyContent: 'center' },
   stationFlush: { marginTop: 0 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  glyph: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.inset, alignItems: 'center', justifyContent: 'center' },
-  titleText: { flex: 1, gap: 1 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.dim },
   ring: { width: STATION, height: STATION },
-  rail: { flex: 1, width: 2, borderRadius: 1, marginTop: spacing.xs, backgroundColor: colors.line, overflow: 'hidden' },
-  railFill: { flex: 1, width: 2, backgroundColor: colors.positive, transformOrigin: 'top' },
-  card: { flex: 1, padding: spacing.md, gap: spacing.sm, marginBottom: spacing.sm },
-  title: { color: colors.text, fontFamily: font.semibold, fontSize: 15.5, lineHeight: 20, letterSpacing: -0.2 },
-  titlePending: { color: colors.faint },
-  copy: { color: colors.muted, fontFamily: font.regular, ...type.small },
-  said: { fontFamily: font.medium, ...type.small },
-  result: { gap: spacing.xs },
-  mono: { color: colors.text, fontFamily: font.mono, ...type.small, letterSpacing: 0.3 },
+  copy: { color: colors.muted, fontFamily: font.regular, fontSize: 14.5, lineHeight: 21 },
+  result: { gap: spacing.xs, paddingLeft: 42 + spacing.md },
+  mono: { color: colors.text, fontFamily: font.mono, fontSize: 13, lineHeight: 19, letterSpacing: 0.3 },
+  note: { color: colors.pending, fontFamily: font.medium, fontSize: 14.5, lineHeight: 21 },
+  action: { gap: spacing.sm },
   track: { height: 3, borderRadius: 1.5, backgroundColor: colors.line, overflow: 'hidden', marginTop: spacing.xs },
   sweep: { position: 'absolute', left: 0, top: 0, height: 3, borderRadius: 1.5, backgroundColor: colors.positive },
   fill: { height: 3, borderRadius: 1.5 },

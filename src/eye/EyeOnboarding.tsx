@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { t } from '../i18n';
 import { integer, shortAddress } from '../format';
 import { useReducedMotion } from '../useReducedMotion';
@@ -9,6 +9,7 @@ import { Button } from '../lab/kit';
 import { colors, font, radius, spacing } from '../theme';
 import { fetchEyeHealth, type Eye, type EyePrices, type EyeStatus } from './api';
 import { EYE_FINGER_ENABLED } from './config';
+import { isBig } from './fit';
 import { cooldownHours, leftAtPrice, rentOf, sol, usd } from './money';
 import { eyeCaption } from './shareEye';
 import { Glyph, Overline, type GlyphName } from './glyphs';
@@ -71,6 +72,15 @@ import { PortalEye } from './PortalEye';
 // labels. Everything is SVG and reanimated on the UI thread; Skia is not
 // linked into this app.
 //
+// Room for large type. Every page is a column: the words take the height
+// they need at the person's own font size, and the picture gets what is
+// left (`Page` measures that room once and hands it to the picture, which
+// fits itself inside). Past fontScale 1.2 the pages say less: shorter
+// bodies, no line that only repeats the body, the pictures' own labels
+// capped. If the words still outgrow the screen the page scrolls, and a
+// fade at its foot says so until the person reaches the end. The Next
+// button is outside the pages and never covers them.
+//
 // Sound and touch, sparingly. The pad (`hum`) once, when the walk-through
 // first appears. Each page arrives on its own soft glass note, tone1 to
 // tone7, a rising scale; the lights on a page continue up the scale from
@@ -89,21 +99,91 @@ import { PortalEye } from './PortalEye';
 // shareEye.ts writes; the prices on page seven are the server's.
 
 const PAGES = 7;
+// The least a picture is ever given. Below this the words scroll instead.
+const ART_FLOOR = 150;
+const FADE = 64;
 
 const pad = (serial: number) => `EYE #${String(serial).padStart(4, '0')}`;
 
+type Box = { width: number; height: number };
+
+// ------------------------------------------------------------------- page --
+
+// One page: the picture in the room the words leave, the words under it,
+// and, if they still do not fit, a scroll with a fade at the foot that says
+// so. The room is measured once, with the picture not yet drawn, so the
+// picture cannot grow the room it is then fitted to.
+function Page({ width, inner, art, foot, title, body, active, reduced, children }: { width: number; inner: number; art?: (box: Box) => ReactElement; foot?: ReactNode; title?: string; body?: string; active: boolean; reduced: boolean; children?: ReactNode }) {
+  const [room, setRoom] = useState(0);
+  const [overflow, setOverflow] = useState(false);
+  const [atEnd, setAtEnd] = useState(false);
+  const viewport = useRef(0);
+  const content = useRef(0);
+  const settle = () => setOverflow(content.current > viewport.current + 2);
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+    const end = contentOffset.y + layoutMeasurement.height >= contentSize.height - 6;
+    if (end !== atEnd) setAtEnd(end);
+  };
+  return (
+    <View style={{ width }}>
+      <ScrollView
+        style={styles.pageScroll}
+        contentContainerStyle={styles.page}
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={overflow}
+        onLayout={(event) => { viewport.current = event.nativeEvent.layout.height; settle(); }}
+        onContentSizeChange={(_, height) => { content.current = height; settle(); }}
+        onScroll={onScroll}
+        scrollEventThrottle={48}
+      >
+        {art ? (
+          <View style={styles.artBox} onLayout={(event: LayoutChangeEvent) => { if (room === 0) setRoom(Math.round(event.nativeEvent.layout.height)); }}>
+            {room > 0 ? art({ width: inner, height: room }) : null}
+          </View>
+        ) : null}
+        {foot ?? null}
+        {title ? (
+          active ? (
+            <Animated.Text maxFontSizeMultiplier={1.3} entering={reduced ? undefined : FadeInDown.delay(180).duration(420)} style={styles.title}>{title}</Animated.Text>
+          ) : <Text maxFontSizeMultiplier={1.3} style={styles.title}>{title}</Text>
+        ) : null}
+        {body ? (
+          active ? (
+            <Animated.Text entering={reduced ? undefined : FadeInDown.delay(420).duration(420)} style={styles.body}>{body}</Animated.Text>
+          ) : <Text style={styles.body}>{body}</Text>
+        ) : null}
+        {children}
+      </ScrollView>
+      {overflow && !atEnd ? (
+        <View pointerEvents="none" style={styles.fade}>
+          <Svg width="100%" height={FADE}>
+            <Defs>
+              <LinearGradient id="page-fade" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor="#03060A" stopOpacity="0" />
+                <Stop offset="1" stopColor="#03060A" stopOpacity="0.96" />
+              </LinearGradient>
+            </Defs>
+            <Rect x={0} y={0} width="100%" height={FADE} fill="url(#page-fade)" />
+          </Svg>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 // ------------------------------------------------------------------ ready --
 
-function Check({ icon, state, label, detail, index, active }: { icon: GlyphName; state: 'yes' | 'no' | 'wait' | 'later'; label: string; detail?: string | null; index: number; active: boolean }) {
+function Check({ icon, state, label, detail, index, active, small = false }: { icon: GlyphName; state: 'yes' | 'no' | 'wait' | 'later'; label: string; detail?: string | null; index: number; active: boolean; small?: boolean }) {
   const tone = state === 'yes' ? colors.positive : state === 'no' ? colors.negative : colors.faint;
   return (
     <Animated.View key={active ? 'on' : 'off'} entering={active ? FadeInDown.delay(250 + index * 220).duration(380) : undefined} style={styles.check}>
-      <View style={[styles.checkIcon, state === 'yes' && styles.checkIconYes, state === 'no' && styles.checkIconNo]}>
-        <Glyph name={icon} size={18} tone={state === 'yes' ? colors.accent : state === 'no' ? colors.negative : colors.dim} />
+      <View style={[styles.checkIcon, small && styles.checkIconSmall, state === 'yes' && styles.checkIconYes, state === 'no' && styles.checkIconNo]}>
+        <Glyph name={icon} size={small ? 16 : 18} tone={state === 'yes' ? colors.accent : state === 'no' ? colors.negative : colors.dim} />
       </View>
       <View style={styles.checkText}>
-        <Text maxFontSizeMultiplier={1.25} style={styles.checkLabel}>{label}</Text>
-        {detail ? <Text maxFontSizeMultiplier={1.25} style={styles.checkDetail}>{detail}</Text> : null}
+        <Text style={styles.checkLabel}>{label}</Text>
+        {detail ? <Text style={styles.checkDetail}>{detail}</Text> : null}
       </View>
       <View style={styles.checkMark}>
         {state === 'wait' ? <ActivityIndicator size="small" color={colors.faint} /> : (
@@ -123,15 +203,24 @@ function Check({ icon, state, label, detail, index, active }: { icon: GlyphName;
 function Row({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
   return (
     <View style={styles.row}>
-      <Text maxFontSizeMultiplier={1.25} style={[styles.rowLabel, strong && styles.rowStrong]}>{label}</Text>
-      <Text maxFontSizeMultiplier={1.25} style={[styles.rowValue, strong && styles.rowStrong]}>{value}</Text>
+      <Text style={[styles.rowLabel, strong && styles.rowStrong]}>{label}</Text>
+      <Text style={[styles.rowValue, strong && styles.rowStrong]}>{value}</Text>
     </View>
   );
 }
 
 // Where the price steps up, drawn: the first tier lit, the next one dim, and
-// a mark where the next Eye will land.
-function Ladder({ tier, open, nextSerial, left }: { tier: { serial: number; afterLamports: number }; open: number; nextSerial: number | null; left: number | null }) {
+// a mark where the next Eye will land. At large type, one line instead.
+function Ladder({ tier, open, nextSerial, left, compact }: { tier: { serial: number; afterLamports: number }; open: number; nextSerial: number | null; left: number | null; compact: boolean }) {
+  if (compact) {
+    return (
+      <Text style={styles.ladderNote}>
+        {left != null
+          ? t('{count} left at {sol} SOL, then {after} SOL', { count: integer(left), sol: sol(open), after: sol(tier.afterLamports) })
+          : t('#1 to #{last} at {sol} SOL, then {after} SOL', { last: integer(tier.serial), sol: sol(open), after: sol(tier.afterLamports) })}
+      </Text>
+    );
+  }
   const at = nextSerial != null ? Math.max(0.02, Math.min(0.98, nextSerial / Math.max(1, tier.serial))) : null;
   return (
     <View style={styles.ladder}>
@@ -143,13 +232,13 @@ function Ladder({ tier, open, nextSerial, left }: { tier: { serial: number; afte
       </View>
       <View style={styles.ladderRow}>
         <View style={styles.ladderCell}>
-          <Text maxFontSizeMultiplier={1.2} style={styles.ladderText}>{t('#1 to #{last}', { last: integer(tier.serial) })}</Text>
-          <Text maxFontSizeMultiplier={1.2} style={styles.ladderPrice}>{`${sol(open)} SOL`}</Text>
-          {left != null ? <Text maxFontSizeMultiplier={1.2} style={styles.ladderNote}>{t('{count} left at this price', { count: integer(left) })}</Text> : null}
+          <Text style={styles.ladderText}>{t('#1 to #{last}', { last: integer(tier.serial) })}</Text>
+          <Text style={styles.ladderPrice}>{`${sol(open)} SOL`}</Text>
+          {left != null ? <Text style={styles.ladderNote}>{t('{count} left at this price', { count: integer(left) })}</Text> : null}
         </View>
         <View style={[styles.ladderCell, styles.ladderCellRight]}>
-          <Text maxFontSizeMultiplier={1.2} style={[styles.ladderText, styles.ladderDim]}>{t('From #{first}', { first: integer(tier.serial + 1) })}</Text>
-          <Text maxFontSizeMultiplier={1.2} style={[styles.ladderPrice, styles.ladderDim]}>{`${sol(tier.afterLamports)} SOL`}</Text>
+          <Text style={[styles.ladderText, styles.ladderDim]}>{t('From #{first}', { first: integer(tier.serial + 1) })}</Text>
+          <Text style={[styles.ladderPrice, styles.ladderDim]}>{`${sol(tier.afterLamports)} SOL`}</Text>
         </View>
       </View>
     </View>
@@ -193,6 +282,7 @@ export function EyeOnboarding({
   const pager = useRef<ScrollView>(null);
   const [page, setPage] = useState(0);
   const finger = EYE_FINGER_ENABLED;
+  const big = isBig();
   // Prices come with the wallet's status; before a wallet, from the service's health.
   const [health, setHealth] = useState<EyePrices | null>(null);
   useEffect(() => {
@@ -227,11 +317,7 @@ export function EyeOnboarding({
 
   const onLayout = (event: LayoutChangeEvent) => setHeight(event.nativeEvent.layout.height);
 
-  // The pictures take a little over a third of the screen, never more than
-  // the width allows; the text under them scrolls if a large font needs it.
   const inner = width - spacing.lg * 2;
-  const stage = Math.min(320, inner);
-  const art = height > 0 ? Math.max(220, Math.min(stage, Math.round(height * 0.37))) : Math.min(stage, 270);
   const serial = nextSerial != null ? pad(nextSerial) : null;
   const hours = cooldownHours(prices, status?.blink?.cooldownSeconds);
   const slots = Math.max(1, Math.round(24 / Math.max(1, hours)));
@@ -274,15 +360,19 @@ export function EyeOnboarding({
   else if (gates?.sgt === false) action = { label: t('Needs a Seeker Genesis Token'), disabled: true };
   else action = { label: finger && !verified ? t('Verify my Seeker') : t('Open my Eye'), onPress: onOpen };
 
-  const pages: Array<{ key: string; overline: string; title: string; body: string; art: ReactElement; foot?: ReactElement | null }> = [
+  // Each page's words, and its picture as a function of the room they leave.
+  // Past fontScale 1.2 the bodies are shorter, so the picture keeps a face.
+  const pages: Array<{ key: string; overline: string; title: string; body: string; art: (box: Box) => ReactElement; foot?: ReactNode }> = [
     {
       key: 'idea',
       overline: t('The idea'),
-      title: t('Every Seeker\ncarries an Eye'),
-      body: t('An NFT minted on Solana into your wallet: one per wallet, numbered in the order Eyes open. Your number is yours forever.'),
-      art: <Awakening active={page === 0} reduced={reduced} serial={serial} width={inner} size={art} />,
+      title: t('Every Solana Mobile\nSeeker carries an Eye'),
+      body: big
+        ? t('One NFT per wallet, minted on Solana. Your number is yours forever.')
+        : t('An NFT minted on Solana into your wallet. One per wallet, numbered in the order Eyes open. Your number is yours forever.'),
+      art: (box) => <Awakening active={page === 0} reduced={reduced} serial={serial} width={box.width} height={box.height} />,
       foot: watching != null ? (
-        <Text maxFontSizeMultiplier={1.25} style={styles.caption}>
+        <Text style={styles.caption}>
           {watching <= 0
             ? t('Be one of the first.')
             : watching === 1
@@ -294,31 +384,37 @@ export function EyeOnboarding({
     {
       key: 'seeker',
       overline: t('Inside your Seeker'),
-      title: t('Your Seeker\nis the key'),
-      body: finger
-        ? t('No passwords, no forms. Your Seeker’s secure hardware, your fingerprint and your wallet do the proving.')
-        : t('No passwords, no forms. Your Seeker wallet and its Genesis Token do the proving.'),
-      art: <Blueprint active={page === 1} reduced={reduced} width={inner} height={Math.min(350, Math.round(art * 1.25))} finger={finger} noteFrom={2} />,
+      title: t('Your Solana Mobile\nSeeker is the key'),
+      body: big
+        ? (finger ? t('No passwords, no forms. Your Seeker’s own hardware does the proving.') : t('No passwords, no forms. Your Seeker wallet does the proving.'))
+        : (finger
+          ? t('No passwords, no forms. Your Seeker’s secure hardware, your fingerprint and your wallet do the proving.')
+          : t('No passwords, no forms. Your Seeker wallet and its Genesis Token do the proving.')),
+      art: (box) => <Blueprint active={page === 1} reduced={reduced} width={box.width} height={box.height} finger={finger} noteFrom={2} />,
     },
     {
       key: 'open',
       overline: t('How it opens'),
       title: t('How your Eye\nis minted'),
-      body: finger
-        ? t('Your Seeker proves itself once. Then one button: your finger, your wallet, Solana, and the lids part.')
-        : t('One button: your wallet approves and pays, Solana mints it, and the lids part.'),
-      art: <OpeningRoad active={page === 2} reduced={reduced} width={inner} finger={finger} />,
+      body: big
+        ? (finger ? t('Your Seeker proves itself once. Then one button, and the lids part.') : t('One button. Your wallet approves and pays, and the lids part.'))
+        : (finger
+          ? t('Your Solana Mobile Seeker proves itself once. Then one button. Your finger, your wallet, Solana, and the lids part.')
+          : t('One button. Your Seed Vault wallet approves and pays, Solana mints it, and the lids part.')),
+      art: (box) => <OpeningRoad active={page === 2} reduced={reduced} width={box.width} height={box.height} finger={finger} />,
     },
     {
       key: 'blink',
       overline: t('The Blink'),
       title: t('Blink every {hours} hours', { hours }),
-      body: t('One Blink a day keeps your streak alive; every Blink is written on Solana into your Eye. Miss a day and the streak starts over.'),
-      art: <BlinkDial active={page === 3} reduced={reduced} size={Math.round(art * 0.92)} slots={slots} hours={hours} />,
+      body: big
+        ? t('One Blink a day keeps your streak alive. Miss a day and it starts over.')
+        : t('One Blink a day keeps your streak alive. Every Blink is written on Solana into your Eye. Miss a day and the streak starts over.'),
+      art: (box) => <BlinkDial active={page === 3} reduced={reduced} width={box.width} height={box.height} slots={slots} hours={hours} />,
       foot: (
         <View style={styles.footBlock}>
-          {blinkPrice ? <Text maxFontSizeMultiplier={1.25} style={styles.caption}>{`${blinkPrice} · ${t('every {hours} hours', { hours })}`}</Text> : null}
-          <Text maxFontSizeMultiplier={1.25} numberOfLines={1} style={styles.captionDim}>{t('Tap the Eye to try a Blink')}</Text>
+          {blinkPrice ? <Text style={styles.caption}>{`${blinkPrice} ${t('every {hours} hours', { hours })}`}</Text> : null}
+          {big ? null : <Text style={styles.captionDim}>{t('Tap the Eye to try a Blink')}</Text>}
         </View>
       ),
     },
@@ -326,14 +422,16 @@ export function EyeOnboarding({
       key: 'iris',
       overline: t('The Iris'),
       title: t('One of many.\nMove inward.'),
-      body: t('The longer your streak, the closer your Eye sits to the centre. Thirty days unbroken and it turns gold; miss one and you start again from the edge.'),
-      art: <IrisClimb active={page === 4} reduced={reduced} size={Math.min(330, inner, Math.round(art * 1.1))} />,
+      body: big
+        ? t('The longer your streak, the closer to the centre. Thirty days and it turns gold.')
+        : t('The longer your streak, the closer your Eye sits to the centre. Thirty days unbroken and it turns gold. Miss one and you start again from the edge.'),
+      art: (box) => <IrisClimb active={page === 4} reduced={reduced} width={box.width} height={box.height} />,
       foot: watching != null && watching > 0 ? (
-        <Text maxFontSizeMultiplier={1.25} style={styles.caption}>
-          {[
+        <Text style={styles.caption}>
+          {`${[
             watching === 1 ? t('1 Eye is watching') : t('{count} Eyes are watching', { count: integer(watching) }),
             blinkedToday != null && blinkedToday > 0 ? t('{count} blinked today', { count: integer(blinkedToday) }) : null,
-          ].filter(Boolean).join(' · ')}
+          ].filter(Boolean).join('. ')}.`}
         </Text>
       ) : null,
     },
@@ -341,8 +439,10 @@ export function EyeOnboarding({
       key: 'card',
       overline: t('Your card'),
       title: t('Your Eye is a card'),
-      body: t('Redrawn after every Blink with your number on it. After the mint and every Blink, one button posts it to X, caption ready.'),
-      art: <CardShare active={page === 5} reduced={reduced} width={inner} caption={caption} />,
+      body: big
+        ? t('Redrawn after every Blink, your number on it. One button posts it to X.')
+        : t('Redrawn after every Blink with your number on it. After the mint and after every Blink, one button posts it to X with the caption written for you.'),
+      art: (box) => <CardShare active={page === 5} reduced={reduced} width={box.width} height={box.height} caption={caption} />,
     },
   ];
 
@@ -363,7 +463,7 @@ export function EyeOnboarding({
           </View>
         </View>
         <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button">
-          <Text maxFontSizeMultiplier={1.2} style={styles.skip}>{ready ? t('Close') : t('Skip')}</Text>
+          <Text maxFontSizeMultiplier={1.3} style={styles.skip}>{ready ? t('Close') : t('Skip')}</Text>
         </Pressable>
       </View>
 
@@ -376,93 +476,87 @@ export function EyeOnboarding({
         style={styles.pager}
       >
         {pages.map((item, index) => (
-          <ScrollView key={item.key} style={{ width }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
-            <View style={styles.art}>{item.art}</View>
-            {item.foot ?? null}
-            {page === index ? (
-              <>
-                <Animated.Text maxFontSizeMultiplier={1.15} entering={reduced ? undefined : FadeInDown.delay(180).duration(420)} style={styles.title}>{item.title}</Animated.Text>
-                <Animated.Text maxFontSizeMultiplier={1.2} entering={reduced ? undefined : FadeInDown.delay(420).duration(420)} style={styles.body}>{item.body}</Animated.Text>
-              </>
-            ) : (
-              <>
-                <Text maxFontSizeMultiplier={1.15} style={styles.title}>{item.title}</Text>
-                <Text maxFontSizeMultiplier={1.2} style={styles.body}>{item.body}</Text>
-              </>
-            )}
-          </ScrollView>
+          <Page key={item.key} width={width} inner={inner} art={item.art} foot={item.foot} title={item.title} body={item.body} active={page === index} reduced={reduced} />
         ))}
 
-        <ScrollView style={{ width }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+        <Page key="ready" width={width} inner={inner} active={ready} reduced={reduced}>
           <View style={styles.readyHead}>
-            <View style={styles.readyEye}>
-              <Breath size={84} still={reduced} />
-              <PortalEye size={88} open={hasEye} instant />
+            <View style={[styles.readyEye, big && styles.readyEyeSmall]}>
+              <Breath size={big ? 52 : 84} still={reduced} />
+              <PortalEye size={big ? 56 : 88} open={hasEye} instant />
             </View>
             <View style={{ flex: 1 }}>
-              <Text maxFontSizeMultiplier={1.25} style={styles.titleLeft}>{hasEye ? t('Your Eye is open') : t('Only a Seeker can mint an Eye')}</Text>
+              <Text maxFontSizeMultiplier={big ? 1.2 : 1.3} style={styles.titleLeft}>{hasEye ? t('Your Eye is open') : t('Only a Solana Mobile Seeker can mint an Eye')}</Text>
               {serial && !hasEye ? <Text maxFontSizeMultiplier={1.2} style={styles.serialLeft}>{t('Next number: {serial}', { serial })}</Text> : null}
             </View>
           </View>
 
-          <View style={styles.card}>
-            <Overline tone={colors.faint}>{t('This wallet')}</Overline>
+          <View style={[styles.card, big && styles.cardTight]}>
+            {big ? null : <Overline tone={colors.faint}>{t('This wallet')}</Overline>}
             <Check
               index={0}
               icon="wallet"
+              small={big}
               active={ready}
               state={wallet ? 'yes' : 'later'}
               label={t('Wallet connected')}
-              detail={wallet ? shortAddress(wallet) : t('Read only. Nothing is signed here.')}
+              detail={wallet ? shortAddress(wallet) : big ? null : t('Read only. Nothing is signed here.')}
             />
             <Check
               index={1}
               icon="token"
+              small={big}
               active={ready}
               state={!wallet ? 'later' : !status ? 'wait' : gates?.sgt ? 'yes' : gates?.sgt === false ? 'no' : 'later'}
               label={t('Seeker Genesis Token')}
-              detail={!wallet ? t('Proves this phone is a Seeker') : gates?.sgt === false ? t('Not found in this wallet') : gates?.sgt ? t('Found in your wallet') : null}
+              detail={gates?.sgt === false ? t('Not found in this wallet') : big ? null : !wallet ? t('Proves this phone is a Seeker') : gates?.sgt ? t('Found in your wallet') : null}
             />
             <Check
               index={2}
               icon="skr"
+              small={big}
               active={ready}
               state={!wallet ? 'later' : !status ? 'wait' : staked ? 'yes' : staked === false ? 'no' : 'later'}
               label={t('Staked SKR')}
-              detail={!wallet ? t('You need SKR in staking') : staked && gates?.activeStaked ? `${integer(Number(gates.activeStaked))} SKR` : staked === false ? t('No active SKR position') : null}
+              detail={staked && gates?.activeStaked ? `${integer(Number(gates.activeStaked))} SKR` : staked === false ? t('No active SKR position') : big ? null : !wallet ? t('You need SKR in staking') : null}
             />
             {finger ? (
               <Check
                 index={3}
                 icon="finger"
+                small={big}
                 active={ready}
                 state={verified ? 'yes' : 'later'}
                 label={t('Fingerprint on this Seeker')}
-                detail={verified ? t('Already verified on this phone.') : t('Checked in the next step')}
+                detail={big ? null : verified ? t('Already verified on this phone.') : t('Checked in the next step')}
               />
             ) : null}
           </View>
 
           {open != null && total != null ? (
-            <View style={styles.card}>
-              <Overline tone={colors.faint}>{t('The mint')}</Overline>
+            <View style={[styles.card, big && styles.cardTight]}>
+              {big ? null : <Overline tone={colors.faint}>{t('The mint')}</Overline>}
               <Row label={t('Opening fee')} value={`${sol(open)} SOL`} />
-              <Row label={t('Deposit kept inside your Eye')} value={`≈ ${sol(rent)} SOL`} />
+              <Row label={big ? t('Deposit in your Eye') : t('Deposit kept inside your Eye')} value={`≈ ${sol(rent)} SOL`} />
               <View style={styles.rule} />
-              <Row label={t('Total')} value={`≈ ${sol(total)} SOL${usd(total, solUsd) ? ` · ${usd(total, solUsd)}` : ''}`} strong />
-              {tier ? <Ladder tier={tier} open={open} nextSerial={nextSerial} left={left} /> : null}
+              <Row label={t('Total')} value={`≈ ${sol(total)} SOL${usd(total, solUsd) ? ` (${usd(total, solUsd)})` : ''}`} strong />
+              {tier ? <Ladder tier={tier} open={open} nextSerial={nextSerial} left={left} compact={big} /> : null}
               <View style={styles.rule} />
-              {blinkPrice ? <Row label={t('Blink')} value={`${blinkPrice} · ${t('every {hours} hours', { hours })}`} /> : null}
-              <Text maxFontSizeMultiplier={1.25} style={styles.micro}>{t('The first Blink is included in the mint.')}</Text>
+              {blinkPrice ? (big ? <Row label={t('Blink every {hours} hours', { hours })} value={blinkPrice} /> : <Row label={t('Blink')} value={`${blinkPrice} ${t('every {hours} hours', { hours })}`} />) : null}
+              {big ? null : <Text style={styles.micro}>{t('The first Blink is included in the mint.')}</Text>}
             </View>
           ) : (
             <View style={styles.card}><ActivityIndicator size="small" color={colors.faint} /></View>
           )}
 
-          <Text maxFontSizeMultiplier={1.25} style={styles.fine}>{t('The opening fee and every Blink go to the maker of SKR Eyes. The deposit stays inside your Eye, in your wallet. No token is sold here.')}</Text>
-          {connectError ? <Text maxFontSizeMultiplier={1.25} style={styles.error}>{connectError}</Text> : null}
-          {blocked ? <Text maxFontSizeMultiplier={1.25} style={styles.fine}>{t('An Eye opens for a wallet on a Seeker with an active SKR position.')}</Text> : null}
-        </ScrollView>
+          <Text style={styles.fine}>
+            {big
+              ? t('The first Blink is included. Fees go to the maker of SKR Eyes. The deposit stays in your Eye. No token is sold here.')
+              : t('The opening fee and every Blink go to the maker of SKR Eyes. The deposit stays inside your Eye, in your wallet. No token is sold here.')}
+          </Text>
+          {connectError ? <Text style={styles.error}>{connectError}</Text> : null}
+          {blocked ? <Text style={styles.fine}>{t('An Eye opens for a wallet on a Seeker with an active SKR position.')}</Text> : null}
+        </Page>
       </ScrollView>
 
       <View style={styles.bottom}>
@@ -488,20 +582,27 @@ const styles = StyleSheet.create({
   bar: { height: 3, borderRadius: 2 },
   skip: { color: colors.muted, fontFamily: font.medium, fontSize: 15, paddingTop: 1 },
   pager: { flex: 1 },
-  page: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md, gap: spacing.sm },
-  art: { alignItems: 'center', justifyContent: 'center' },
+  pageScroll: { flex: 1 },
+  // The column: the picture grows into the room the words leave, never
+  // below ART_FLOOR; past that the page scrolls.
+  page: { flexGrow: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md, gap: spacing.sm },
+  artBox: { flexGrow: 1, flexShrink: 0, minHeight: ART_FLOOR, alignItems: 'center', justifyContent: 'center' },
+  fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: FADE },
   footBlock: { gap: 2 },
   caption: { color: colors.text, fontFamily: font.semibold, fontSize: 16, lineHeight: 22, textAlign: 'center', fontVariant: ['tabular-nums'] },
   captionDim: { color: colors.muted, fontFamily: font.regular, fontSize: 14, lineHeight: 20, textAlign: 'center' },
-  title: { color: colors.text, fontFamily: font.bold, fontSize: 29, lineHeight: 35, letterSpacing: -0.8, textAlign: 'center', marginTop: spacing.sm },
-  titleLeft: { color: colors.text, fontFamily: font.bold, fontSize: 26, lineHeight: 31, letterSpacing: -0.6 },
+  title: { color: colors.text, fontFamily: font.bold, fontSize: 26, lineHeight: 32, letterSpacing: -0.7, textAlign: 'center', marginTop: spacing.xs },
+  titleLeft: { color: colors.text, fontFamily: font.bold, fontSize: 24, lineHeight: 29, letterSpacing: -0.6 },
   body: { color: '#A9BDCE', fontFamily: font.regular, fontSize: 17, lineHeight: 25, textAlign: 'center', paddingHorizontal: spacing.xs },
   serialLeft: { color: colors.metal, fontFamily: font.monoSemibold, fontSize: 14, letterSpacing: 1.4, marginTop: 3 },
   readyHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.xs },
   readyEye: { width: 88, height: 88, alignItems: 'center', justifyContent: 'center' },
+  readyEyeSmall: { width: 56, height: 56 },
   card: { backgroundColor: 'rgba(10, 16, 23, 0.88)', borderRadius: radius.card, borderWidth: 1, borderColor: '#13212C', padding: spacing.md, gap: spacing.md },
+  cardTight: { gap: 6, padding: 10 },
   check: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
   checkIcon: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: colors.line, backgroundColor: 'rgba(6, 12, 18, 0.9)', alignItems: 'center', justifyContent: 'center' },
+  checkIconSmall: { width: 30, height: 30, borderRadius: 15 },
   checkIconYes: { borderColor: colors.accentDim, backgroundColor: 'rgba(86, 224, 255, 0.08)' },
   checkIconNo: { borderColor: 'rgba(255, 126, 121, 0.5)' },
   checkText: { flex: 1, gap: 1 },
@@ -523,7 +624,7 @@ const styles = StyleSheet.create({
   ladderCellRight: { alignItems: 'flex-end' },
   ladderText: { color: colors.muted, fontFamily: font.regular, fontSize: 13.5, lineHeight: 18, fontVariant: ['tabular-nums'] },
   ladderPrice: { color: colors.text, fontFamily: font.semibold, fontSize: 14.5, lineHeight: 19, fontVariant: ['tabular-nums'] },
-  ladderNote: { color: colors.accent, fontFamily: font.medium, fontSize: 13, lineHeight: 18, fontVariant: ['tabular-nums'] },
+  ladderNote: { color: colors.accent, fontFamily: font.medium, fontSize: 13.5, lineHeight: 19, fontVariant: ['tabular-nums'] },
   ladderDim: { color: colors.faint },
   micro: { color: colors.faint, fontFamily: font.regular, fontSize: 13, lineHeight: 18 },
   fine: { color: '#8FA6B9', fontFamily: font.regular, fontSize: 14, lineHeight: 20, textAlign: 'center', paddingHorizontal: spacing.sm },

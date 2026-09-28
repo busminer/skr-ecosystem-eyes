@@ -13,6 +13,11 @@ import { epochMs } from './time';
 // the server builds the transaction, the Seeker wallet signs it. Network: the
 // server verifies, co-signs and sends it, and answers once it has confirmed.
 //
+// The listener may hold the move. `onStage` is awaited, so the sheet that
+// shows the move can wait for the person to read a step before the next
+// call is made. Every call and its order is exactly as before; only the
+// pause between two of them can be the person's.
+//
 // A move can be picked up where it stopped. The wallet declined or timed out:
 // the intent is still good until the server's `expiresAt`, so the retry goes
 // straight back to the wallet with the same transaction. The submit never
@@ -37,7 +42,7 @@ export type MoveStage =
   // Network: signed; handing it to the server to verify, co-sign and send.
   | { stage: 'network'; intent: EyeIntent; signed: string };
 
-export type MoveStageListener = (stage: MoveStage) => void;
+export type MoveStageListener = (stage: MoveStage) => void | Promise<void>;
 
 // What a stopped move keeps for the retry.
 export type MoveResume = { intent: EyeIntent; signed: string | null };
@@ -58,18 +63,18 @@ export async function runMove(kind: MoveKind, wallet: string, onStage: MoveStage
     let proof: WitnessProof | undefined;
     if (EYE_FINGER_ENABLED) {
       proof = await witnessProof(wallet, kind, (stage) => onStage({ stage }));
-      onStage({ stage: 'signed', p256: proof.p256 });
+      await onStage({ stage: 'signed', p256: proof.p256 });
     }
-    onStage({ stage: 'intent' });
+    await onStage({ stage: 'intent' });
     intent = kind === 'open' ? await openEye(wallet, proof) : await blinkEye(wallet, proof);
   }
 
   if (!signed) {
-    onStage({ stage: 'wallet', intent });
+    await onStage({ stage: 'wallet', intent });
     signed = await signTransactionBase64(intent.transaction);
   }
 
-  onStage({ stage: 'network', intent, signed });
+  await onStage({ stage: 'network', intent, signed });
   return submitEye(intent.intent, signed);
 }
 

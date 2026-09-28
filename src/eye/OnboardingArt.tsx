@@ -1,4 +1,4 @@
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, { Easing, FadeIn, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
@@ -7,9 +7,10 @@ import { t } from '../i18n';
 import { prefValue } from '../prefs';
 import { ritual, type Cue } from '../sound';
 import { colors, font, radius, spacing } from '../theme';
+import { clamp, isBig } from './fit';
 import { Glyph, Overline, type GlyphName } from './glyphs';
 import { PortalEye } from './PortalEye';
-import { Station, type StepStatus } from './Stepper';
+import { Road, type StepStatus } from './Stepper';
 
 // The pictures of the walk-through of the Eye (EyeOnboarding.tsx), one per
 // page, and the sky they all stand in. Each picture runs only while its page
@@ -207,7 +208,10 @@ function Watcher({ x, y, r, order, crowd }: { x: number; y: number; r: number; o
 
 // Page one: it wakes. Two heartbeats, the lids part, the number rises under
 // it, and the others come out of the dark round it one by one.
-export function Awakening({ active, reduced, serial, width, size }: { active: boolean; reduced: boolean; serial: string | null; width: number; size: number }) {
+export function Awakening({ active, reduced, serial, width, height }: { active: boolean; reduced: boolean; serial: string | null; width: number; height: number }) {
+  const big = isBig();
+  // The eye and its watchers take what the box leaves after the number.
+  const size = clamp(Math.min(Math.round(width * 0.85), height - (big ? 36 : 60)), 130, 330);
   const [open, setOpen] = useState(reduced);
   const [blink, setBlink] = useState(0);
   const shown = useSharedValue(reduced ? 1 : 0);
@@ -246,7 +250,7 @@ export function Awakening({ active, reduced, serial, width, size }: { active: bo
       </View>
       <Animated.View style={[styles.serialBlock, tag]}>
         <Text maxFontSizeMultiplier={1.2} style={styles.serial}>{serial ?? ' '}</Text>
-        <Text maxFontSizeMultiplier={1.3} style={styles.serialNote}>{t('Your number. It never changes.')}</Text>
+        {big ? null : <Text style={styles.serialNote}>{t('Your number. It never changes.')}</Text>}
       </Animated.View>
     </View>
   );
@@ -264,19 +268,19 @@ const DIM = '#2C4A5A';
 
 type Callout = { key: string; icon: GlyphName; title: string; line: string; mark: [number, number] };
 
-function calloutsFor(finger: boolean): Callout[] {
-  const vault: Callout = { key: 'vault', icon: 'vault', title: t('Seed Vault wallet'), line: t('Its keys never leave the phone’s secure hardware.'), mark: [60, finger ? 146 : 122] };
-  const token: Callout = { key: 'token', icon: 'token', title: t('Genesis Token'), line: t('Minted once per Seeker. Your wallet’s proof.'), mark: [60, finger ? 188 : 172] };
+function calloutsFor(finger: boolean, big: boolean): Callout[] {
+  const vault: Callout = { key: 'vault', icon: 'vault', title: t('Seed Vault wallet'), line: big ? t('Keys never leave the phone.') : t('Its keys never leave the phone’s secure hardware.'), mark: [60, finger ? 146 : 122] };
+  const token: Callout = { key: 'token', icon: 'token', title: t('Genesis Token'), line: big ? t('Proof this wallet is a Seeker’s.') : t('Minted once per Seeker. Your wallet’s proof.'), mark: [60, finger ? 188 : 172] };
   if (!finger) {
     return [
-      { key: 'network', icon: 'network', title: t('Solana'), line: t('Your Eye lives here; every Blink rewrites it.'), mark: [60, 30] },
+      { key: 'network', icon: 'network', title: t('Solana'), line: big ? t('Your Eye lives here.') : t('Your Eye lives here. Every Blink rewrites it.'), mark: [60, 30] },
       vault,
       token,
     ];
   }
   return [
-    { key: 'cert', icon: 'cert', title: t('Google attestation'), line: t('Google vouches for chip, boot and app.'), mark: [60, 30] },
-    { key: 'key', icon: 'key', title: t('StrongBox key'), line: t('In the secure element. Signs only after your fingerprint.'), mark: [60, 98] },
+    { key: 'cert', icon: 'cert', title: t('Google attestation'), line: big ? t('Google vouches for the phone.') : t('Google vouches for chip, boot and app.'), mark: [60, 30] },
+    { key: 'key', icon: 'key', title: t('StrongBox key'), line: big ? t('Signs only after your fingerprint.') : t('In the secure element. Signs only after your fingerprint.'), mark: [60, 98] },
     vault,
     token,
   ];
@@ -400,8 +404,10 @@ function LitLayer({ item, k, width, height }: { item: Callout; k: SharedValue<nu
 // Page two: built into your Seeker. A blueprint of the phone with the parts
 // the Eye uses, and a legend beside it; part and legend light together, one
 // by one, a leader line drawn from each mark to its words.
-export function Blueprint({ active, reduced, width, height, finger, noteFrom }: { active: boolean; reduced: boolean; width: number; height: number; finger: boolean; noteFrom: number }) {
-  const items = useMemo(() => calloutsFor(finger), [finger]);
+export function Blueprint({ active, reduced, width, height: room, finger, noteFrom }: { active: boolean; reduced: boolean; width: number; height: number; finger: boolean; noteFrom: number }) {
+  const big = isBig();
+  const items = useMemo(() => calloutsFor(finger, big), [finger, big]);
+  const height = clamp(room, 220, 350);
   const scale = height / VB_H;
   const phoneW = Math.round(VB_W * scale);
   const gap = spacing.sm;
@@ -495,8 +501,8 @@ export function Blueprint({ active, reduced, width, height, finger, noteFrom }: 
                 <Glyph name={item.icon} size={17} tone={on ? colors.accent : colors.dim} />
               </View>
               <View style={styles.calloutText}>
-                <Text maxFontSizeMultiplier={1.25} style={[styles.calloutTitle, !on && styles.calloutOff]}>{item.title}</Text>
-                <Text maxFontSizeMultiplier={1.25} style={[styles.calloutLine, !on && styles.calloutOff]}>{item.line}</Text>
+                <Text maxFontSizeMultiplier={1.3} style={[styles.calloutTitle, !on && styles.calloutOff]}>{item.title}</Text>
+                <Text maxFontSizeMultiplier={1.3} style={[styles.calloutLine, !on && styles.calloutOff]}>{item.line}</Text>
               </View>
             </View>
           );
@@ -519,53 +525,24 @@ export type RoadStop = { icon: GlyphName; name: string; copy: string };
 const WORK_MS = 1_000;
 const BEAT_MS = 320;
 
-// A row of stations: the same dot, turning ring and mint check the real
-// stepper draws, each with its glyph and its name, a rail between them.
-function Road({ overline, stops, from, at, reduced }: { overline: string; stops: RoadStop[]; from: number; at: number; reduced: boolean }) {
-  return (
-    <View style={styles.road}>
-      <Overline tone={colors.faint}>{overline}</Overline>
-      <View style={styles.roadRow}>
-        {stops.map((stop, i) => {
-          const index = from + i;
-          const status: StepStatus = at > index ? 'done' : at === index ? 'working' : 'pending';
-          const tone = status === 'done' ? colors.positive : status === 'working' ? colors.accent : colors.dim;
-          return (
-            <Fragment key={stop.name}>
-              {i > 0 ? (
-                <View style={styles.rail}>
-                  <View style={[styles.railFill, { width: at >= index ? '100%' : '0%' }]} />
-                </View>
-              ) : null}
-              <View style={styles.stop}>
-                <Station status={status} reduced={reduced} flush />
-                <View style={[styles.stopIcon, status !== 'pending' && { borderColor: tone }]}>
-                  <Glyph name={stop.icon} size={18} tone={tone} />
-                </View>
-                <Text maxFontSizeMultiplier={1.2} numberOfLines={2} style={[styles.stopName, status !== 'pending' && styles.stopNameOn]}>{stop.name}</Text>
-              </View>
-            </Fragment>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
 // Page three: the exact road the person walks next, in order. Once, if the
 // finger is on: Verify my Seeker, four checks. Then: Open my Eye, each step
 // named as the sheet will name it. The Eye on top opens when the last lands.
-export function OpeningRoad({ active, reduced, width, finger }: { active: boolean; reduced: boolean; width: number; finger: boolean }) {
+export function OpeningRoad({ active, reduced, width, height, finger }: { active: boolean; reduced: boolean; width: number; height: number; finger: boolean }) {
+  // At large type the roads lose their overlines and the eye on top gives
+  // way first, so the two roads and the caption always have their room.
+  const big = isBig();
+  const eye = clamp(height - (finger ? (big ? 300 : 350) : (big ? 170 : 210)), 48, 104);
   const verify = useMemo<RoadStop[]>(() => finger ? [
     { icon: 'key', name: t('Vault key'), copy: t('A key is born in the StrongBox secure element. It answers only to your finger.') },
-    { icon: 'cert', name: t('Seeker'), copy: t('Google’s certificate chain says: a real Seeker, verified boot, this app.') },
+    { icon: 'cert', name: t('Seeker'), copy: t('Google’s certificate chain confirms a real Seeker, verified boot and this app.') },
     { icon: 'token', name: t('Genesis Token'), copy: t('Your Seeker Genesis Token is found in the wallet.') },
     { icon: 'check', name: t('Verified'), copy: t('Our attestor signs it. This phone is known from now on.') },
   ] : [], [finger]);
   const open = useMemo<RoadStop[]>(() => [
-    ...(finger ? [{ icon: 'finger' as const, name: t('Finger'), copy: t('Touch the sensor: the key signs the server’s one-time challenge.') }] : []),
-    { icon: 'wallet', name: t('Wallet'), copy: t('Approve and pay in your Seeker wallet.') },
-    { icon: 'network', name: t('Network'), copy: t('The server checks and co-signs; Solana confirms it.') },
+    ...(finger ? [{ icon: 'finger' as const, name: t('Finger'), copy: t('Touch the sensor. The key signs a one-time challenge from the server.') }] : []),
+    { icon: 'wallet', name: t('Wallet'), copy: t('Approve and pay in your Seed Vault wallet.') },
+    { icon: 'network', name: t('Network'), copy: t('The server checks and co-signs. Solana confirms it.') },
     { icon: 'eye', name: t('Eye opens'), copy: t('Your Eye is minted into your wallet. The lids part.') },
   ], [finger]);
   const all = useMemo(() => [...verify, ...open], [verify, open]);
@@ -606,14 +583,20 @@ export function OpeningRoad({ active, reduced, width, finger }: { active: boolea
   }, [active, reduced, all, total, verify.length]);
 
   const caption = at >= total ? t('Your Eye is open') : all[at]?.copy ?? ' ';
+  // The stops as the shared road draws them, with the status each has now.
+  const road = (stops: RoadStop[], from: number) => stops.map((stop, i) => {
+    const index = from + i;
+    const status: StepStatus = at > index ? 'done' : at === index ? 'working' : 'pending';
+    return { key: stop.name, icon: stop.icon, name: stop.name, status };
+  });
   return (
     <View style={{ width, alignItems: 'stretch', gap: spacing.sm }}>
-      <View style={styles.roadEye}>
-        <Breath size={150} still={reduced} strength={0.8} />
-        <PortalEye size={104} open={lidsOpen} instant={reduced} />
+      <View style={[styles.roadEye, { height: eye + 14 }]}>
+        <Breath size={eye * 1.45} still={reduced} strength={0.8} />
+        <PortalEye size={eye} open={lidsOpen} instant={reduced} />
       </View>
-      {verify.length > 0 ? <Road overline={`${t('Once')} · ${t('Verify my Seeker')}`} stops={verify} from={0} at={at} reduced={reduced} /> : null}
-      <Road overline={`${verify.length > 0 ? t('Then') : t('One button')} · ${t('Open my Eye')}`} stops={open} from={verify.length} at={at} reduced={reduced} />
+      {verify.length > 0 ? <Road overline={big ? undefined : `${t('Once')} · ${t('Verify my Seeker')}`} stops={road(verify, 0)} reduced={reduced} /> : null}
+      <Road overline={big ? undefined : `${verify.length > 0 ? t('Then') : t('One button')} · ${t('Open my Eye')}`} stops={road(open, verify.length)} reduced={reduced} />
       <Animated.Text key={caption} entering={reduced ? undefined : FadeIn.duration(240)} maxFontSizeMultiplier={1.3} style={styles.roadCaption}>{caption}</Animated.Text>
     </View>
   );
@@ -634,8 +617,8 @@ export function arc(cx: number, cy: number, r: number, from: number, to: number)
 function Figure({ label, value, tone = colors.text }: { label: string; value: string; tone?: string }) {
   return (
     <View style={styles.figure}>
-      <Text maxFontSizeMultiplier={1.2} style={styles.figureLabel}>{label}</Text>
-      <Animated.Text key={value} entering={FadeIn.duration(220)} maxFontSizeMultiplier={1.2} style={[styles.figureValue, { color: tone }]}>{value}</Animated.Text>
+      <Text maxFontSizeMultiplier={1.3} style={styles.figureLabel}>{label}</Text>
+      <Animated.Text key={value} entering={FadeIn.duration(220)} maxFontSizeMultiplier={1.3} style={[styles.figureValue, { color: tone }]}>{value}</Animated.Text>
     </View>
   );
 }
@@ -643,7 +626,8 @@ function Figure({ label, value, tone = colors.text }: { label: string; value: st
 // Page four: Blink every eight hours. A dial of the day round the Eye, one
 // arc per rest, a hand walking it; at each arc's end the Eye blinks and the
 // three numbers a Blink writes on Solana move. A tap tries a Blink.
-export function BlinkDial({ active, reduced, size, slots, hours }: { active: boolean; reduced: boolean; size: number; slots: number; hours: number }) {
+export function BlinkDial({ active, reduced, width, height, slots, hours }: { active: boolean; reduced: boolean; width: number; height: number; slots: number; hours: number }) {
+  const size = clamp(Math.min(Math.round(width * 0.82), height - (isBig() ? 84 : 72)), 140, 300);
   const [blink, setBlink] = useState(0);
   const [slot, setSlot] = useState(0);
   const [written, setWritten] = useState({ streak: 1, blinks: 1 });
@@ -764,7 +748,8 @@ function Flash({ x, y, gold, k }: { x: number; y: number; gold: boolean; k: Shar
 // Page five: one of many. The Iris, every Eye a small eye on its ring, the
 // network blinking round the pupil; yours steps ring by ring to the centre,
 // a touch each ring, gold and a chime at thirty days.
-export function IrisClimb({ active, reduced, size }: { active: boolean; reduced: boolean; size: number }) {
+export function IrisClimb({ active, reduced, width, height }: { active: boolean; reduced: boolean; width: number; height: number }) {
+  const size = clamp(Math.min(width, height), 160, 330);
   const half = size / 2;
   const pupil = size * 0.15;
   const outer = half - 8;
@@ -890,7 +875,7 @@ export function IrisClimb({ active, reduced, size }: { active: boolean; reduced:
         <View style={[styles.youIris, { backgroundColor: perfect ? colors.metal : '#D6B56A' }]} />
       </Animated.View>
       <View pointerEvents="none" style={[styles.youTag, { left: half + 10, top: 6 }]}>
-        <Text maxFontSizeMultiplier={1.2} style={[styles.youTagText, { color: perfect ? colors.metal : colors.accent }]}>
+        <Text maxFontSizeMultiplier={1.35} style={[styles.youTagText, { color: perfect ? colors.metal : colors.accent }]}>
           {perfect ? t('Perfect Eye') : (RING_STREAK[ring] ?? 1) === 1 ? t('day 1') : t('{count} days in a row', { count: RING_STREAK[ring] ?? 1 })}
         </Text>
       </View>
@@ -908,8 +893,9 @@ const SAMPLE_CARD = require('../../assets/eye/sample-card.jpg');
 // Page six: your Eye is a card. The sample card rising into place; then the
 // post it becomes on X, with the first lines of the caption the app writes,
 // and the button that sends it, drawn as part of the picture.
-export function CardShare({ active, reduced, width, caption }: { active: boolean; reduced: boolean; width: number; caption: string }) {
-  const card = Math.min(160, Math.round(width * 0.42));
+export function CardShare({ active, reduced, width, height, caption }: { active: boolean; reduced: boolean; width: number; height: number; caption: string }) {
+  const big = isBig();
+  const card = clamp(Math.min(Math.round(width * 0.42), height - (big ? 236 : 206)), 92, 160);
   const up = useSharedValue(reduced ? 1 : 0);
   const post = useSharedValue(reduced ? 1 : 0);
   useEffect(() => {
@@ -936,14 +922,14 @@ export function CardShare({ active, reduced, width, caption }: { active: boolean
       <Animated.View style={[styles.post, { width: Math.min(width, 380) }, slide]}>
         <View style={styles.postHead}>
           <View style={styles.postAvatar}><Glyph name="eye" size={14} tone={colors.metal} /></View>
-          <Text maxFontSizeMultiplier={1.2} numberOfLines={1} style={styles.postName}>{`${t('you')} · `}<Text style={styles.postWhere}>{t('on X, with the picture attached')}</Text></Text>
+          <Text maxFontSizeMultiplier={1.3} numberOfLines={1} style={styles.postName}>{`${t('you')}, `}<Text style={styles.postWhere}>{t('on X, with the picture attached')}</Text></Text>
         </View>
-        <Text maxFontSizeMultiplier={1.2} numberOfLines={4} style={styles.postText}>{preview}</Text>
+        <Text maxFontSizeMultiplier={1.3} numberOfLines={big ? 3 : 4} style={styles.postText}>{preview}</Text>
         <View style={styles.postButton}>
           <Glyph name="share" size={14} tone={colors.accent} />
-          <Text maxFontSizeMultiplier={1.2} style={styles.postButtonText}>{t('Share my Eye on X')}</Text>
+          <Text maxFontSizeMultiplier={1.3} style={styles.postButtonText}>{t('Share my Eye on X')}</Text>
         </View>
-        <Text maxFontSizeMultiplier={1.2} style={styles.postNote}>{t('This button appears once your Eye is open.')}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={styles.postNote}>{t('This button appears once your Eye is open.')}</Text>
       </Animated.View>
     </View>
   );
@@ -965,18 +951,10 @@ const styles = StyleSheet.create({
   calloutLine: { color: '#A9BDCE', fontFamily: font.regular, fontSize: 14, lineHeight: 19 },
   calloutOff: { color: colors.faint, opacity: 0.6 },
   // The road.
-  roadEye: { alignItems: 'center', justifyContent: 'center', height: 118 },
-  road: { gap: spacing.xs },
-  roadRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  rail: { flex: 1, height: 2, marginTop: 9, borderRadius: 1, backgroundColor: colors.line, overflow: 'hidden', minWidth: 10 },
-  railFill: { height: 2, backgroundColor: colors.positive },
-  stop: { width: 66, alignItems: 'center', gap: 5 },
-  stopIcon: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: colors.line, backgroundColor: 'rgba(6, 12, 18, 0.9)', alignItems: 'center', justifyContent: 'center' },
-  stopName: { color: colors.faint, fontFamily: font.semibold, fontSize: 11.5, lineHeight: 14, textAlign: 'center' },
-  stopNameOn: { color: colors.text },
-  roadCaption: { color: colors.text, fontFamily: font.medium, fontSize: 15.5, lineHeight: 21, textAlign: 'center', minHeight: 42, paddingHorizontal: spacing.sm },
+  roadEye: { alignItems: 'center', justifyContent: 'center' },
+  roadCaption: { color: colors.text, fontFamily: font.medium, fontSize: 15.5, lineHeight: 21, textAlign: 'center', paddingHorizontal: spacing.sm },
   // The dial's figures.
-  figures: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.inner, backgroundColor: 'rgba(10, 16, 23, 0.8)', borderWidth: 1, borderColor: '#13212C' },
+  figures: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.inner, backgroundColor: 'rgba(10, 16, 23, 0.8)', borderWidth: 1, borderColor: '#13212C' },
   figure: { alignItems: 'center', gap: 1, minWidth: 64 },
   figureLabel: { color: colors.faint, fontFamily: font.semibold, fontSize: 10.5, lineHeight: 14, letterSpacing: 1, textTransform: 'uppercase' },
   figureValue: { fontFamily: font.semibold, fontSize: 15, lineHeight: 20, fontVariant: ['tabular-nums'] },

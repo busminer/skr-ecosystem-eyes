@@ -121,7 +121,9 @@ export type WitnessStage =
   | { stage: 'vault' }
   | { stage: 'key'; created: CreatedKey }
   | { stage: 'verdict'; record: WitnessRecord };
-export type WitnessStageListener = (stage: WitnessStage) => void;
+// The listener is awaited: a screen may hold the enrollment at a stage until
+// the person has read it. The calls and their order do not change.
+export type WitnessStageListener = (stage: WitnessStage) => void | Promise<void>;
 
 export class WitnessError extends Error {
   // `detail` is the attestor's own reason, in its words, when it refused.
@@ -226,21 +228,21 @@ export async function forgetWitness(wallet: string): Promise<void> {
 export async function enrollWitness(wallet: string, onStage?: WitnessStageListener): Promise<WitnessRecord> {
   const module = requireModule();
 
-  onStage?.({ stage: 'challenge' });
+  await onStage?.({ stage: 'challenge' });
   const { challenge } = await attestor<{ challenge: string }>(`/challenge?wallet=${encodeURIComponent(wallet)}`);
   if (typeof challenge !== 'string' || !/^[0-9a-f]{64}$/i.test(challenge)) {
     throw new WitnessError('E_ATTESTOR_UNREACHABLE', t('The attestor did not answer'));
   }
 
   let created: CreatedKey;
-  onStage?.({ stage: 'vault' });
+  await onStage?.({ stage: 'vault' });
   try {
     created = await module.createKey(Buffer.from(challenge, 'hex').toString('base64'));
   } catch (caught) {
     throw fromModule(caught);
   }
 
-  onStage?.({ stage: 'key', created });
+  await onStage?.({ stage: 'key', created });
 
   let verdict: AttestorResponse;
   try {
@@ -284,7 +286,7 @@ export async function enrollWitness(wallet: string, onStage?: WitnessStageListen
   // Kept before the hand-over, so a hand-over that fails leaves a key, a
   // verdict and one thing to retry rather than a spent challenge and nothing.
   await AsyncStorage.setItem(storeKey(wallet), JSON.stringify(record)).catch(() => undefined);
-  onStage?.({ stage: 'verdict', record });
+  await onStage?.({ stage: 'verdict', record });
   return registerRecord(record);
 }
 

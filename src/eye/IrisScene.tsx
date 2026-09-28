@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import { prefValue } from '../prefs';
 import { IRIS_SCENE_HTML } from './irisSceneHtml';
 
 // The React side of the Iris. Like the vault's wrapper it owns nothing about
@@ -9,13 +10,20 @@ import { IRIS_SCENE_HTML } from './irisSceneHtml';
 // Messages are queued until the page says it is ready, and the last picture
 // is remembered so a WebView that Android killed in the background can be
 // replaced and refilled without the tab noticing.
+//
+// The beam sweeps at the pace the person chose on Pulse (live, calm, off),
+// read the same way the radar reads it: once when the scene is ready and
+// again each time the app comes back to the front.
 
 export type IrisMessage =
   | { type: 'network'; eyes: Array<{ s: number; r: number; b: number; pf: number }>; ringCounts: number[] | null; me: { serial: number; ring: number } | null; callout: { title: string; sub: string } | null; empty: boolean }
   | { type: 'blink'; items: Array<{ serial: number; ring: number }> }
+  | { type: 'motion'; mode: 'live' | 'calm' | 'off' }
   | { type: 'pause'; on: boolean };
 
 export type IrisHandle = { push: (message: IrisMessage) => void };
+
+const motionMode = (): 'live' | 'calm' | 'off' => (prefValue('motion:off', false) ? 'off' : prefValue('motion:calm', false) ? 'calm' : 'live');
 
 export const IrisScene = forwardRef<IrisHandle, { size: number; onTap?: (serial: number) => void }>(function IrisScene({ size, onTap }, ref) {
   const web = useRef<WebView>(null);
@@ -37,7 +45,10 @@ export const IrisScene = forwardRef<IrisHandle, { size: number; onTap?: (serial:
 
   // A flash queued while the app was in a pocket waits; nothing is drawn there.
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (next) => send({ type: 'pause', on: next !== 'active' }));
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') send({ type: 'motion', mode: motionMode() });
+      send({ type: 'pause', on: next !== 'active' });
+    });
     return () => subscription.remove();
   }, [send]);
 
@@ -68,6 +79,7 @@ export const IrisScene = forwardRef<IrisHandle, { size: number; onTap?: (serial:
         const kept = picture.current;
         const pending = queue.current.filter((message) => message !== kept);
         queue.current = [];
+        send({ type: 'motion', mode: motionMode() });
         if (kept) send(kept);
         pending.forEach((message) => send(message));
       } else if (data.type === 'tap' && typeof data.serial === 'number' && onTap) {
