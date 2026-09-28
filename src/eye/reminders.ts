@@ -92,24 +92,23 @@ export function remindersFor(status: EyeStatus, now = Date.now()): Array<{ at: n
     let line: { title: string; body: string };
     if (!newDay) {
       line = pick([
-        { title: t('{name} can blink again', { name: eye.name }), body: t('Today is already kept. One more Blink adds to your count.') },
-        { title: t('Another Blink is ready'), body: t('Blink number {count} for {name}. Every one is written on Solana.', { count: blinks + 1, name: eye.name }) },
+        { title: t('Your Blink is ready'), body: t('Today is already counted. Another Blink adds to your total.') },
+        { title: t('{name} can blink', { name: eye.name }), body: t('This would be Blink number {count}.', { count: blinks + 1 }) },
       ]);
     } else if (day === 30) {
-      line = { title: t('Today your Eye turns gold'), body: t('One Blink and {name} becomes a Perfect Eye.', { name: eye.name }) };
+      line = { title: t('Day 30'), body: t('One Blink today and your Eye turns gold.') };
     } else if (day === 7) {
-      line = { title: t('Day 7 is a new ring'), body: t('Blink today and {name} steps inward on the Iris.', { name: eye.name }) };
+      line = { title: t('Day 7'), body: t('Blink today and your Eye moves to a new ring.') };
     } else if (day === 2) {
-      line = { title: t('Your Eye remembers you'), body: t('Day 2 starts with one touch. Keep {name} open.', { name: eye.name }) };
+      line = { title: t('Day 2'), body: t('Blink once today to keep your streak.') };
     } else {
       const lines = [
-        { title: t('{name} is open again', { name: eye.name }), body: t('Day {count} is waiting for one touch.', { count: day }) },
-        { title: t('Your Eye is looking for you'), body: t('Blink now and day {count} is kept.', { count: day }) },
-        { title: t('Blink time'), body: t('{streak} days in a row so far. Make it {count}.', { streak, count: day }) },
-        { title: t('Seekers are blinking right now'), body: t('Join them. Day {count} starts with you.', { count: day }) },
+        { title: t('{name} can blink', { name: eye.name }), body: t('It has been 8 hours. Day {count} is open.', { count: day }) },
+        { title: t('Your Blink is ready'), body: t('One tap and day {count} is counted.', { count: day }) },
+        { title: t('Time to blink'), body: t('{streak} days in a row. Keep it going.', { streak }) },
       ];
-      if (toRing > 0 && toRing <= 2) lines.push({ title: toRing === 1 ? t('1 day to the next ring') : t('{count} days to the next ring', { count: toRing }), body: t('One Blink today moves {name} closer to the centre.', { name: eye.name }) });
-      if (toGold > 0 && toGold <= 7) lines.push({ title: toGold === 1 ? t('1 day to gold') : t('{count} days to gold', { count: toGold }), body: t('Keep going. Day 30 turns {name} gold on the Iris.', { name: eye.name }) });
+      if (toRing > 0 && toRing <= 2) lines.push({ title: toRing === 1 ? t('1 day to the next ring') : t('{count} days to the next ring', { count: toRing }), body: t('Blink today to get closer to the centre.') });
+      if (toGold > 0 && toGold <= 7) lines.push({ title: toGold === 1 ? t('1 day to gold') : t('{count} days to gold', { count: toGold }), body: t('Day 30 turns your Eye gold.') });
       line = pick(lines);
     }
     plans.push({ at: nextAt, ...line });
@@ -123,11 +122,10 @@ export function remindersFor(status: EyeStatus, now = Date.now()): Array<{ at: n
     const at = Math.max(warnAt, blinkPossibleBy);
     const line = streak > 1
       ? pick([
-        { title: t('Your streak ends tonight'), body: t('{name} has not blinked today. {count} days are on the line.', { name: eye.name, count: streak }) },
-        { title: t('Three hours left'), body: t('One touch keeps your {count}-day streak alive.', { count: streak }) },
-        { title: t('Do not let it close'), body: t('{name} is waiting for today\'s Blink.', { name: eye.name }) },
+        { title: t('Your streak ends tonight'), body: t('{count} days in a row. Blink before the day ends.', { count: streak }) },
+        { title: t('3 hours left'), body: t('Blink now to keep your {count}-day streak.', { count: streak }) },
       ])
-      : { title: t('Your Eye is waiting'), body: t('{name} has not blinked today. Keep it open with one touch.', { name: eye.name }) };
+      : { title: t('You have not blinked today'), body: t('One tap keeps your Eye going.') };
     plans.push({ at, ...line });
   }
   return plans.sort((a, b) => a.at - b.at);
