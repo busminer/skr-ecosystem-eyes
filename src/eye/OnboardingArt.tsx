@@ -222,8 +222,9 @@ export function Awakening({ active, reduced, serial, width, height }: { active: 
     shown.value = 0;
     crowd.value = 0;
     const stop = schedule([
-      [700, () => cue('heart', 0.4)],
-      [1_550, () => cue('heart', 0.35)],
+      // One swell before the lids part (it was two beats, which with a
+      // recorded sound read as the same sound playing twice).
+      [1_000, () => cue('heart', 0.4)],
       [2_400, () => {
         setOpen(true);
         thud();
