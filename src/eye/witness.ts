@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Buffer } from 'buffer';
 import { t } from '../i18n';
+import { isWalletCancel, signTextWithWallet } from '../mwa';
 import { getSeekerWitness, WITNESS_ERROR, witnessErrorCode, type CreatedKey, type WitnessErrorCode, type WitnessSignature } from '../../modules/seeker-witness';
-import { registerWitness } from './api';
+import { fetchWitnessClaim, registerWitness, type WitnessClaim } from './api';
 import { ATTESTOR_BASE_URL, ATTESTOR_LAB_BASE_URL, LAB_PACKAGE } from './config';
 
 // The Eye's witness: a key born in this phone's StrongBox under a fingerprint,
@@ -16,6 +17,13 @@ import { ATTESTOR_BASE_URL, ATTESTOR_LAB_BASE_URL, LAB_PACKAGE } from './config'
 // Token. That verdict record goes to the eye-mint server as it came, so the
 // server binds the key to the wallet, and it is kept here too, keyed by
 // wallet, for the walkthrough to show and for the hand-over to be retried.
+//
+// The verdict goes to the eye-mint server with the wallet's own yes. The
+// attestor finds the Genesis Token in the wallet it is told about, but it
+// cannot know the phone asking is that wallet's; so the wallet signs, once, a
+// short text naming itself, this key and a nonce from the server, and the
+// server binds the key only with that signature. It is a message, not a
+// transaction: no fee, nothing sent. The Seed Vault shows the text.
 //
 // Signing is one fingerprint prompt. The message is handed to the hardware;
 // the hardware refuses until a finger is on the sensor; one DER signature
@@ -106,7 +114,11 @@ export type WitnessFailure =
   // The attestor could not be reached or answered nonsense.
   | 'E_ATTESTOR_UNREACHABLE'
   // The eye-mint server did not take the verdict; the record is kept unregistered.
-  | 'E_EYE_SERVICE';
+  | 'E_EYE_SERVICE'
+  // The wallet did not sign the claim; the record is kept unregistered.
+  | 'E_WALLET'
+  // The person closed the wallet or declined: not an error to show in red.
+  | 'E_WALLET_CANCELLED';
 
 // What the walkthrough is told while an enrollment runs, in the order it
 // happens, so each card on the screen turns when its check actually starts
@@ -114,13 +126,18 @@ export type WitnessFailure =
 // for its single-use challenge. `vault`: the challenge is in hand and the
 // phone is about to make the key. `key`: the key is born; Google's chain is
 // about to go to the attestor. `verdict`: the attestor said yes; the verdict
-// is about to go to the eye-mint server. A refusal is the thrown error, and
+// is about to go to the eye-mint server. `wallet`: the wallet is about to be
+// asked to sign the claim (a screen holds here until the person taps, since
+// the wallet opens on their tap). `signed`: the wallet signed; the verdict and
+// the claim are about to go to the server. A refusal is the thrown error, and
 // whichever stage was last announced is where it happened.
 export type WitnessStage =
   | { stage: 'challenge' }
   | { stage: 'vault' }
   | { stage: 'key'; created: CreatedKey }
-  | { stage: 'verdict'; record: WitnessRecord };
+  | { stage: 'verdict'; record: WitnessRecord }
+  | { stage: 'wallet'; record: WitnessRecord }
+  | { stage: 'signed'; record: WitnessRecord };
 // The listener is awaited: a screen may hold the enrollment at a stage until
 // the person has read it. The calls and their order do not change.
 export type WitnessStageListener = (stage: WitnessStage) => void | Promise<void>;
@@ -131,6 +148,19 @@ export class WitnessError extends Error {
     super(message);
     this.name = 'WitnessError';
   }
+}
+
+// The text the wallet signs for its claim on the key, exactly as the server
+// builds it: a title, then the wallet, the key (compressed, lowercase hex, as
+// the server stores it) and the server's nonce, each on its own line.
+export const CLAIM_TITLE = "SKR Eyes: this wallet uses this Seeker's key";
+export function claimMessage(wallet: string, p256: string, nonce: string): string {
+  return `${CLAIM_TITLE}\nwallet ${wallet}\nkey ${p256.toLowerCase()}\nnonce ${nonce}`;
+}
+
+// The person closed the wallet while it asked for the claim.
+export function isWalletCancelled(error: unknown): boolean {
+  return error instanceof WitnessError && error.code === 'E_WALLET_CANCELLED';
 }
 
 const STORE_PREFIX = 'skr-eyes:witness:';
@@ -287,16 +317,42 @@ export async function enrollWitness(wallet: string, onStage?: WitnessStageListen
   // verdict and one thing to retry rather than a spent challenge and nothing.
   await AsyncStorage.setItem(storeKey(wallet), JSON.stringify(record)).catch(() => undefined);
   await onStage?.({ stage: 'verdict', record });
-  return registerRecord(record);
+  return registerRecord(record, onStage);
 }
 
-// Hands the attestor's verdict to the eye-mint server, as it came, so the
-// server binds the key it names to the wallet. Idempotent: a record already
-// registered is returned as is.
-export async function registerRecord(record: WitnessRecord): Promise<WitnessRecord> {
-  if (record.registered) return record;
+// The wallet's claim on the key: the server's nonce for this wallet and key,
+// the text built here and compared with the server's (a text that differs is
+// never shown to the wallet), and the wallet's signature over it.
+async function claimKey(record: WitnessRecord): Promise<WitnessClaim> {
+  let offer;
   try {
-    await registerWitness(record.wallet, record.verdict);
+    offer = await fetchWitnessClaim(record.wallet, record.p256);
+  } catch (caught) {
+    throw new WitnessError('E_EYE_SERVICE', caught instanceof Error && caught.message ? caught.message : t('The Eye service did not answer'));
+  }
+  const text = claimMessage(record.wallet, record.p256, offer.nonce);
+  if (offer.message !== text) throw new WitnessError('E_EYE_SERVICE', t('The Eye service asked to sign something else. Nothing was signed.'));
+  try {
+    const signature = await signTextWithWallet(record.wallet, text);
+    return { nonce: offer.nonce, signature: Buffer.from(signature).toString('base64') };
+  } catch (caught) {
+    if (isWalletCancel(caught)) throw new WitnessError('E_WALLET_CANCELLED', t('The wallet request was cancelled'));
+    throw new WitnessError('E_WALLET', caught instanceof Error && caught.message ? caught.message : t('The wallet did not return a signature.'));
+  }
+}
+
+// Hands the attestor's verdict to the eye-mint server, as it came, with the
+// wallet's signed claim, so the server binds the key it names to the wallet.
+// Idempotent: a record already registered is returned as is. `onStage` hears
+// the wallet being asked and the wallet having signed; a listener may hold
+// the first until the person taps.
+export async function registerRecord(record: WitnessRecord, onStage?: WitnessStageListener): Promise<WitnessRecord> {
+  if (record.registered) return record;
+  await onStage?.({ stage: 'wallet', record });
+  const claim = await claimKey(record);
+  await onStage?.({ stage: 'signed', record });
+  try {
+    await registerWitness(record.wallet, record.verdict, claim);
   } catch (caught) {
     throw new WitnessError('E_EYE_SERVICE', caught instanceof Error && caught.message ? caught.message : t('The Eye service did not answer'));
   }

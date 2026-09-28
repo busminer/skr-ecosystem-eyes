@@ -8,7 +8,7 @@ import { getSeekerWitness, WITNESS_ERROR } from '../../modules/seeker-witness';
 import { ensureWitness, isFingerCancel } from './finger';
 import { fontScale } from './fit';
 import { Overline } from './glyphs';
-import { readWitness, WitnessError, type WitnessRecord, type WitnessStage } from './witness';
+import { isWalletCancelled, readWitness, WitnessError, type WitnessRecord, type WitnessStage } from './witness';
 import { BEAT_MS, Stepper, keyFingerprint, shorten, usePaced, type Failure, type StepModel } from './Stepper';
 import { PortalEye } from './PortalEye';
 import { ritual } from '../sound';
@@ -16,26 +16,31 @@ import { ritual } from '../sound';
 // Verifying the Seeker, as something a person is walked through rather than
 // something that happens to them.
 //
-// One button starts it; what follows is four steps, one on screen at a time
+// One button starts it; what follows is five steps, one on screen at a time
 // (Stepper.tsx), each saying in one line what the phone is doing while it
 // does it, and each saying what it found the moment it is done: the key born
 // in the StrongBox secure element, the phone Google's certificate names, the
-// Genesis Token in the wallet, the attestor's signature under all of it.
-// After each finished step a Next button, and the person moves on when they
-// have read it. Then the one button that matters, and the person presses it
-// themselves.
+// Genesis Token in the wallet, the wallet's own signature saying the key is
+// its, the attestor's signature under all of it. After each finished step a
+// Next button, and the person moves on when they have read it. Then the one
+// button that matters, and the person presses it themselves.
 //
 // The steps are turned by the enrollment itself (`WitnessStage` from
 // witness.ts), never by a clock alone, and the enrollment waits where the
 // person reads: after the key is born, before Google's chain goes to the
 // attestor (the attestor's challenge is good for ten minutes, so a read is
 // safe, and a much longer wait is refused by the attestor and shown as a
-// plain failure with Try again); and after the attestor's verdict, before it
-// is handed to the Eye service (the verdict is kept on the phone and the
-// hand-over can be repeated, so this wait is safe for as long as it takes).
+// plain failure with Try again); after the attestor's verdict, before the
+// wallet is asked (the verdict is kept on the phone and the hand-over can be
+// repeated, so this wait is safe for as long as it takes); and at the wallet,
+// which opens only on the person's own tap, the way the wallet expects. The
+// wallet signs a short text, not a transaction: the server binds the key to
+// the wallet only with it, since the attestor cannot know the wallet it was
+// told about is this person's. After the wallet has signed nothing waits.
 // The verdict carries the Seeker's facts and the Genesis Token in one
 // answer, so steps two and three are read from it one after the other, each
-// on its own card. Every call and its order is exactly as before.
+// on its own card. Every call and its order is as before, with the wallet's
+// signature added before the hand-over.
 //
 // Nothing here is mounted by this file: the Eyes tab shows it before the
 // first open when EYE_FINGER_ENABLED is on, and only when getWitnessState
@@ -62,7 +67,9 @@ export async function getWitnessState(wallet: string): Promise<WitnessState> {
   return present ? { kind: 'verified', record } : { kind: 'none' };
 }
 
-const STEPS = 4;
+const STEPS = 5;
+// The step the wallet signs in; the hand-over to the Eye service is the last.
+const WALLET = 4;
 
 type Phase = 'intro' | 'running' | 'landing' | 'failed';
 // What the first step shows: known from the module the moment the key is
@@ -101,13 +108,15 @@ function describe(error: unknown): Failure {
 
 // Which step a failure belongs to, from the last stage the enrollment
 // announced. Nothing announced: the module itself is missing, and no step had
-// started. After the verdict: the hand-over to the Eye service, which is the
-// fourth step's to report.
+// started. After the verdict and while the wallet is asked: the wallet's
+// step. Once the wallet has signed: the hand-over to the Eye service, the
+// last step's to report.
 function stepFor(stage: WitnessStage['stage'] | null): number {
   if (stage === null) return 0;
   if (stage === 'challenge' || stage === 'vault') return 1;
   if (stage === 'key') return 2;
-  return 4;
+  if (stage === 'signed') return STEPS;
+  return WALLET;
 }
 
 export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: string; onVerified: (record: WitnessRecord) => void; onCancel: () => void }) {
@@ -117,12 +126,15 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
   // Steps 1..done are done; `active` is the one turning, 0 for none.
   const [done, setDone] = useState(0);
   const [active, setActive] = useState(0);
-  // The step the failure is shown in; 0 is before any step.
+  // The step the failure is shown in; 0 is before any step. `stopped`: the
+  // person closed the wallet, which is shown amber, not red.
   const [failedAt, setFailedAt] = useState(0);
+  const [stopped, setStopped] = useState(false);
   // The step on screen, 0-based. It follows the work, and the person moves it on.
   const [current, setCurrent] = useState(0);
-  // Where the enrollment is being held for the person to read.
-  const [held, setHeld] = useState<'key' | 'verdict' | null>(null);
+  // Where the enrollment is being held for the person to read, or, at the
+  // wallet, for their tap.
+  const [held, setHeld] = useState<'key' | 'verdict' | 'wallet' | null>(null);
   // The first step has two moments: the attestor's challenge, then the key.
   const [sub, setSub] = useState<'challenge' | 'vault'>('challenge');
   const [key, setKey] = useState<BornKey | null>(null);
@@ -135,6 +147,8 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
   // The last stage the running enrollment announced.
   const stage = useRef<WitnessStage['stage'] | null>(null);
   const gate = useRef<Gate | null>(null);
+  // A retry at the wallet opens it at once: the tap on Try again is the go-ahead.
+  const skipGate = useRef(false);
 
   // Lets a held enrollment go with a refusal nobody will show: whoever is
   // waiting on it has a ticket that no longer matches.
@@ -149,6 +163,7 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
     setDone(0);
     setActive(0);
     setFailedAt(0);
+    setStopped(false);
     setCurrent(0);
     setHeld(null);
     setSub('challenge');
@@ -185,19 +200,22 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
   const verify = useCallback(async () => {
     const mine = ticket.current;
     paced.clear();
-    // Trying again after the Eye service refused the hand-over: the attestor's
-    // three answers stand, so their steps stay and only the fourth turns.
-    const resume = phase === 'failed' && failedAt === STEPS && record !== null;
+    // Trying again at the wallet, or after the Eye service refused the
+    // hand-over: the attestor's three answers stand, so their steps stay and
+    // the wallet is asked again (a claim is good once), opened at once.
+    const resume = phase === 'failed' && failedAt >= WALLET && record !== null;
     setPhase('running');
     setFailure(null);
     setFailedAt(0);
+    setStopped(false);
     setReady(false);
     setAlready(false);
     setHeld(null);
+    skipGate.current = resume;
     if (resume) {
       setDone(3);
-      setActive(4);
-      setCurrent(3);
+      setActive(WALLET);
+      setCurrent(WALLET - 1);
       stage.current = 'verdict';
     } else {
       setDone(0);
@@ -232,11 +250,27 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
         case 'verdict': {
           // The attestor read the phone and found the Genesis Token in one
           // answer. Steps two and three are read from it, each on its own
-          // card, and the hand-over to the Eye service waits for the person.
+          // card, and the wallet waits for the person.
           const found = event.record;
           push(() => { setRecord(found); setDone(3); setActive(0); buzz(); setHeld('verdict'); });
           return new Promise<void>((resolve, reject) => { gate.current = { resolve, reject }; });
         }
+        case 'wallet': {
+          // The wallet is next, and it opens on the person's tap. A retry's
+          // own tap was that already.
+          if (skipGate.current) {
+            skipGate.current = false;
+            push(() => { setActive(WALLET); setCurrent(WALLET - 1); });
+            return;
+          }
+          push(() => { setDone(3); setActive(0); setCurrent(WALLET - 1); setHeld('wallet'); });
+          return new Promise<void>((resolve, reject) => { gate.current = { resolve, reject }; });
+        }
+        case 'signed':
+          // Signed. The hand-over goes at once: the claim's nonce is short-lived.
+          push(() => { setDone(WALLET); setActive(STEPS); buzz(); });
+          push(() => setCurrent(STEPS - 1));
+          return;
       }
     };
 
@@ -257,24 +291,28 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
       if (mine !== ticket.current) return;
       // The finger came off a prompt: nothing went wrong, so nothing is said.
       if (isFingerCancel(caught)) { paced.clear(); reset(); return; }
+      // The wallet was closed: the step stops, amber, and Try again picks it
+      // up there. Nothing is lost; the verdict is kept on the phone.
+      const quiet = isWalletCancelled(caught);
       const at = stepFor(stage.current);
       const told = describe(caught);
       push(() => {
         setFailure(told);
         setFailedAt(at);
+        setStopped(quiet);
         setCurrent(Math.max(0, at - 1));
         setActive(0);
         setHeld(null);
         setPhase('failed');
         // One soft pulse, once. A refusal is information, not a telling-off.
-        buzz();
+        if (!quiet) buzz();
       });
     }
   }, [wallet, phase, failedAt, record, paced, reset]);
 
   // The person has read the card and taps on. After the key: let Google's
   // chain go to the attestor. After the verdict: the Genesis Token card
-  // first, then the hand-over to the Eye service.
+  // first, then the wallet's card. At the wallet: open it.
   const proceed = useCallback(() => {
     if (held === 'key') {
       const waiting = gate.current;
@@ -290,8 +328,15 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
       const waiting = gate.current;
       gate.current = null;
       setHeld(null);
-      setCurrent(3);
-      setActive(4);
+      setCurrent(WALLET - 1);
+      waiting?.resolve();
+      return;
+    }
+    if (held === 'wallet') {
+      const waiting = gate.current;
+      gate.current = null;
+      setHeld(null);
+      setActive(WALLET);
       waiting?.resolve();
     }
   }, [held, current]);
@@ -303,8 +348,9 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
   }, [dropGate, onCancel]);
 
   const statusOf = (step: number): StepModel['status'] => {
-    if (failedAt === step) return 'failed';
+    if (failedAt === step) return stopped ? 'stopped' : 'failed';
     if (done >= step) return 'done';
+    if (held === 'wallet' && step === WALLET) return 'ready';
     return active === step ? 'working' : 'pending';
   };
   const checks = record?.checks ?? null;
@@ -363,12 +409,24 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
       ) : null,
     },
     {
+      key: 'wallet',
+      icon: 'wallet',
+      name: t('Wallet'),
+      doing: held === 'wallet'
+        ? t('Sign once in your Seed Vault wallet. It proves this wallet is yours. No transaction, no fee.')
+        : t('Sign the message in your Seed Vault wallet.'),
+      done: t('Your wallet signed. Nothing was sent and nothing was paid.'),
+      status: statusOf(WALLET),
+      failure,
+      result: <Text style={styles.monoDim}>{shorten(wallet)}</Text>,
+    },
+    {
       key: 'verdict',
       icon: 'check',
       name: t('Verified'),
       doing: t('The attestor signed its verdict. Handing it to the Eye service.'),
       done: t('Device verified. The Eye service knows this phone now.'),
-      status: statusOf(4),
+      status: statusOf(STEPS),
       failure,
       result: record ? (
         <>
@@ -396,7 +454,7 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
       </>
     );
   } else if (held) {
-    action = <Button label={t('Next')} onPress={proceed} hero />;
+    action = <Button label={held === 'wallet' ? t('Open my wallet') : t('Next')} onPress={proceed} hero />;
   } else if (phase === 'landing' && record && ready) {
     action = (
       <>

@@ -26,12 +26,14 @@ export function blinkMessage(wallet: string, challenge: string): Uint8Array {
 // phone, a fresh enrollment otherwise. A reinstall keeps the key and drops the
 // record, a new fingerprint drops the key and keeps the record; either way the
 // pair starts over, because the verdict names one key. A record the server
-// never received is handed over here before it is used. `onStage` hears a
-// fresh enrollment's steps as they happen; the on-file path says nothing.
+// never received is handed over here before it is used, with the wallet's
+// signed claim, so the wallet opens then, once. `onStage` hears a fresh
+// enrollment's steps as they happen; the on-file path says only the wallet's
+// two moments, and only when it still has a hand-over to make.
 export async function ensureWitness(wallet: string, onStage?: WitnessStageListener): Promise<WitnessRecord> {
   const stored = await readWitness(wallet);
   const module = getSeekerWitness();
-  if (stored && module && await module.hasKey().catch(() => false)) return registerRecord(stored);
+  if (stored && module && await module.hasKey().catch(() => false)) return registerRecord(stored, onStage);
   if (stored) await forgetWitness(wallet);
   return enrollWitness(wallet, onStage);
 }

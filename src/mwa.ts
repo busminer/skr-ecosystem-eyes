@@ -101,6 +101,30 @@ export async function signTransactionBase64(base64: string): Promise<string> {
   });
 }
 
+// Sign a short text with the wallet, off chain: no transaction, no fee, and
+// nothing sent anywhere by the wallet. The Seed Vault shows the text to the
+// person before they sign. Returns the 64-byte ed25519 signature.
+//
+// The account that signs must be the wallet the app is working for: a
+// signature by another account would vouch for nobody, so that is refused
+// here rather than by the server a moment later. The wallet hands back the
+// signed message, by the protocol the text with the signature after it, from
+// some wallets the signature alone; either way the signature is the last 64
+// bytes.
+export async function signTextWithWallet(wallet: string, text: string): Promise<Uint8Array> {
+  const stored = await AsyncStorage.getItem(AUTH_KEY).catch(() => null);
+  const payload = new Uint8Array(Buffer.from(text, 'utf8'));
+
+  return transact(async (session) => {
+    const authorization = await authorizeSession(session, stored);
+    const account = authorization.accounts.find((entry) => new PublicKey(base64ToUint8Array(entry.address)).toBase58() === wallet);
+    if (!account) throw new Error(t('The wallet is signed in with another account.'));
+    const [signed] = await session.signMessages({ addresses: [account.address], payloads: [payload] });
+    if (!signed || signed.length < 64) throw new Error(t('The wallet did not return a signature.'));
+    return signed.slice(signed.length - 64);
+  });
+}
+
 // The person closed the wallet, declined, or let it time out. None of those
 // is an error worth a red line: the screen simply goes back to how it was.
 export function isWalletCancel(error: unknown): boolean {

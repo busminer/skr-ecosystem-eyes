@@ -190,9 +190,17 @@ export type WitnessProof = {
   challenge: string;
 };
 
+// The wallet's own yes to the key (the server's docs/WITNESS.md, "The wallet's
+// word"): a single-use nonce for this wallet and this key, and the text the
+// wallet signs, which the app also builds itself (witness.ts claimMessage).
+// The signature and the nonce go with the verdict when it is registered.
+export type WitnessClaimOffer = { wallet: string; p256: string; nonce: string; expiresAt: string; message: string };
+export type WitnessClaim = { nonce: string; signature: string };
+
 export const fetchEyeHealth = () => call<EyeHealth>('/eye/health');
 export const fetchEyeStatus = (wallet: string) => call<EyeStatus>(`/eye/status?wallet=${encodeURIComponent(wallet)}`);
-export const registerWitness = (wallet: string, record: unknown) => call<unknown>('/eye/witness', { wallet, record });
+export const fetchWitnessClaim = (wallet: string, p256: string) => call<WitnessClaimOffer>(`/eye/witness/claim?wallet=${encodeURIComponent(wallet)}&p256=${encodeURIComponent(p256)}`);
+export const registerWitness = (wallet: string, record: unknown, claim: WitnessClaim) => call<unknown>('/eye/witness', { wallet, record, claim });
 export const fetchWitnessChallenge = (wallet: string) => call<{ challenge: string }>(`/eye/witness/challenge?wallet=${encodeURIComponent(wallet)}`);
 export const openEye = (wallet: string, witness?: WitnessProof) => call<EyeIntent>('/eye/open', witness ? { wallet, witness } : { wallet });
 export const blinkEye = (wallet: string, witness?: WitnessProof) => call<EyeIntent>('/eye/blink', witness ? { wallet, witness } : { wallet });
