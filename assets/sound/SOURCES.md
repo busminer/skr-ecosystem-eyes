@@ -7,12 +7,15 @@ Free License, which allows using them inside a product such as this app (not
 redistributing them on their own). Downloaded as WAV, mixed to mono, trimmed,
 faded and peak-normalised; no other change.
 
+Second pick, the same evening: the fairy sparkles sounded like a toy. Alex
+chose "Seeker technology" from five directions:
+
 | file | Mixkit sound | id |
 | --- | --- | --- |
-| tone1.wav … tone7.wav | Fairy magic sparkle, pitched up 0, 2, 4, 5, 7, 9, 11 semitones, one per page | 871 |
-| hum.wav | Sparkling fairy glow | 870 |
-| chime.wav | Magic notification ring (first 2.2 s) | 2344 |
-| heart.wav | Fairy glitter (first 1.2 s) | 867 |
+| tone1.wav … tone7.wav | Sci Fi confirmation, pitched up 0, 1, 2, 3, 5, 6, 7 semitones, one per page | 914 |
+| chime.wav | Cybernetic technology affirmation | 3116 |
+| heart.wav | Futuristic space intro, the 1.35 s building up to its peak | 2523 |
+| hum.wav | Futuristic space intro, 3.2 s from its first sound | 2523 |
 
 wake.wav and wink.wav are the app's own launch sounds and are unchanged.
 scripts/make-eye-sounds.py made the earlier synthesised sets and is kept only
