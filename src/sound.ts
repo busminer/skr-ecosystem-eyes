@@ -31,12 +31,22 @@ const sources = {
   // on when it is first opened, and the wink for every Blink after that.
   wake: require('../assets/sound/wake.wav'),
   wink: require('../assets/sound/wink.wav'),
-  // The walk-through of the Eye (27.09): a low fifth that swells as a page
-  // arrives, a struck glass for every step that lights, and a heartbeat, two
-  // soft knocks, just before the lids part.
+  // The walk-through of the Eye. The first set (27.09) sat at 85-110 Hz, which
+  // a phone speaker rattles instead of playing; Alex called it unpleasant. The
+  // set of 28.09 (scripts/make-eye-sounds.py) is a glass mallet from 440 Hz up,
+  // in the register of the stake sound he picked: a faint pad once when the
+  // walk-through appears, a struck glass for every step that lights, a soft
+  // swell just before the lids part, and one rising note per page.
   hum: require('../assets/sound/hum.wav'),
   chime: require('../assets/sound/chime.wav'),
   heart: require('../assets/sound/heart.wav'),
+  tone1: require('../assets/sound/tone1.wav'),
+  tone2: require('../assets/sound/tone2.wav'),
+  tone3: require('../assets/sound/tone3.wav'),
+  tone4: require('../assets/sound/tone4.wav'),
+  tone5: require('../assets/sound/tone5.wav'),
+  tone6: require('../assets/sound/tone6.wav'),
+  tone7: require('../assets/sound/tone7.wav'),
 } as const;
 
 export type Cue = keyof typeof sources;
@@ -71,8 +81,10 @@ export function cueHaptic(cue: Cue): void {
     case 'wake': case 'wink': break; // the Eye times its own buzz to the lids
     case 'hum': impact(Haptics.ImpactFeedbackStyle.Soft); break;
     case 'chime': impact(Haptics.ImpactFeedbackStyle.Light); break;
-    // One knock each, on the knocks of the sound.
-    case 'heart': impact(Haptics.ImpactFeedbackStyle.Heavy); impact(Haptics.ImpactFeedbackStyle.Medium, 210); break;
+    // The swell grows for a second; the touch grows with it.
+    case 'heart': impact(Haptics.ImpactFeedbackStyle.Soft); impact(Haptics.ImpactFeedbackStyle.Light, 480); impact(Haptics.ImpactFeedbackStyle.Medium, 920); break;
+    // A page note: the page turn already ticks.
+    case 'tone1': case 'tone2': case 'tone3': case 'tone4': case 'tone5': case 'tone6': case 'tone7': break;
   }
 }
 

@@ -221,13 +221,17 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
     setSharing(true);
     setError(null);
     try {
-      await shareEye(eye, moment, t('Share my Eye'));
+      await shareEye(eye, moment, t('Share my Eye'), {
+        eyes: status?.network?.eyes ?? null,
+        left: status?.prices?.tier?.left ?? null,
+        firstTier: status?.prices?.tier?.serial ?? null,
+      });
     } catch (caught) {
       setError(caught instanceof Error && caught.message ? caught.message : t('The Eye service did not answer'));
     } finally {
       setSharing(false);
     }
-  }, [status?.eye, moment, sharing]);
+  }, [status?.eye, status?.network?.eyes, status?.prices?.tier, moment, sharing]);
 
   if (!wallet) {
     return (
