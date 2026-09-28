@@ -13,6 +13,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { fetchEcosystemState } from './src/api';
 import { langReady, t, useLang } from './src/i18n';
 import { askNotificationPermissionOnce, configureNotifications, scheduleDailyNudge } from './src/notifications';
+import { useEyeReminderTaps } from './src/eye/reminders';
 import { hydratePrefs, prefValue, prefsReady } from './src/prefs';
 import { prepareSound } from './src/sound';
 import { walletReady } from './src/wallet';
@@ -214,6 +215,8 @@ export default function App() {
   // One screen asking for another: Me for the Top tab on its own row, Top for
   // Me with the card.
   useTabRequests(useCallback((request) => setTab(request.tab), []));
+  // A tap on an Eye reminder lands on the Eyes tab.
+  useEyeReminderTaps();
 
   if (!fontsLoaded || !langLoaded || !prefsLoaded || !walletLoaded) return <View style={styles.boot} />;
 

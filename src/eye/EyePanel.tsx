@@ -9,6 +9,7 @@ import { clock, epochMs } from './time';
 import { MoveSheet } from './MoveSheet';
 import type { MoveKind } from './move';
 import { cooldownHours, leftAtPrice, sol, usd } from './money';
+import { askForEyeRemindersOnce, syncEyeReminders } from './reminders';
 import { shareEye, type ShareMoment } from './shareEye';
 
 // Your Eye, at the top of the Eyes tab.
@@ -160,6 +161,17 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
 
   useEffect(() => { if (status) onStatus?.(status); }, [status, onStatus]);
 
+  // The phone's reminders follow the server's clock: when this wallet may
+  // blink again, and whether today still needs its Blink (src/eye/reminders.ts).
+  // Only a change in those moves them, not every poll.
+  const reminderKey = status?.eye ? `${status.eye.serial}|${status.blink?.nextAt ?? ''}|${status.blink?.ready ?? ''}|${status.blink?.doneToday ?? ''}|${status.blink?.day ?? ''}|${status.eye.streak}` : 'none';
+  const latestStatus = useRef(status);
+  latestStatus.current = status;
+  useEffect(() => {
+    if (!wallet || !latestStatus.current) return;
+    void syncEyeReminders(latestStatus.current);
+  }, [reminderKey, wallet]);
+
   // The button: before a first open, the walk-through has its say; then the
   // sheet rises and the move runs on it, step by step, where it can be seen.
   const act = useCallback(async (kind: MoveKind) => {
@@ -206,6 +218,8 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
       return { ...previous, eye: result.eye ?? previous.eye, blink: blinkNow };
     });
     setMotion(kind === 'open' ? 'opening' : 'blink');
+    // The first Eye is when reminders start to matter: ask once if they are off.
+    if (kind === 'open') void askForEyeRemindersOnce();
     setNote(kind === 'open'
       ? t('{name} is open. You are one of {count} who keep watch.', { name: result.eye.name, count: result.eye.serial.toLocaleString('en-US') })
       : t('Day {count} is kept.', { count: result.eye.streak }));

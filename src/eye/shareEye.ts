@@ -42,12 +42,14 @@ export function eyeCaption(eye: Eye, moment: ShareMoment, context: ShareContext 
   const scarce = left != null && left > 0 && firstTier != null && eye.serial <= firstTier
     ? `${count(left)} of the first ${count(firstTier)} left. How low will yours be?`
     : 'How low will yours be?';
+  // Plain words, the way a person writes a post: no arrows, no dots between
+  // facts, the phone named in full (Alex, 28.09).
   const lines = moment === 'open'
     ? [
-      `I just minted ${eye.name}, an NFT on Solana ${EYE}`,
+      `I just minted ${eye.name} on my Solana Mobile Seeker ${EYE}`,
       EYE_FINGER_ENABLED
-        ? 'Only a fingerprint on a Solana Mobile Seeker opens one: StrongBox secure element → Seed Vault → on-chain.'
-        : 'Only a Solana Mobile Seeker opens one: signed in the Seed Vault wallet, written on-chain.',
+        ? 'An NFT that only a fingerprint on a Seeker can open, with the key in its StrongBox secure element.'
+        : 'An NFT on Solana that only a Seeker can open, signed in its Seed Vault wallet.',
       '',
       'One per wallet, $SKR stakers only.',
       scarce,
@@ -55,24 +57,24 @@ export function eyeCaption(eye: Eye, moment: ShareMoment, context: ShareContext 
     : moment === 'blink'
       ? eye.streak >= 30
         ? [
-          `${eye.streak} days unbroken. ${eye.name} is a Perfect Eye ${EYE}`,
-          'Every day signed on my Solana Mobile Seeker, every Blink written into my NFT on Solana. Gold, at the centre of the Iris.',
+          `${eye.streak} days without a miss. ${eye.name} is a Perfect Eye ${EYE}`,
+          'Every day signed on my Solana Mobile Seeker, every Blink written into my NFT on Solana. It sits in gold at the centre of the Iris now.',
           '',
-          'Can you hold thirty days?',
+          'Can you hold 30 days?',
         ]
         : [
-          eye.streak <= 1 ? `Day 1 of a new streak ${EYE} ${eye.name}` : `Day ${eye.streak} unbroken ${EYE} ${eye.name}`,
-          `Blink #${count(eye.blinks)} ${EYE_FINGER_ENABLED ? 'signed with my fingerprint and ' : ''}written into my Eye NFT on Solana. One day closer to a gold Eye.`,
+          eye.streak <= 1 ? `Day 1 of a new streak ${EYE} ${eye.name}` : `Day ${eye.streak} without a miss ${EYE} ${eye.name}`,
+          `Blink ${count(eye.blinks)}, ${EYE_FINGER_ENABLED ? 'signed with my fingerprint' : 'made'} on my Solana Mobile Seeker and written into my NFT on Solana. One day closer to a gold Eye.`,
           '',
-          'Miss a day and the streak starts over. Still watching, Solana Mobile Seekers?',
+          'Miss a day and the streak starts over. Who else is still watching?',
         ]
       : [
-        `${eye.name} · day ${eye.streak} · ${count(eye.blinks)} ${eye.blinks === 1 ? 'Blink' : 'Blinks'} ${EYE}`,
-        `My Eye NFT on Solana, kept open ${EYE_FINGER_ENABLED ? 'by fingerprint ' : ''}on my Solana Mobile Seeker.${eyes != null && eyes > 1 ? ` One of ${count(eyes)} Eyes watching.` : ''}`,
+        `${eye.name}, day ${eye.streak}, ${count(eye.blinks)} ${eye.blinks === 1 ? 'Blink' : 'Blinks'} ${EYE}`,
+        `My Eye NFT lives on Solana and stays open ${EYE_FINGER_ENABLED ? 'with my fingerprint ' : ''}on my Solana Mobile Seeker.${eyes != null && eyes > 1 ? ` I am one of ${count(eyes)} Eyes watching.` : ''}`,
         '',
         'Are you in?',
       ];
-  const tags = moment === 'open' ? 'SKR Eyes by @AlexKosa1 · #SKREyes' : 'SKR Eyes by @AlexKosa1 · $SKR #SKREyes';
+  const tags = moment === 'open' ? 'SKR Eyes by @AlexKosa1 #SKREyes' : 'SKR Eyes by @AlexKosa1 $SKR #SKREyes';
   return [...lines, '', tags].join('\n');
 }
 

@@ -11,8 +11,10 @@
 #   tone1..tone7  one note per page of the walk-through, rising: A4 B4 C#5 E5 F#5 A5 B5
 #   chime         a step lights up (A5 with a quiet fifth)
 #   heart         a soft swell before the lids part (the phone knocks twice with it)
-#   wake          the Eye opens: an arpeggio of A add9 over a warm pad
-#   wink          a Blink: two quick notes, B5 then E6
+#
+# wake.wav and wink.wav are NOT made here: they are the app's launch sounds
+# (src/lab/Splash.tsx) and Alex wants the launch as it was (28.09). The Eye
+# opening and the Blink keep using those originals.
 #   hum           a faint pad, once when the walk-through first appears
 #
 # python scripts/make-eye-sounds.py  -> writes assets/sound/*.wav (44.1 kHz mono 16-bit)
@@ -122,20 +124,6 @@ t = t_axis(1.25)
 swell = pad([NOTE['E5'], NOTE['A5']], 1.25, 1.0, 0.18, level=1.0)
 swell *= np.clip(t / 1.05, 0, 1) ** 2
 finish(room(with_tail(swell, 0.4), 0.25, tail=0.22), 0.30, 'heart')
-
-# The Eye opens: A add9 rolled upwards over a warm pad.
-wake = np.zeros(int(3.4 * SR))
-place(wake, pad([NOTE['A4'], NOTE['C#5'], NOTE['E5']], 3.2, 0.35, 1.6, level=0.35), 0.0)
-for k, name in enumerate(['A4', 'C#5', 'E5', 'A5', 'B5', 'E6']):
-    f = NOTE[name]
-    place(wake, (0.9 - 0.08 * k) * mallet(f, 2.6, 0.9, 0.7, fifth=0.12 if f < 600 else 0.0), 0.02 + 0.085 * k)
-finish(room(wake, 0.3, tail=0.35), 0.50, 'wake')
-
-# A Blink: close and open, B5 then E6.
-wink = np.zeros(int(1.0 * SR))
-place(wink, 0.7 * mallet(NOTE['B5'], 0.6, 0.12, 0.6, octave=0.1), 0.0)
-place(wink, mallet(NOTE['E6'], 0.9, 0.3, 0.6, octave=0.1), 0.085)
-finish(room(wink, 0.2), 0.40, 'wink')
 
 # Once, when the walk-through appears: a faint A add9 pad.
 finish(room(pad([NOTE['A4'], NOTE['E5'], NOTE['B5'], NOTE['C#6']], 3.0, 0.8, 1.4, level=1.0), 0.25, tail=0.3), 0.26, 'hum')
