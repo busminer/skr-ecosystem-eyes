@@ -130,8 +130,10 @@ of a Seeker mint one Eye per wallet and blink it once every 8 hours.
   frozen: it cannot be sold or transferred while it is frozen. Only the
   collection owner's wallet can thaw it.
 - Minting and each Blink are paid in SOL from your wallet to the maker of SKR
-  Eyes, plus a storage deposit that stays inside the Eye on Solana and a
-  network fee set by your wallet. The amounts are shown before your wallet
+  Eyes. Minting also puts a storage deposit into the Eye's own account on
+  Solana, where it stays, and pays Metaplex's create fee (0.0015 SOL today,
+  held in the same account and collectable by Metaplex); every transaction
+  pays a network fee set by your wallet. The amounts are shown before your wallet
   asks you to approve. Payments are final and are not refunded.
 - The streak counts days in a row with at least one Blink (UTC days). A missed
   day starts it over. We may restore a day lost because of a failure on our
