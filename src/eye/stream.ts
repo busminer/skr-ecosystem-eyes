@@ -16,6 +16,13 @@ import { EYE_BASE_URL } from './config';
 // doubles to half a minute; answered with a 404, which is what the route
 // says until the server side exists, it waits a whole minute, so a phone on
 // the tab is not knocking every second on a door that is not there yet.
+//
+// Two floors under that, so a proxy that answers and then cuts every line at
+// once cannot turn a thousand phones into a knock a second each: the backoff
+// starts over only after a line has stayed up for half a minute, not on its
+// first byte; a dropped line waits at least five seconds; and no line is
+// opened sooner than five seconds after the last one was, whatever the
+// reason it ended.
 
 export type StreamMessage =
   | { event: 'blink'; data: { serial: number; ring: number } }
@@ -27,6 +34,10 @@ export type StreamMessage =
 const ROTATE_AT = 512 * 1024;
 const MAX_BACKOFF_MS = 30_000;
 const MISSING_ROUTE_MS = 60_000;
+// A line counts as healthy, and the backoff starts over, after this long.
+const HEALTHY_AFTER_MS = 30_000;
+// The least time between two openings of the line.
+const MIN_RECONNECT_MS = 5_000;
 
 const isFiniteNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 
@@ -53,6 +64,9 @@ export function openEyeStream(onMessage: (message: StreamMessage) => void): () =
   let live: XMLHttpRequest | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let failures = 0;
+  // When the line in flight was opened, and when it first answered 200.
+  let openedAt = 0;
+  let liveSince: number | null = null;
   // Parser state for the connection in flight.
   let offset = 0;
   let eventName = '';
@@ -87,10 +101,12 @@ export function openEyeStream(onMessage: (message: StreamMessage) => void): () =
     }
   };
 
+  // Never sooner than MIN_RECONNECT_MS after the last opening.
   const schedule = (delay: number) => {
     if (closed) return;
     if (timer) clearTimeout(timer);
-    timer = setTimeout(() => { timer = null; connect(); }, delay);
+    const wait = Math.max(delay, openedAt + MIN_RECONNECT_MS - Date.now());
+    timer = setTimeout(() => { timer = null; connect(); }, Math.max(0, wait));
   };
 
   const connect = () => {
@@ -98,6 +114,8 @@ export function openEyeStream(onMessage: (message: StreamMessage) => void): () =
     offset = 0;
     eventName = '';
     dataLines = [];
+    openedAt = Date.now();
+    liveSince = null;
     const request = new XMLHttpRequest();
     live = request;
     request.open('GET', `${EYE_BASE_URL}/eye/stream`, true);
@@ -108,7 +126,7 @@ export function openEyeStream(onMessage: (message: StreamMessage) => void): () =
     request.addEventListener('progress', () => {
       if (request !== live) return;
       if (request.status !== 200) return;
-      failures = 0;
+      if (liveSince == null) liveSince = Date.now();
       const text = request.responseText;
       parse(text);
       if (text.length > ROTATE_AT) {
@@ -121,13 +139,16 @@ export function openEyeStream(onMessage: (message: StreamMessage) => void): () =
       if (request !== live) return;
       live = null;
       if (closed) return;
+      // A line that stayed up long enough was a good one: what ended it is a
+      // fresh failure, not the next in a run.
+      if (liveSince != null && Date.now() - liveSince >= HEALTHY_AFTER_MS) failures = 0;
       failures += 1;
       const base = request.status === 404 || request.status === 501
         ? MISSING_ROUTE_MS
         : Math.min(MAX_BACKOFF_MS, 1_000 * 2 ** Math.min(failures - 1, 5));
       // A little jitter, so a thousand phones dropped by one restart do not
-      // all come back on the same tick.
-      schedule(base * (0.7 + Math.random() * 0.6));
+      // all come back on the same tick; and never a pause under five seconds.
+      schedule(Math.max(MIN_RECONNECT_MS, base * (0.7 + Math.random() * 0.6)));
     };
     request.addEventListener('load', ended);
     request.addEventListener('error', ended);
