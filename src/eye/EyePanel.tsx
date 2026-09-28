@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { t } from '../i18n';
+import { integer } from '../format';
 import { Button, Eyebrow, Panel } from '../lab/kit';
 import { colors, font, spacing, type } from '../theme';
-import { eyeImageUrl, fetchEyeStatus, type EyeStatus, type EyeSubmitResult } from './api';
+import { eyeImageUrl, fetchEyeStatus, type EyePrices, type EyeStatus, type EyeSubmitResult } from './api';
 import { EyePicture, type Motion } from './EyePicture';
 import { clock, epochMs } from './time';
 import { MoveSheet } from './MoveSheet';
@@ -12,42 +13,94 @@ import { cooldownHours, leftAtPrice, sol, usd } from './money';
 import { askForEyeRemindersOnce, syncEyeReminders } from './reminders';
 import { shareEye, type ShareMoment } from './shareEye';
 
-// Your Eye, at the top of the Eyes tab.
+// Your Eye, at the top of the Eyes tab: the one card on the tab.
 //
-// Three states and nothing hidden between them: no wallet, so one line; a
-// wallet with no Eye, so the price and the one button that opens it; an Eye,
-// so its picture, its streak, the clock to the next Blink and the button that
-// blinks. Each move is the same road — the finger, the wallet, the network —
-// and it is walked in the open, on a sheet that rises over the panel and
-// turns one step at a time (MoveSheet.tsx, move.ts). The panel opens the
-// door, takes what the sheet hands back, and re-reads its status afterwards
-// rather than guessing at what changed.
+// Three states and nothing hidden between them: no wallet, so what an Eye
+// costs and the one button that connects; a wallet with no Eye, so the
+// price and the one button that opens it; an Eye, so the everyday view a
+// person comes back to between Blinks. Each move is the same road, the
+// finger, the wallet, the network, and it is walked in the open, on a sheet
+// that rises over the card and turns one step at a time (MoveSheet.tsx,
+// move.ts). The card opens the door, takes what the sheet hands back, and
+// re-reads its status afterwards rather than guessing at what changed.
+//
+// The everyday view is meant to be calm and worth a look: the picture and
+// the number, the day the streak is on and how far the next ring and gold
+// are, the clock to the next Blink (the Blink button takes the clock's place
+// when the Blink is ready), who looked at your Eye today when anybody did,
+// and one nudge: share right after a Blink, or look at somebody's Eye on
+// the Iris on any other visit. After a share, a quiet line stays that says
+// so and counts down to the next Blink. Nothing here says a zero.
 //
 // The Eye moves twice and only twice: its lids part the once it is opened,
 // and shut and open again on every Blink. The picture itself does that, in
-// EyePicture; this panel only says when.
+// EyePicture; this card only says when.
 
-// One step of the witnesses count on its way up. Usually the way up is one,
-// after our own Blink; a poll that finds a crowd arrived takes at most a
-// dozen steps to get there rather than counting every head.
-const TICK_MS = 90;
-const step = (from: number, to: number) => Math.min(to, from + Math.max(1, Math.ceil((to - from) / 12)));
+// The streak a ring needs, outermost first (the service's src/iris.mjs):
+// the next of these above the day is the next ring, and thirty is gold.
+const RING_DAYS = [2, 3, 5, 7, 10, 14, 21, 30];
+const GOLD_DAY = 30;
 
-// `onStatus` hands every status this panel reads to the tab around it, so
-// the pupil under it can count down from the same window without a second
-// read. `onBlinked` fires once a Blink has gone through, for the ring on the
-// Iris that is yours. `onConnect` is the tab's connect: with no wallet the
-// panel is where the one button to get one lives.
-// `onBeforeOpen` is asked once before the first open: the tab shows the
-// Seeker walk-through there when the finger is on and this phone has not
-// been through it. A false answer ends the open quietly.
+// What an Eye costs right now, in two plain sentences: the first thousand at
+// the opening price, with the dollar hint when the server has one, how many
+// of them are left, and the price after. True to the server's numbers, and
+// only the sentences the numbers allow.
+export function offerLines(prices: EyePrices, nextSerial: number | null, eyesNow: number | null): string[] {
+  const price = sol(prices.openLamports);
+  const dollars = usd(prices.openLamports, prices.solUsd);
+  const tier = prices.tier;
+  // The live count when the network has been read, the server's word otherwise.
+  const left = tier ? (eyesNow != null ? Math.max(0, tier.serial - eyesNow) : leftAtPrice(prices, nextSerial)) : null;
+  if (!tier || left === 0) {
+    return [dollars ? t('An Eye costs {sol} SOL, about {usd}.', { sol: price, usd: dollars }) : t('An Eye costs {sol} SOL.', { sol: price })];
+  }
+  const first = dollars
+    ? t('The first {count} Eyes cost {sol} SOL, about {usd}.', { count: integer(tier.serial), sol: price, usd: dollars })
+    : t('The first {count} Eyes cost {sol} SOL.', { count: integer(tier.serial), sol: price });
+  const rest = [
+    left == null ? null : left === 1 ? t('1 left at this price.') : t('{count} left at this price.', { count: integer(left) }),
+    t('Then {sol} SOL.', { sol: sol(tier.afterLamports) }),
+  ].filter((line): line is string => Boolean(line)).join(' ');
+  return [first, rest];
+}
+
+// How far the next ring and gold are from this day of the streak.
+function milestones(day: number): string[] {
+  const next = RING_DAYS.find((floor) => floor > day) ?? null;
+  if (next == null) return [t('On the gold ring')];
+  const toGold = GOLD_DAY - day;
+  const gold = toGold === 1 ? t('1 day to gold') : t('{count} days to gold', { count: toGold });
+  if (next === GOLD_DAY) return [gold];
+  const toNext = next - day;
+  return [toNext === 1 ? t('1 day to the next ring') : t('{count} days to the next ring', { count: toNext }), gold];
+}
+
+function Offer({ lines }: { lines: string[] }) {
+  return (
+    <View style={styles.offer}>
+      <Text style={styles.offerLead}>{lines[0]}</Text>
+      {lines[1] ? <Text style={styles.offerRest}>{lines[1]}</Text> : null}
+    </View>
+  );
+}
+
+// `onStatus` hands every status this card reads to the tab around it, so
+// the tab has the same numbers without a second read. `onBlinked` fires once
+// a Blink has gone through, for the Eye on the Iris that is yours. `onConnect`
+// is the tab's connect: with no wallet the card is where the one button to
+// get one lives. `onBeforeOpen` is asked once before the first open: the tab
+// shows the Seeker walk-through there when the finger is on and this phone
+// has not been through it. A false answer ends the open quietly.
 // `onHowItWorks` brings the tab's walk-through of the Eye back up, and
 // `openRequest` is how that walk-through's last button reaches this one: each
 // new number is one press of Open my Eye. `nextSerial` is the number the next
-// Eye will carry, for the line that says how many are left at this price.
-// `onOpenCard` shows the Eye's full card; the panel itself keeps it small, so
-// the Iris and the other Eyes are on screen too.
-export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen, onHowItWorks, onOpenCard, openRequest = 0, nextSerial = null, connecting = false, connectError = null }: { wallet: string | null; onStatus?: (status: EyeStatus) => void; onBlinked?: () => void; onConnect?: () => void; onBeforeOpen?: () => Promise<boolean>; onHowItWorks?: () => void; onOpenCard?: () => void; openRequest?: number; nextSerial?: number | null; connecting?: boolean; connectError?: string | null }) {
+// Eye will carry and `eyesNow` how many are open, for the line that says how
+// many are left at this price; `prices` are the tab's own, for the same line
+// before there is a wallet. `onOpenCard` shows the Eye's full card; the card
+// itself keeps the picture small, so the Iris is on screen too. `looked` is
+// how many people looked at your Eye today, `lookNudge` whether to suggest
+// looking at somebody's, and `onLook` takes the person to the Iris.
+export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen, onHowItWorks, onOpenCard, onLook, openRequest = 0, nextSerial = null, eyesNow = null, prices: tabPrices = null, looked = 0, lookNudge = false, connecting = false, connectError = null }: { wallet: string | null; onStatus?: (status: EyeStatus) => void; onBlinked?: () => void; onConnect?: () => void; onBeforeOpen?: () => Promise<boolean>; onHowItWorks?: () => void; onOpenCard?: () => void; onLook?: () => void; openRequest?: number; nextSerial?: number | null; eyesNow?: number | null; prices?: EyePrices | null; looked?: number; lookNudge?: boolean; connecting?: boolean; connectError?: string | null }) {
   const [status, setStatus] = useState<EyeStatus | null>(null);
   const [reading, setReading] = useState(false);
   const [unreachable, setUnreachable] = useState(false);
@@ -57,22 +110,22 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
   const [gate, setGate] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   // Which moment the share button speaks for: the open or the Blink just
-  // made, or simply the Eye as it stands.
+  // made, or simply the Eye as it stands. And whether the card has been
+  // shared since the last move, for the line that stays.
   const [moment, setMoment] = useState<ShareMoment>('any');
   const [sharing, setSharing] = useState(false);
+  const [shared, setShared] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   // Which of the two motions the picture is in, if any. Null is the rule.
   const [motion, setMotion] = useState<Motion | null>(null);
-  // The witnesses number as drawn, which follows the real one up in steps.
-  const [shownWitnesses, setShownWitnesses] = useState<number | null>(null);
   // Disconnect or a change of wallet moves the ticket on, and an answer that
   // set out for the old wallet is dropped when it lands.
   const ticket = useRef(0);
   // Whether a status has ever been drawn for this wallet. A status already on
-  // screen outlives one missed poll; only an empty panel says the service is gone.
+  // screen outlives one missed poll; only an empty card says the service is gone.
   const known = useRef(false);
-  // The window edge the panel last re-read the status for, so the clock
+  // The window edge the card last re-read the status for, so the clock
   // reaching zero asks the server once and not on every tick after.
   const boundary = useRef<number | null>(null);
 
@@ -107,7 +160,8 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
     setMove(null);
     setGate(false);
     setMotion(null);
-    setShownWitnesses(null);
+    setMoment('any');
+    setShared(false);
     void read();
   }, [read]);
 
@@ -143,19 +197,6 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
     boundary.current = edge;
     void read(true);
   }, [edge, remaining, read]);
-
-  // The witnesses number ticks up to what the server says, and snaps to
-  // anything else: the first reading, or a number that went down.
-  const witnesses = blink?.witnesses ?? null;
-  useEffect(() => {
-    if (witnesses == null) { setShownWitnesses(null); return; }
-    setShownWitnesses((shown) => (shown == null || witnesses < shown ? witnesses : shown));
-  }, [witnesses]);
-  useEffect(() => {
-    if (witnesses == null || shownWitnesses == null || shownWitnesses >= witnesses) return;
-    const timer = setTimeout(() => setShownWitnesses((shown) => (shown == null ? witnesses : step(shown, witnesses))), TICK_MS);
-    return () => clearTimeout(timer);
-  }, [witnesses, shownWitnesses]);
 
   const settle = useCallback(() => setMotion(null), []);
 
@@ -224,11 +265,14 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
       ? t('{name} is open. You are one of {count} who keep watch.', { name: result.eye.name, count: result.eye.serial.toLocaleString('en-US') })
       : t('Day {count} is kept.', { count: result.eye.streak }));
     setMoment(kind);
+    setShared(false);
     if (kind === 'blink') onBlinked?.();
     void read(true);
   }, [read, onBlinked]);
 
   // The Eye's picture and a caption, out to X (or wherever the person picks).
+  // Once the share sheet has closed the card says so, and keeps saying so
+  // until the next move.
   const share = useCallback(async () => {
     const eye = status?.eye;
     if (!eye || sharing) return;
@@ -240,6 +284,9 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
         left: status?.prices?.tier?.left ?? null,
         firstTier: status?.prices?.tier?.serial ?? null,
       });
+      setShared(true);
+      setNote(null);
+      setMoment('any');
     } catch (caught) {
       setError(caught instanceof Error && caught.message ? caught.message : t('The Eye service did not answer'));
     } finally {
@@ -252,6 +299,7 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
       <Panel style={styles.panel}>
         <Eyebrow>{t('Your Eye')}</Eyebrow>
         <Text style={styles.lead}>{t('Your Eye opens once the wallet is connected.')}</Text>
+        {tabPrices ? <Offer lines={offerLines(tabPrices, nextSerial, eyesNow)} /> : null}
         {onConnect ? (
           <View style={styles.button}>
             <Button label={connecting ? t('Connecting…') : t('Connect Solana Mobile')} onPress={onConnect} disabled={connecting} />
@@ -295,16 +343,11 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
   const hours = cooldownHours(prices, blink?.cooldownSeconds);
 
   if (!eye) {
-    const left = leftAtPrice(prices, nextSerial);
-    const openUsd = usd(prices.openLamports, solUsd);
     return (
       <Panel style={styles.panel}>
         <Eyebrow>{t('Your Eye')}</Eyebrow>
         <Text style={styles.title}>{t('Open your Eye')}</Text>
-        <Text style={styles.line}>{`${t('{sol} SOL to open', { sol: sol(prices.openLamports) })}${openUsd ? ` · ${openUsd}` : ''}`}</Text>
-        {left != null && prices.tier ? (
-          <Text style={styles.micro}>{t('{count} left at this price, then {sol} SOL', { count: left.toLocaleString('en-US'), sol: sol(prices.tier.afterLamports) })}</Text>
-        ) : null}
+        <Offer lines={offerLines(prices, nextSerial, eyesNow)} />
         {gates.staked ? null : <Text style={styles.hint}>{t('Needs an active SKR position')}</Text>}
         <View style={styles.button}>
           <Button label={move === 'open' || gate ? t('Opening…') : t('Open my Eye')} onPress={() => void act('open')} disabled={!gates.staked || move != null || gate} />
@@ -317,17 +360,35 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
   }
 
   const canBlink = paced ? Boolean(blink?.ready) : Boolean(blink?.open && !blink.doneToday);
-  const blinkLabel = move === 'blink'
-    ? t('Blinking…')
-    : paced
-      ? t('Blink')
-      : blink?.doneToday
+  const time = remaining != null ? clock(Math.max(0, remaining)) : null;
+  // The line about the next Blink: the clock while it runs, the word when it
+  // is ready. The button takes its place only when there is a Blink to make.
+  const clockLine = !blink
+    ? null
+    : canBlink
+      ? (paced || !time ? t('Your Blink is ready') : t('Blink is open. It closes in {time}.', { time }))
+      : !paced && blink.doneToday
         ? t('Blinked today')
-        : blink?.open
-          ? t('Blink')
-          : t('Blink is closed');
-  const count = shownWitnesses ?? blink?.witnesses ?? 0;
+        : time
+          ? t('Next Blink in {time}', { time })
+          : null;
+  const sharedLine = !shared
+    ? null
+    : canBlink
+      ? t('Shared. Your Blink is ready.')
+      : time
+        ? t('Shared. Your next Blink opens in {time}.', { time })
+        : t('Shared.');
   const blinkUsd = usd(prices.blinkLamports, solUsd);
+  const priceLine = `${[
+    t('{sol} SOL per Blink', { sol: sol(prices.blinkLamports) }),
+    blinkUsd ? t('about {usd}', { usd: blinkUsd }) : null,
+    paced ? t('every {hours} hours', { hours }) : null,
+  ].filter(Boolean).join(', ')}.`;
+  // One nudge, never two: the share right after a move, or a look at
+  // somebody's Eye on any other visit while the person has not looked today.
+  const shareLoud = moment !== 'any';
+  const nudgeLook = !shareLoud && lookNudge && Boolean(onLook);
 
   return (
     <Panel style={styles.panel}>
@@ -340,72 +401,61 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
           <EyePicture uri={eyeImageUrl(eye.image)} label={eye.name} motion={motion} onSettled={settle} />
         </Pressable>
         <View style={styles.eyeInfo}>
-          <Text style={styles.streak}>{eye.streak === 1 ? t('1 day') : t('{count} days', { count: eye.streak })}</Text>
-          <Text style={styles.line}>
-            {eye.blinks === 1
-              ? t('Streak {streak} · 1 Blink', { streak: eye.streak })
-              : t('Streak {streak} · {blinks} Blinks', { streak: eye.streak, blinks: eye.blinks })}
-          </Text>
-          {blink && paced ? (
-            <>
-              <Text style={[styles.clock, blink.ready && styles.clockReady]}>
-                {blink.ready
-                  ? t('Your Blink is ready')
-                  : t('Next Blink in {time}', { time: remaining != null ? clock(Math.max(0, remaining)) : '—' })}
-              </Text>
-              {!blink.doneToday ? <Text style={styles.hint}>{t('Blink today to keep the streak')}</Text> : null}
-              <Text style={styles.lead}>{t('{count} blinked today', { count })}</Text>
-            </>
-          ) : blink ? (
-            <>
-              <Text style={styles.clock}>
-                {blink.open
-                  ? t('Blink is open · closes in {time}', { time: remaining != null ? clock(remaining) : '—' })
-                  : t('Next Blink in {time}', { time: remaining != null ? clock(remaining) : '—' })}
-              </Text>
-              <Text style={styles.lead}>{t('{count} blinked today', { count })}</Text>
-            </>
-          ) : null}
+          <Text style={styles.streak}>{t('Day {count}', { count: eye.streak })}</Text>
+          <View style={styles.facts}>
+            <Text style={styles.fact}>{eye.blinks === 1 ? t('1 Blink so far') : t('{count} Blinks so far', { count: integer(eye.blinks) })}</Text>
+            {milestones(eye.streak).map((line) => <Text key={line} style={styles.fact}>{line}</Text>)}
+          </View>
+          {clockLine ? <Text style={[styles.clock, canBlink && styles.clockReady]}>{clockLine}</Text> : null}
+          {blink && paced && !blink.doneToday && !canBlink ? <Text style={styles.hint}>{t('Blink today to keep the streak')}</Text> : null}
+          {looked > 0 ? <Text style={styles.looked}>{looked === 1 ? t('1 person looked at your Eye today') : t('{count} people looked at your Eye today', { count: looked })}</Text> : null}
         </View>
       </View>
-      <View style={styles.button}>
-        <Button label={blinkLabel} onPress={() => void act('blink')} disabled={!canBlink || move != null} tone={colors.metal} />
-      </View>
-      <Text style={styles.micro}>
-        {[
-          t('{sol} SOL per Blink', { sol: sol(prices.blinkLamports) }) + (blinkUsd ? ` · ${blinkUsd}` : ''),
-          paced ? t('every {hours} hours', { hours }) : null,
-        ].filter(Boolean).join(' · ')}
-      </Text>
+      {canBlink ? (
+        <View style={styles.button}>
+          <Button label={move === 'blink' ? t('Blinking…') : t('Blink')} onPress={() => void act('blink')} disabled={move != null} tone={colors.metal} />
+        </View>
+      ) : null}
       {feedback}
-      <View style={moment === 'any' ? null : styles.shareLoud}>
-        <Button label={sharing ? t('Opening the share sheet…') : t('Share my Eye on X')} onPress={() => void share()} disabled={sharing} ghost={moment === 'any'} />
+      {sharedLine ? <Text style={styles.shared}>{sharedLine}</Text> : null}
+      <View style={shareLoud ? styles.shareLoud : null}>
+        <Button label={sharing ? t('Opening the share sheet…') : t('Share my Eye on X')} onPress={() => void share()} disabled={sharing} ghost={!shareLoud} />
       </View>
+      {nudgeLook ? <Button label={t('Look at someone\'s Eye on the Iris')} onPress={onLook} quiet /> : null}
+      <Text style={styles.micro}>{priceLine}</Text>
       {sheet}
     </Panel>
   );
 }
 
 const styles = StyleSheet.create({
-  panel: { padding: spacing.md, gap: spacing.sm },
+  // The card's inner padding is the page gutter, so what is inside it lines
+  // up one step in from the sections under the Iris.
+  panel: { padding: spacing.lg, gap: spacing.sm },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, minHeight: 20 },
   serial: { color: colors.metal, fontFamily: font.monoBold, fontSize: 12, letterSpacing: 0.8, flexShrink: 1 },
   title: { color: colors.text, fontFamily: font.bold, fontSize: 21, lineHeight: 26, letterSpacing: -0.3 },
-  line: { color: colors.text, fontFamily: font.medium, fontSize: 14.5, lineHeight: 20, fontVariant: ['tabular-nums'] },
   clock: { color: colors.text, fontFamily: font.semibold, fontSize: 16, lineHeight: 22, fontVariant: ['tabular-nums'] },
   clockReady: { color: colors.positive },
   // The Eye small on the left, what it has done and what is next on the right.
   eyeRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
-  thumb: { width: 124 },
-  eyeInfo: { flex: 1, gap: 3 },
+  thumb: { width: 112 },
+  eyeInfo: { flex: 1, gap: 4 },
   streak: { color: colors.metal, fontFamily: font.bold, fontSize: 26, lineHeight: 31, letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
-  event: { color: colors.muted, fontFamily: font.regular, ...type.small },
+  facts: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.md, rowGap: 2 },
+  fact: { color: colors.muted, fontFamily: font.medium, ...type.small, fontVariant: ['tabular-nums'] },
+  looked: { color: colors.text, fontFamily: font.medium, ...type.small },
   lead: { color: colors.muted, fontFamily: font.regular, fontSize: 14, lineHeight: 20, fontVariant: ['tabular-nums'] },
+  // What an Eye costs, for anyone without one: one gold line and a plain one.
+  offer: { gap: 2 },
+  offerLead: { color: colors.metal, fontFamily: font.semibold, fontSize: 15, lineHeight: 21, fontVariant: ['tabular-nums'] },
+  offerRest: { color: colors.muted, fontFamily: font.regular, ...type.small, fontVariant: ['tabular-nums'] },
   micro: { color: colors.faint, fontFamily: font.regular, fontSize: 13, lineHeight: 18 },
   hint: { color: colors.pending, fontFamily: font.medium, fontSize: 14, lineHeight: 20 },
   button: { marginTop: spacing.xs },
   actions: { flexDirection: 'row' },
   note: { color: colors.positive, fontFamily: font.semibold, fontSize: 15, lineHeight: 21 },
+  shared: { color: colors.positive, fontFamily: font.medium, fontSize: 14, lineHeight: 20, fontVariant: ['tabular-nums'] },
   error: { color: colors.negative, fontFamily: font.medium, fontSize: 14, lineHeight: 20 },
   // Right after an open or a Blink the share button stands out.
   shareLoud: { marginTop: spacing.xs },

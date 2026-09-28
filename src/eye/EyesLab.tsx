@@ -10,25 +10,31 @@ import { isWalletCancel, connectReadOnlyWallet } from '../mwa';
 import { rememberConnectedWallet, useConnectedWallet } from '../wallet';
 import { colors, font, radius, spacing, type } from '../theme';
 import { Button, Eyebrow, Meter } from '../lab/kit';
-import { EyeApiError, fetchEyeHealth, fetchEyeNetwork, sendGaze, type EyeHealth, type EyeNetwork, type EyePrices, type EyeStatus, type NetworkEye } from './api';
+import { EyeApiError, fetchEyeHealth, fetchEyeNetwork, sendGaze, type EyeHealth, type EyeNetwork, type EyeStatus, type NetworkEye } from './api';
 import { EYE_BASE_URL, EYE_FINGER_ENABLED } from './config';
 import { EyePanel } from './EyePanel';
 import { EyeOnboarding } from './EyeOnboarding';
 import { PortalEye } from './PortalEye';
 import { WitnessWalkthrough, getWitnessState } from './WitnessWalkthrough';
 import { IrisScene, type IrisHandle, type IrisView } from './IrisScene';
-import { leftAtPrice, sol, usd } from './money';
 import { openEyeStream } from './stream';
 import { localHourOf, pulseInPhoneTime } from './time';
 
 // The Eyes tab: your Eye, then the network as one radar.
 //
-// On top, your own Eye (EyePanel): the card to open one, or the picture, the
-// streak and the Blink, and with no wallet the one button that connects.
-// Under the headline, for anyone without an Eye, what one costs right now:
-// the first thousand at the opening price and how many of them are left,
-// from the server's own numbers (the status when there is a wallet, the
-// health call when there is not).
+// One width for everything. The page has a gutter of spacing.lg on both
+// sides and a ceiling of MAX_W on wide screens. The one card on the tab
+// (EyePanel, on top) spans the gutter and pads its inside by the same
+// gutter; the sections under the Iris sit in the gutter with no box of
+// their own; the strip of small cards scrolls edge to edge but its cards
+// start at the gutter; the sheet pads by the gutter. Only the Iris field is
+// full bleed, edge to edge, and it is as wide as the page.
+//
+// On top, your own Eye (EyePanel): what an Eye costs and the button that
+// connects, or the price and the button that opens one, or the everyday
+// card between Blinks (the day, the next ring, the clock, who looked, one
+// nudge). The prices for someone without a wallet come from the service's
+// health call, read once here and handed to the card.
 // Then the Iris: the radar's field from the Top tab with the Eye at its
 // centre. Every open Eye is a small eye on one of nine rings, closer to the
 // centre the longer its streak, lit if it blinked today, and the beam that
@@ -37,13 +43,14 @@ import { localHourOf, pulseInPhoneTime } from './time';
 // the Eye at the centre moves and grows with the field (the scene reports
 // its view, the tab moves the overlay on the UI thread). A touch that
 // starts on the field stays with it; off the field the tab scrolls.
-// Under it, in this order: the Eyes themselves as a strip of small
-// cards, who looked at your Eye today, the day's pulse hour by hour, the
-// ladder of the nine rings as nine small columns, the longest streaks, the
-// Eyes that opened today, and the Guardian circles when the server says
-// there is more than one to compare. A tap on an Eye, on the Iris or on a
-// card, opens its sheet: the picture, the facts, and Look at this Eye, which
-// tells its owner that somebody saw them (five a day).
+// Under it, in this order, and each only when it has something to say: the
+// Eyes themselves as a strip of small cards, who looked at your Eye today,
+// the day's pulse hour by hour, the ladder of the nine rings as nine small
+// columns, the longest streaks, the Eyes that opened today, and the Guardian
+// circles when the server says there is more than one to compare. A tap on
+// an Eye, on the Iris or on a card, opens its sheet: the picture, the facts,
+// and Look at this Eye, which tells its owner that somebody saw them (five a
+// day). Nothing under the Iris shows a zero or an empty state.
 //
 // The wallet is the one Me keeps too, from the shared store: whichever tab
 // connects, the other one knows.
@@ -66,6 +73,10 @@ const REFRESH_MS = 60_000;
 // Set once the walk-through of the Eye has been seen or skipped.
 const INTRO_KEY = 'skr-eyes:eye-intro:v1';
 const RINGS = 9;
+// The one gutter every block on the tab keeps, and the page's width on a
+// screen wider than a phone.
+const GUTTER = spacing.lg;
+const MAX_W = 560;
 // The tallest bar of the day's pulse, and of the ladder.
 const PULSE_H = 34;
 const LADDER_H = 30;
@@ -91,29 +102,6 @@ function PupilEye({ size, blink }: { size: number; blink: number }) {
     return () => clearInterval(timer);
   }, []);
   return <PortalEye size={size} open blink={blink + idle} />;
-}
-
-// What an Eye costs right now, in two plain sentences: the first thousand at
-// the opening price, with the dollar hint when the server has one, how many
-// of them are left, and the price after. True to the server's numbers, and
-// only the sentences the numbers allow.
-function offerLines(prices: EyePrices, nextSerial: number | null, eyesNow: number | null): string[] {
-  const price = sol(prices.openLamports);
-  const dollars = usd(prices.openLamports, prices.solUsd);
-  const tier = prices.tier;
-  // The live count when the network has been read, the server's word otherwise.
-  const left = tier ? (eyesNow != null ? Math.max(0, tier.serial - eyesNow) : leftAtPrice(prices, nextSerial)) : null;
-  if (!tier || left === 0) {
-    return [dollars ? t('An Eye costs {sol} SOL, about {usd}.', { sol: price, usd: dollars }) : t('An Eye costs {sol} SOL.', { sol: price })];
-  }
-  const first = dollars
-    ? t('The first {count} Eyes cost {sol} SOL, about {usd}.', { count: integer(tier.serial), sol: price, usd: dollars })
-    : t('The first {count} Eyes cost {sol} SOL.', { count: integer(tier.serial), sol: price });
-  const rest = [
-    left == null ? null : left === 1 ? t('1 left at this price.') : t('{count} left at this price.', { count: integer(left) }),
-    t('Then {sol} SOL.', { sol: sol(tier.afterLamports) }),
-  ].filter((line): line is string => Boolean(line)).join(' ');
-  return [first, rest];
 }
 
 // A few short facts in a row. They wrap when the font is large, so no fact
@@ -239,6 +227,10 @@ export function EyesLab() {
   // Every blink heard, yours included: the pupil blinks with it.
   const [pupilBlink, setPupilBlink] = useState(0);
   const scene = useRef<IrisHandle>(null);
+  // The list and where the Iris sits in it, for the card's nudge to look at
+  // somebody's Eye: one press and the field is on screen.
+  const list = useRef<ScrollView>(null);
+  const sceneTop = useRef(0);
   const ticket = useRef(0);
   const reading = useRef(false);
   const wanted = useRef(false);
@@ -267,6 +259,10 @@ export function EyesLab() {
     panY.value = view.panY;
   }, [zoom, panX, panY]);
   const pupilStyle = useAnimatedStyle(() => ({ transform: [{ translateX: panX.value }, { translateY: panY.value }, { scale: zoom.value }] }));
+  const scrollToIris = useCallback(() => {
+    void Haptics.selectionAsync();
+    list.current?.scrollTo({ y: Math.max(0, sceneTop.current - spacing.md), animated: true });
+  }, []);
 
   const connect = useCallback(async () => {
     if (connecting) return;
@@ -444,7 +440,7 @@ export function EyesLab() {
     }
   }, [network]);
 
-  const size = width;
+  const size = Math.min(width, MAX_W);
   // The portal's glowing ring sits just inside the innermost ring.
   const pupil = Math.round(size * 0.39);
   const watching = network?.totals.watching ?? network?.totals.eyes ?? status?.network?.watching ?? status?.network?.eyes ?? null;
@@ -479,19 +475,36 @@ export function EyesLab() {
       .slice(0, STRIP_MAX);
   }, [network]);
   const myEye = network?.me ? eyeOf(network.me.serial) : null;
-  // The offer, for anyone who has no Eye yet: the wallet's status knows the
-  // prices, and without a wallet the health call does.
-  const prices = status?.prices ?? health?.prices ?? null;
-  const offer = !status?.eye && prices ? offerLines(prices, nextSerial, network?.totals.eyes ?? status?.network.eyes ?? null) : null;
+  // The nudge to look at somebody's Eye: for a person with an Eye who has
+  // not looked at anyone today, while there is somebody to look at.
+  const lookNudge = Boolean(network?.me) && (network?.gazes.sentToday ?? 0) === 0 && (network?.eyes.length ?? 0) > 1;
 
   return (
     <View style={styles.screen}>
       <ScrollView
+        ref={list}
         style={styles.screen}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void read(true)} tintColor={colors.accent} colors={[colors.accent]} progressBackgroundColor={colors.panel} />}
       >
-        <EyePanel wallet={wallet} onStatus={onStatus} onBlinked={onBlinked} onConnect={() => void connect()} onBeforeOpen={beforeOpen} onHowItWorks={showIntro} onOpenCard={myEye ? () => setPicked(myEye) : undefined} openRequest={openRequest} nextSerial={nextSerial} connecting={connecting} connectError={connectError} />
+        <EyePanel
+          wallet={wallet}
+          onStatus={onStatus}
+          onBlinked={onBlinked}
+          onConnect={() => void connect()}
+          onBeforeOpen={beforeOpen}
+          onHowItWorks={showIntro}
+          onOpenCard={myEye ? () => setPicked(myEye) : undefined}
+          onLook={scrollToIris}
+          openRequest={openRequest}
+          nextSerial={nextSerial}
+          eyesNow={network?.totals.eyes ?? status?.network.eyes ?? null}
+          prices={health?.prices ?? null}
+          looked={received.length}
+          lookNudge={lookNudge}
+          connecting={connecting}
+          connectError={connectError}
+        />
 
         <View style={styles.head}>
           <Eyebrow>{t('The Iris')}</Eyebrow>
@@ -509,15 +522,9 @@ export function EyesLab() {
               ]}
             />
           ) : null}
-          {offer ? (
-            <View style={styles.offer}>
-              <Text style={styles.offerLead}>{offer[0]}</Text>
-              {offer[1] ? <Text style={styles.offerRest}>{offer[1]}</Text> : null}
-            </View>
-          ) : null}
         </View>
 
-        <View style={styles.sceneBlock}>
+        <View style={styles.sceneBlock} onLayout={(event) => { sceneTop.current = event.nativeEvent.layout.y; }}>
           <View style={[styles.sceneWrap, { height: size }]}>
             <IrisScene ref={scene} size={size} onTap={onTap} onView={onView} />
             <Animated.View pointerEvents="none" style={[styles.pupilWrap, { top: (size - pupil) / 2, left: (size - pupil) / 2 }, pupilStyle]}>
@@ -545,35 +552,27 @@ export function EyesLab() {
           </View>
         ) : null}
 
-        {network?.me ? (
+        {network?.me && received.length > 0 ? (
           <View style={styles.section}>
             <Eyebrow>{t('Looks at your Eye')}</Eyebrow>
             <Text style={styles.looksTitle}>
-              {received.length === 0
-                ? t('Nobody has looked at your Eye yet today')
-                : received.length === 1 ? t('1 person looked at your Eye today') : t('{count} people looked at your Eye today', { count: received.length })}
+              {received.length === 1 ? t('1 person looked at your Eye today') : t('{count} people looked at your Eye today', { count: received.length })}
             </Text>
-            {received.length > 0 ? (
-              <View style={styles.chips}>
-                {received.map((look) => {
-                  const eye = eyeOf(look.serial);
-                  return (
-                    <Pressable key={look.serial} disabled={!eye} onPress={() => { if (eye) pick(eye); }} style={({ pressed }) => [styles.chip, pressed && styles.pressed]} accessibilityRole="button">
-                      <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.chipText}>{look.name}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ) : null}
-            <Text style={styles.sectionLine}>
-              {network.gazes
-                ? t('Open any Eye and tap Look at this Eye. Its owner will see it. You have {left} of {limit} looks left today.', { left: Math.max(0, network.gazes.limit - network.gazes.sentToday), limit: network.gazes.limit })
-                : t('Open any Eye and tap Look at this Eye. Its owner will see it.')}
-            </Text>
+            <View style={styles.chips}>
+              {received.map((look) => {
+                const eye = eyeOf(look.serial);
+                return (
+                  <Pressable key={look.serial} disabled={!eye} onPress={() => { if (eye) pick(eye); }} style={({ pressed }) => [styles.chip, pressed && styles.pressed]} accessibilityRole="button">
+                    <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.chipText}>{look.name}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={styles.sectionLine}>{t('Tap a name to look back. Its owner will see it.')}</Text>
           </View>
         ) : null}
 
-        {pulse ? (
+        {pulse && pulsePeak > 0 ? (
           <View style={styles.section}>
             <Eyebrow>{t('Pulse of the day')}</Eyebrow>
             <View style={styles.pulse}>
@@ -588,18 +587,16 @@ export function EyesLab() {
                 <Text key={hour} maxFontSizeMultiplier={1.3} style={styles.pulseTick}>{String(hour).padStart(2, '0')}</Text>
               ))}
             </View>
-            {pulsePeak > 0 ? (
-              <Text style={styles.sectionLine}>
-                {[
-                  t('Most Blinks came at {hour}.', { hour: hh(peakHour) }),
-                  myHour != null ? t('Yours came at {hour}.', { hour: hh(myHour) }) : null,
-                ].filter(Boolean).join(' ')}
-              </Text>
-            ) : null}
+            <Text style={styles.sectionLine}>
+              {[
+                t('Most Blinks came at {hour}.', { hour: hh(peakHour) }),
+                myHour != null ? t('Yours came at {hour}.', { hour: hh(myHour) }) : null,
+              ].filter(Boolean).join(' ')}
+            </Text>
           </View>
         ) : null}
 
-        {ladder ? (
+        {ladder && ladderPeak > 0 ? (
           <View style={styles.section}>
             <Eyebrow>{t('The ladder')}</Eyebrow>
             <View style={styles.ladder}>
@@ -721,29 +718,24 @@ const styles = StyleSheet.create({
   walkthrough: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: colors.bg, zIndex: 30 },
   // The tab bar under this list carries the navigation bar's inset itself,
   // so the list only needs room to breathe at its end.
-  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.lg },
+  content: { width: '100%', maxWidth: MAX_W, alignSelf: 'center', paddingHorizontal: GUTTER, paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.lg },
   pressed: { opacity: 0.7 },
   head: { gap: spacing.xs },
   title: { color: colors.text, fontFamily: font.bold, fontSize: 26, lineHeight: 32, letterSpacing: -0.8, fontVariant: ['tabular-nums'] },
   facts: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.lg, rowGap: 2 },
   factsCenter: { justifyContent: 'center' },
   fact: { color: colors.muted, fontFamily: font.medium, ...type.small, fontVariant: ['tabular-nums'] },
-  // What an Eye costs, for anyone without one: the one gold line on the tab
-  // before the Iris, and the plain line after it.
-  offer: { marginTop: spacing.xs, gap: 2 },
-  offerLead: { color: colors.metal, fontFamily: font.semibold, fontSize: 15, lineHeight: 21, fontVariant: ['tabular-nums'] },
-  offerRest: { color: colors.muted, fontFamily: font.regular, ...type.small, fontVariant: ['tabular-nums'] },
-  // The field bleeds to both edges of the screen, as the radar does.
-  sceneBlock: { gap: spacing.sm, marginHorizontal: -spacing.lg },
+  // The field bleeds to both edges of the page, as the radar does.
+  sceneBlock: { gap: spacing.sm, marginHorizontal: -GUTTER },
   sceneWrap: { backgroundColor: colors.bg },
   pupilWrap: { position: 'absolute' },
-  sceneHint: { color: colors.faint, fontFamily: font.regular, ...type.micro, textAlign: 'center', paddingHorizontal: spacing.xl },
+  sceneHint: { color: colors.faint, fontFamily: font.regular, ...type.micro, textAlign: 'center', paddingHorizontal: GUTTER + spacing.sm },
   section: { gap: spacing.sm },
   sectionLine: { color: colors.muted, fontFamily: font.regular, ...type.small, fontVariant: ['tabular-nums'] },
   // The Eyes as small cards in a row that scrolls sideways: the picture, the
   // number, one fact.
-  stripScroll: { marginHorizontal: -spacing.lg },
-  strip: { paddingHorizontal: spacing.lg, gap: spacing.sm },
+  stripScroll: { marginHorizontal: -GUTTER },
+  strip: { paddingHorizontal: GUTTER, gap: spacing.sm },
   card: { width: CARD, gap: 2 },
   cardImage: { width: CARD, height: CARD, borderRadius: radius.inner, backgroundColor: colors.inset },
   cardMine: { borderWidth: 1.5, borderColor: colors.metal },
@@ -776,7 +768,7 @@ const styles = StyleSheet.create({
   circles: { gap: spacing.md },
   circle: { gap: spacing.sm },
   backdrop: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(2, 4, 7, 0.72)' },
-  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.panel, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, borderWidth: 1, borderColor: '#111B24', paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.panel, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, borderWidth: 1, borderColor: '#111B24', paddingHorizontal: GUTTER, paddingTop: spacing.sm },
   sheetGrip: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: colors.lineStrong, marginBottom: spacing.sm },
   sheetBody: { gap: spacing.sm },
   sheetHead: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
