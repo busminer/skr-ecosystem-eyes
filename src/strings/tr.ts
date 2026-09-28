@@ -300,6 +300,7 @@ export const tr: Record<string, string> = {
   'Eyes': 'Gözler',
   'The Iris': 'İris',
   'The Iris is waking up': 'İris uyanıyor',
+  'The Iris is waiting for its first Eye': 'İris ilk Gözünü bekliyor',
   '1 Eye is watching': '1 Göz izliyor',
   '{count} Eyes are watching': '{count} Göz izliyor',
   '{count} blinked today': 'Bugün {count} kırptı',

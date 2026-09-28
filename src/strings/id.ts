@@ -295,6 +295,7 @@ export const id: Record<string, string> = {
   'Eyes': 'Mata',
   'The Iris': 'Iris',
   'The Iris is waking up': 'Iris sedang bangun',
+  'The Iris is waiting for its first Eye': 'Iris menunggu Mata pertamanya',
   '1 Eye is watching': '1 Mata sedang mengawasi',
   '{count} Eyes are watching': '{count} Mata sedang mengawasi',
   '{count} blinked today': '{count} berkedip hari ini',

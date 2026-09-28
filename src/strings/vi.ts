@@ -299,6 +299,7 @@ export const vi: Record<string, string> = {
   'Eyes': 'Mắt',
   'The Iris': 'Mống mắt',
   'The Iris is waking up': 'Mống mắt đang thức dậy',
+  'The Iris is waiting for its first Eye': 'Mống mắt đang chờ Mắt đầu tiên',
   '1 Eye is watching': '1 Mắt đang dõi theo',
   '{count} Eyes are watching': '{count} Mắt đang dõi theo',
   '{count} blinked today': 'Hôm nay {count} đã chớp',

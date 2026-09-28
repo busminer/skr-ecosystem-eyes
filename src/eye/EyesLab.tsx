@@ -511,15 +511,17 @@ export function EyesLab() {
           <Text style={styles.title}>
             {watching == null
               ? t('The Iris is waking up')
-              : watching === 1 ? t('1 Eye is watching') : t('{count} Eyes are watching', { count: integer(watching) })}
+              : watching === 0 ? t('The Iris is waiting for its first Eye')
+                : watching === 1 ? t('1 Eye is watching') : t('{count} Eyes are watching', { count: integer(watching) })}
           </Text>
           {network && blinkedToday != null ? (
             <Facts
+              // A zero is never shown: at launch it reads as an empty room.
               items={[
-                t('{count} blinked today', { count: integer(blinkedToday) }),
-                network.totals.perfect === 1 ? t('1 Perfect Eye') : t('{count} Perfect Eyes', { count: integer(network.totals.perfect) }),
-                t('{count} new today', { count: integer(network.totals.newToday) }),
-              ]}
+                blinkedToday > 0 ? t('{count} blinked today', { count: integer(blinkedToday) }) : null,
+                network.totals.perfect > 0 ? (network.totals.perfect === 1 ? t('1 Perfect Eye') : t('{count} Perfect Eyes', { count: integer(network.totals.perfect) })) : null,
+                network.totals.newToday > 0 ? t('{count} new today', { count: integer(network.totals.newToday) }) : null,
+              ].filter((item): item is string => item != null)}
             />
           ) : null}
         </View>

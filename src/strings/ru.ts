@@ -300,6 +300,7 @@ export const ru: Record<string, string> = {
   'Eyes': 'Глаза',
   'The Iris': 'Ирис',
   'The Iris is waking up': 'Ирис просыпается',
+  'The Iris is waiting for its first Eye': 'Ирис ждёт свой первый глаз',
   '1 Eye is watching': 'Смотрит 1 глаз',
   '{count} Eyes are watching': 'Глаз смотрит: {count}',
   '{count} blinked today': 'сегодня моргнули: {count}',

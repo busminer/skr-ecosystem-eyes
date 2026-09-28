@@ -304,6 +304,7 @@ export const de: Record<string, string> = {
   'Eyes': 'Augen',
   'The Iris': 'Die Iris',
   'The Iris is waking up': 'Die Iris wacht auf',
+  'The Iris is waiting for its first Eye': 'Die Iris wartet auf ihr erstes Auge',
   '1 Eye is watching': '1 Auge wacht',
   '{count} Eyes are watching': '{count} Augen wachen',
   '{count} blinked today': '{count} haben heute geblinkt',

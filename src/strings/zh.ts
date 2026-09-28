@@ -299,6 +299,7 @@ export const zh: Record<string, string> = {
   'Eyes': '眼',
   'The Iris': '虹膜',
   'The Iris is waking up': '虹膜正在苏醒',
+  'The Iris is waiting for its first Eye': '虹膜在等待第一只眼',
   '1 Eye is watching': '1 只眼在看',
   '{count} Eyes are watching': '{count} 只眼在看',
   '{count} blinked today': '今天 {count} 已眨',

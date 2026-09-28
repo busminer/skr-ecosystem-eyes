@@ -296,6 +296,7 @@ export const ko: Record<string, string> = {
   'Eyes': '눈',
   'The Iris': '홍채',
   'The Iris is waking up': '홍채가 깨어나는 중입니다',
+  'The Iris is waiting for its first Eye': '홍채가 첫 번째 눈을 기다리고 있습니다',
   '1 Eye is watching': '눈 1개가 지켜보고 있습니다',
   '{count} Eyes are watching': '눈 {count}개가 지켜보고 있습니다',
   '{count} blinked today': '오늘 {count} 깜빡임',

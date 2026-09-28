@@ -295,6 +295,7 @@ export const ja: Record<string, string> = {
   'Eyes': '目',
   'The Iris': '虹彩',
   'The Iris is waking up': '虹彩が目覚めつつあります',
+  'The Iris is waiting for its first Eye': '虹彩は最初の目を待っています',
   '1 Eye is watching': '1 つの目が見ています',
   '{count} Eyes are watching': '{count} の目が見ています',
   '{count} blinked today': '今日 {count} がまばたき',

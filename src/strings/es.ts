@@ -299,6 +299,7 @@ export const es: Record<string, string> = {
   'Eyes': 'Ojos',
   'The Iris': 'El Iris',
   'The Iris is waking up': 'El Iris está despertando',
+  'The Iris is waiting for its first Eye': 'El Iris espera su primer Ojo',
   '1 Eye is watching': '1 Ojo está mirando',
   '{count} Eyes are watching': '{count} Ojos están mirando',
   '{count} blinked today': '{count} parpadearon hoy',
