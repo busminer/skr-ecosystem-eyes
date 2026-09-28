@@ -19,6 +19,11 @@ import type { EyeStatus } from './api';
 //   2. three hours before the UTC day ends, if today has no Blink yet and one
 //      is possible by then: the streak ends tonight.
 //
+// The words change with the moment and turn with every Blink (Alex, 28.09:
+// the app should talk to the person, not repeat one sentence): day 2 after the
+// mint, the new ring on day 7, gold on day 30, the next ring or gold coming
+// close, an extra Blink on a day already kept, and the streak at stake tonight.
+//
 // Nothing leaves the phone. The alarms are exact (USE_EXACT_ALARM in the
 // manifest), so "in eight hours" means eight hours, not whenever Android
 // batches its wake-ups. A tap opens the Eyes tab.
@@ -27,6 +32,8 @@ const CHANNEL_ID = 'eye-blink';
 const IDS_KEY = 'skr-eyes:eye:reminder-ids';
 const ASKED_KEY = 'skr-eyes:eye:reminder-asked';
 const STREAK_WARNING_MS = 3 * 3_600_000;
+// The Iris's rings by streak (src/iris.mjs in the service), for "days to the next ring".
+const RING_DAYS = [1, 2, 3, 5, 7, 10, 14, 21, 30];
 
 let channelReady: Promise<void> | null = null;
 
@@ -68,12 +75,44 @@ export function remindersFor(status: EyeStatus, now = Date.now()): Array<{ at: n
   const plans: Array<{ at: number; title: string; body: string }> = [];
   const nextAt = asTime(blink.nextAt) ?? (blink.ready ? now : null);
 
+  const streak = Math.max(0, eye.streak ?? 0);
+  const blinks = Math.max(0, eye.blinks ?? 0);
+  // Which one of several lines: turns with every Blink, so the phone does not
+  // say the same sentence twice in a row.
+  const pick = <T,>(lines: T[]): T => lines[(blinks + streak) % lines.length] as T;
+
   if (nextAt != null && nextAt > now + 30_000) {
-    plans.push({
-      at: nextAt,
-      title: t('{name} can blink again', { name: eye.name }),
-      body: t('Eight hours have passed since your last Blink.'),
-    });
+    // Will the Blink this reminder asks for keep a new day, or is today
+    // already kept? A new UTC day at nextAt means the streak grows by one.
+    const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+    const newDay = eye.lastBlinkDay ? utcDay(nextAt) !== eye.lastBlinkDay : true;
+    const day = streak + 1;
+    const toRing = (RING_DAYS.find((d) => d > streak) ?? 30) - streak;
+    const toGold = Math.max(0, 30 - streak);
+    let line: { title: string; body: string };
+    if (!newDay) {
+      line = pick([
+        { title: t('{name} can blink again', { name: eye.name }), body: t('Today is already kept. One more Blink adds to your count.') },
+        { title: t('Another Blink is ready'), body: t('Blink number {count} for {name}. Every one is written on Solana.', { count: blinks + 1, name: eye.name }) },
+      ]);
+    } else if (day === 30) {
+      line = { title: t('Today your Eye turns gold'), body: t('One Blink and {name} becomes a Perfect Eye.', { name: eye.name }) };
+    } else if (day === 7) {
+      line = { title: t('Day 7 is a new ring'), body: t('Blink today and {name} steps inward on the Iris.', { name: eye.name }) };
+    } else if (day === 2) {
+      line = { title: t('Your Eye remembers you'), body: t('Day 2 starts with one touch. Keep {name} open.', { name: eye.name }) };
+    } else {
+      const lines = [
+        { title: t('{name} is open again', { name: eye.name }), body: t('Day {count} is waiting for one touch.', { count: day }) },
+        { title: t('Your Eye is looking for you'), body: t('Blink now and day {count} is kept.', { count: day }) },
+        { title: t('Blink time'), body: t('{streak} days in a row so far. Make it {count}.', { streak, count: day }) },
+        { title: t('Seekers are blinking right now'), body: t('Join them. Day {count} starts with you.', { count: day }) },
+      ];
+      if (toRing > 0 && toRing <= 2) lines.push({ title: toRing === 1 ? t('1 day to the next ring') : t('{count} days to the next ring', { count: toRing }), body: t('One Blink today moves {name} closer to the centre.', { name: eye.name }) });
+      if (toGold > 0 && toGold <= 7) lines.push({ title: toGold === 1 ? t('1 day to gold') : t('{count} days to gold', { count: toGold }), body: t('Keep going. Day 30 turns {name} gold on the Iris.', { name: eye.name }) });
+      line = pick(lines);
+    }
+    plans.push({ at: nextAt, ...line });
   }
 
   // The end of the current UTC day, and whether it still needs its Blink.
@@ -82,14 +121,14 @@ export function remindersFor(status: EyeStatus, now = Date.now()): Array<{ at: n
   const blinkPossibleBy = nextAt ?? now;
   if (!blink.doneToday && warnAt > now + 30_000 && blinkPossibleBy <= dayEnd - 10 * 60_000) {
     const at = Math.max(warnAt, blinkPossibleBy);
-    const streak = Math.max(0, eye.streak ?? 0);
-    plans.push({
-      at,
-      title: t('Your streak ends tonight'),
-      body: streak > 1
-        ? t('{name} has not blinked today. One Blink keeps your {count} days going.', { name: eye.name, count: streak })
-        : t('{name} has not blinked today. One Blink keeps your streak going.', { name: eye.name }),
-    });
+    const line = streak > 1
+      ? pick([
+        { title: t('Your streak ends tonight'), body: t('{name} has not blinked today. {count} days are on the line.', { name: eye.name, count: streak }) },
+        { title: t('Three hours left'), body: t('One touch keeps your {count}-day streak alive.', { count: streak }) },
+        { title: t('Do not let it close'), body: t('{name} is waiting for today\'s Blink.', { name: eye.name }) },
+      ])
+      : { title: t('Your Eye is waiting'), body: t('{name} has not blinked today. Keep it open with one touch.', { name: eye.name }) };
+    plans.push({ at, ...line });
   }
   return plans.sort((a, b) => a.at - b.at);
 }

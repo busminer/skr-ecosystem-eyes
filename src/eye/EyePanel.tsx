@@ -9,7 +9,7 @@ import { EyePicture, type Motion } from './EyePicture';
 import { clock, epochMs } from './time';
 import { MoveSheet } from './MoveSheet';
 import type { MoveKind } from './move';
-import { cooldownHours, leftAtPrice, sol, usd } from './money';
+import { cooldownHours, leftAtPrice, rentOf, sol } from './money';
 import { askForEyeRemindersOnce, syncEyeReminders } from './reminders';
 import { shareEye, type ShareMoment } from './shareEye';
 
@@ -41,27 +41,28 @@ import { shareEye, type ShareMoment } from './shareEye';
 const RING_DAYS = [2, 3, 5, 7, 10, 14, 21, 30];
 const GOLD_DAY = 30;
 
-// What an Eye costs right now, in two plain sentences: the first thousand at
-// the opening price, with the dollar hint when the server has one, how many
-// of them are left, and the price after. True to the server's numbers, and
-// only the sentences the numbers allow.
+// What an Eye costs right now, in plain sentences and in SOL: the first
+// thousand at the opening price, how many of them are left, and the price
+// after; then what the mint is made of and who gets each part. True to the
+// server's numbers, and only the sentences the numbers allow.
 export function offerLines(prices: EyePrices, nextSerial: number | null, eyesNow: number | null): string[] {
   const price = sol(prices.openLamports);
-  const dollars = usd(prices.openLamports, prices.solUsd);
   const tier = prices.tier;
   // The live count when the network has been read, the server's word otherwise.
   const left = tier ? (eyesNow != null ? Math.max(0, tier.serial - eyesNow) : leftAtPrice(prices, nextSerial)) : null;
+  const cost = [
+    t('{sol} SOL to the maker of SKR Eyes, plus a storage deposit of about {rent} SOL kept inside your Eye on Solana, not paid to anyone, and a tiny network fee to Solana validators, set by your wallet.', { sol: price, rent: sol(rentOf(prices)) }),
+    t('About {sol} SOL in all.', { sol: sol(prices.openLamports + rentOf(prices)) }),
+  ].join(' ');
   if (!tier || left === 0) {
-    return [dollars ? t('An Eye costs {sol} SOL, about {usd}.', { sol: price, usd: dollars }) : t('An Eye costs {sol} SOL.', { sol: price })];
+    return [t('An Eye costs {sol} SOL to mint.', { sol: price }), cost];
   }
-  const first = dollars
-    ? t('The first {count} Eyes cost {sol} SOL, about {usd}.', { count: integer(tier.serial), sol: price, usd: dollars })
-    : t('The first {count} Eyes cost {sol} SOL.', { count: integer(tier.serial), sol: price });
+  const first = t('The first {count} Eyes cost {sol} SOL each.', { count: integer(tier.serial), sol: price });
   const rest = [
     left == null ? null : left === 1 ? t('1 left at this price.') : t('{count} left at this price.', { count: integer(left) }),
     t('Then {sol} SOL.', { sol: sol(tier.afterLamports) }),
   ].filter((line): line is string => Boolean(line)).join(' ');
-  return [first, rest];
+  return [first, rest, cost];
 }
 
 // How far the next ring and gold are from this day of the streak.
@@ -79,7 +80,7 @@ function Offer({ lines }: { lines: string[] }) {
   return (
     <View style={styles.offer}>
       <Text style={styles.offerLead}>{lines[0]}</Text>
-      {lines[1] ? <Text style={styles.offerRest}>{lines[1]}</Text> : null}
+      {lines.slice(1).map((line) => <Text key={line} style={styles.offerRest}>{line}</Text>)}
     </View>
   );
 }
@@ -339,7 +340,6 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
   // is keyed by the move so a Blink after an open starts from nothing.
   const sheet = move ? <MoveSheet key={move} kind={move} wallet={wallet} onDone={(result) => onMoved(move, result)} onClose={() => setMove(null)} /> : null;
 
-  const solUsd = prices.solUsd ?? null;
   const hours = cooldownHours(prices, blink?.cooldownSeconds);
 
   if (!eye) {
@@ -379,12 +379,9 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
       : time
         ? t('Shared. Your next Blink opens in {time}.', { time })
         : t('Shared.');
-  const blinkUsd = usd(prices.blinkLamports, solUsd);
-  const priceLine = `${[
-    t('{sol} SOL per Blink', { sol: sol(prices.blinkLamports) }),
-    blinkUsd ? t('about {usd}', { usd: blinkUsd }) : null,
-    paced ? t('every {hours} hours', { hours }) : null,
-  ].filter(Boolean).join(', ')}.`;
+  const priceLine = paced
+    ? t('{sol} SOL per Blink to the maker of SKR Eyes, every {hours} hours.', { sol: sol(prices.blinkLamports), hours })
+    : t('{sol} SOL per Blink to the maker of SKR Eyes.', { sol: sol(prices.blinkLamports) });
   // One nudge, never two: the share right after a move, or a look at
   // somebody's Eye on any other visit while the person has not looked today.
   const shareLoud = moment !== 'any';

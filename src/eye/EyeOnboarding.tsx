@@ -10,7 +10,7 @@ import { colors, font, radius, spacing } from '../theme';
 import { fetchEyeHealth, type Eye, type EyePrices, type EyeStatus } from './api';
 import { EYE_FINGER_ENABLED } from './config';
 import { isBig } from './fit';
-import { cooldownHours, leftAtPrice, rentOf, sol, usd } from './money';
+import { cooldownHours, leftAtPrice, rentOf, sol } from './money';
 import { eyeCaption } from './shareEye';
 import { Glyph, Overline, type GlyphName } from './glyphs';
 import { Awakening, BlinkDial, Blueprint, Breath, CardShare, IrisClimb, NightSky, OpeningRoad, cue, note, schedule, tick } from './OnboardingArt';
@@ -64,8 +64,8 @@ import { PortalEye } from './PortalEye';
 //                         drawn as part of the picture.
 //   07 · Ready            Mint your Eye. What this wallet has (wallet,
 //                         Genesis Token, SKR position, the finger), the price
-//                         to the lamport and the dollar with the tier ladder,
-//                         the one button.
+//                         in SOL broken down by who gets what, the tier
+//                         ladder, the one button. No dollars anywhere.
 //
 // The visual language is the NFT card's night: stars, two curtains of
 // aurora, the horizon, the sea catching the light, the cyan of the portal
@@ -205,19 +205,22 @@ function Check({ icon, state, label, detail, index, active, small = false }: { i
   );
 }
 
-function Row({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+function Row({ label, value, note, strong = false }: { label: string; value: string; note?: string; strong?: boolean }) {
   return (
-    <View style={styles.row}>
-      <Text style={[styles.rowLabel, strong && styles.rowStrong]}>{label}</Text>
-      <Text style={[styles.rowValue, strong && styles.rowStrong]}>{value}</Text>
+    <View style={styles.rowBlock}>
+      <View style={styles.row}>
+        <Text style={[styles.rowLabel, strong && styles.rowStrong]}>{label}</Text>
+        <Text style={[styles.rowValue, strong && styles.rowStrong]}>{value}</Text>
+      </View>
+      {note ? <Text style={styles.rowNote}>{note}</Text> : null}
     </View>
   );
 }
 
 // Where the price steps up, drawn: the first tier lit, the next one dim, and
 // a mark where the next Eye will land. At large type, one line instead.
-function Ladder({ tier, open, openUsd, nextSerial, left, compact }: { tier: { serial: number; afterLamports: number }; open: number; openUsd: string | null; nextSerial: number | null; left: number | null; compact: boolean }) {
-  const price = `${sol(open)} SOL${openUsd ? ` (${openUsd})` : ''}`;
+function Ladder({ tier, open, nextSerial, left, compact }: { tier: { serial: number; afterLamports: number }; open: number; nextSerial: number | null; left: number | null; compact: boolean }) {
+  const price = `${sol(open)} SOL`;
   if (compact) {
     return (
       <Text style={styles.ladderNote}>
@@ -327,9 +330,7 @@ export function EyeOnboarding({
   const serial = nextSerial != null ? pad(nextSerial) : null;
   const hours = cooldownHours(prices, status?.blink?.cooldownSeconds);
   const slots = Math.max(1, Math.round(24 / Math.max(1, hours)));
-  const solUsd = prices?.solUsd ?? null;
-  const blinkUsd = prices ? usd(prices.blinkLamports, solUsd) : null;
-  const blinkPrice = prices ? `${sol(prices.blinkLamports)} SOL${blinkUsd ? ` ≈ ${blinkUsd}` : ''}` : null;
+  const blinkSol = prices ? sol(prices.blinkLamports) : null;
 
   // The card on page six is the bundled sample (EYE #0042, streak 7, 9
   // blinks); the caption under it is the one the app writes for that Eye
@@ -352,19 +353,17 @@ export function EyeOnboarding({
   const ready = page === PAGES - 1;
 
   // The hook: what the first Eyes cost and how many are left at that price,
-  // as the server says it right now. Never a zero as a hook: past the first
-  // tier it says the price of the day instead, and without a count it says
-  // only the price.
-  const openUsd = open != null ? usd(open, solUsd) : null;
-  const openPrice = open != null ? (openUsd ? t('about {usd}', { usd: openUsd }) : `${sol(open)} SOL`) : null;
+  // as the server says it right now, in SOL. Never a zero as a hook: past
+  // the first tier it says the price of the day instead, and without a count
+  // it says only the price.
   const inTier = tier != null && (nextSerial == null || nextSerial <= tier.serial);
-  const hook = openPrice == null
+  const hook = open == null
     ? null
     : tier && inTier && left != null && left > 0
-      ? t('The first {count} Eyes cost {price}. {left} left.', { count: integer(tier.serial), price: openPrice, left: integer(left) })
+      ? t('The first {count} Eyes cost {sol} SOL each. {left} left.', { count: integer(tier.serial), sol: sol(open), left: integer(left) })
       : tier && inTier && left == null
-        ? t('The first {count} Eyes cost {price}.', { count: integer(tier.serial), price: openPrice })
-        : t('An Eye costs {price} to mint.', { price: openPrice });
+        ? t('The first {count} Eyes cost {sol} SOL each.', { count: integer(tier.serial), sol: sol(open) })
+        : t('An Eye costs {sol} SOL to mint.', { sol: sol(open) });
 
   // The checks that pass light on their notes as the last page arrives.
   const passes = [Boolean(wallet), Boolean(wallet && status && gates?.sgt), Boolean(wallet && status && staked), finger ? verified : false].filter(Boolean).length;
@@ -439,7 +438,7 @@ export function EyeOnboarding({
       art: (box) => <BlinkDial active={page === 3} reduced={reduced} width={box.width} height={box.height} slots={slots} hours={hours} />,
       foot: (
         <View style={styles.footBlock}>
-          {blinkPrice ? <Text style={styles.caption}>{`${blinkPrice} ${t('every {hours} hours', { hours })}`}</Text> : null}
+          {blinkSol ? <Text style={styles.caption}>{t('{sol} SOL per Blink, every {hours} hours', { sol: blinkSol, hours })}</Text> : null}
           {big ? null : <Text style={styles.captionDim}>{t('Tap the Eye to try a Blink')}</Text>}
         </View>
       ),
@@ -563,24 +562,21 @@ export function EyeOnboarding({
           {open != null && total != null ? (
             <View style={[styles.card, big && styles.cardTight]}>
               {big ? null : <Overline tone={colors.faint}>{t('The mint')}</Overline>}
-              <Row label={t('Opening fee')} value={`${sol(open)} SOL`} />
-              <Row label={big ? t('Deposit in your Eye') : t('Deposit kept inside your Eye')} value={`≈ ${sol(rent)} SOL`} />
+              <Row label={t('Mint')} value={`${sol(open)} SOL`} note={t('to the maker of SKR Eyes')} />
+              <Row label={t('Storage deposit')} value={t('about {sol} SOL', { sol: sol(rent) })} note={t('kept inside your Eye on Solana, not paid to anyone')} />
+              <Row label={t('Network fee')} value={t('tiny, set by your wallet')} note={t('to Solana validators')} />
               <View style={styles.rule} />
-              <Row label={t('Total')} value={`≈ ${sol(total)} SOL${usd(total, solUsd) ? ` (${usd(total, solUsd)})` : ''}`} strong />
-              {tier ? <Ladder tier={tier} open={open} openUsd={openUsd} nextSerial={nextSerial} left={left} compact={big} /> : null}
+              <Row label={t('Total')} value={t('about {sol} SOL', { sol: sol(total) })} strong />
+              {tier ? <Ladder tier={tier} open={open} nextSerial={nextSerial} left={left} compact={big} /> : null}
               <View style={styles.rule} />
-              {blinkPrice ? (big ? <Row label={t('Blink every {hours} hours', { hours })} value={blinkPrice} /> : <Row label={t('Blink')} value={`${blinkPrice} ${t('every {hours} hours', { hours })}`} />) : null}
+              {blinkSol ? <Text style={styles.rowNote}>{t('{sol} SOL per Blink to the maker of SKR Eyes, every {hours} hours.', { sol: blinkSol, hours })}</Text> : null}
               {big ? null : <Text style={styles.micro}>{t('The first Blink is included in the mint.')}</Text>}
             </View>
           ) : (
             <View style={styles.card}><ActivityIndicator size="small" color={colors.faint} /></View>
           )}
 
-          <Text style={styles.fine}>
-            {big
-              ? t('The first Blink is included. Fees go to the maker of SKR Eyes. The deposit stays in your Eye. No token is sold here.')
-              : t('The opening fee and every Blink go to the maker of SKR Eyes. The deposit stays inside your Eye, in your wallet. No token is sold here.')}
-          </Text>
+          <Text style={styles.fine}>{big ? t('The first Blink is included. No token is sold here.') : t('No token is sold here.')}</Text>
           {connectError ? <Text style={styles.error}>{connectError}</Text> : null}
           {blocked ? <Text style={styles.fine}>{t('An Eye opens for a wallet on a Seeker with an active SKR position.')}</Text> : null}
         </Page>
@@ -638,7 +634,9 @@ const styles = StyleSheet.create({
   checkLabel: { color: colors.text, fontFamily: font.semibold, fontSize: 16, lineHeight: 21 },
   checkDetail: { color: '#8FA6B9', fontFamily: font.regular, fontSize: 14, lineHeight: 19, fontVariant: ['tabular-nums'] },
   checkMark: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
+  rowBlock: { gap: 1 },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md },
+  rowNote: { color: colors.faint, fontFamily: font.regular, fontSize: 13.5, lineHeight: 18 },
   rowLabel: { color: colors.muted, fontFamily: font.regular, fontSize: 15.5, lineHeight: 21, flexShrink: 1 },
   rowValue: { color: colors.text, fontFamily: font.medium, fontSize: 15.5, lineHeight: 21, fontVariant: ['tabular-nums'], flexShrink: 1, textAlign: 'right' },
   rowStrong: { color: colors.text, fontFamily: font.bold },
