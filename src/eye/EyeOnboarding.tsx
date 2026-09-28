@@ -13,7 +13,7 @@ import { isBig } from './fit';
 import { cooldownHours, leftAtPrice, rentOf, sol } from './money';
 import { eyeCaption } from './shareEye';
 import { Glyph, Overline, type GlyphName } from './glyphs';
-import { Awakening, BlinkDial, Blueprint, Breath, CardShare, IrisClimb, NightSky, OpeningRoad, cue, note, schedule, tick } from './OnboardingArt';
+import { Awakening, BlinkDial, Breath, CardShare, IrisClimb, NightSky, OpeningRoad, SeekerParts, cue, note, schedule, tick } from './OnboardingArt';
 import { PortalEye } from './PortalEye';
 
 // The Eye, before it is opened: seven pages that make a person want one and
@@ -415,7 +415,7 @@ export function EyeOnboarding({
         : (finger
           ? t('No passwords, no forms. Your Seeker’s secure hardware, your fingerprint and your wallet do the proving.')
           : t('No passwords, no forms. Your Seeker wallet and its Genesis Token do the proving.')),
-      art: (box) => <Blueprint active={page === 1} reduced={reduced} width={box.width} height={box.height} finger={finger} noteFrom={2} />,
+      art: (box) => <SeekerParts active={page === 1} reduced={reduced} width={box.width} height={box.height} finger={finger} noteFrom={2} />,
     },
     {
       key: 'open',

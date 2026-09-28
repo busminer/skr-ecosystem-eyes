@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import Animated, { Easing, FadeIn, useAnimatedProps, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, RadialGradient, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import { t } from '../i18n';
 import { prefValue } from '../prefs';
@@ -257,247 +257,104 @@ export function Awakening({ active, reduced, serial, width, height }: { active: 
 
 // ------------------------------------------------ 02 · inside your Seeker --
 
-// The phone, drawn in a 120 by 240 box: a cutaway of the Seeker with the
-// parts the Eye uses inside it, and above it what vouches for them.
-const VB_W = 120;
-const VB_H = 240;
-const PHONE = { x: 14, y: 54, w: 92, h: 182, rx: 14 };
-const SCREEN = { x: 20, y: 62, w: 80, h: 166, rx: 8 };
-const DIM = '#2C4A5A';
+// The real Seeker, from Solana Mobile's own press kit (Seeker Press 3, the
+// back of the phone; see assets/eye/SOURCES.md), cut out of its backdrop so it
+// stands in the same sky. Nothing is drawn onto the phone: each part the Eye
+// uses is where it really is on the device, marked by a numbered pin beside
+// it, and the legend carries the same numbers. The side button holds the
+// fingerprint sensor, and the Seed Vault panel wraps around it (Solana
+// Mobile's reviewer's guide: "double tap the side button, leave your finger
+// on the sensor"). The Solana mark stands for the chain, where the Genesis
+// Token and the Eye live.
+const SEEKER_BACK = require('../../assets/eye/seeker-back.png');
+const SEEKER_ASPECT = 414 / 851;
+const PIN = 22;
 
-type Callout = { key: string; icon: GlyphName; title: string; line: string; mark: [number, number] };
+type Callout = { key: string; title: string; line: string; pin: [number, number] };
 
 function calloutsFor(finger: boolean, big: boolean): Callout[] {
-  const vault: Callout = { key: 'vault', icon: 'vault', title: t('Seed Vault wallet'), line: big ? t('Keys never leave the phone.') : t('Its keys never leave the phone’s secure hardware.'), mark: [60, finger ? 146 : 122] };
-  const token: Callout = { key: 'token', icon: 'token', title: t('Genesis Token'), line: big ? t('Proof this wallet is a Seeker’s.') : t('Minted once per Seeker. Your wallet’s proof.'), mark: [60, finger ? 188 : 172] };
-  if (!finger) {
-    return [
-      { key: 'network', icon: 'network', title: t('Solana'), line: big ? t('Your Eye lives here.') : t('Your Eye lives here. Every Blink rewrites it.'), mark: [60, 30] },
-      vault,
-      token,
-    ];
-  }
+  const vault: Callout = { key: 'vault', title: t('Seed Vault wallet'), line: big ? t('Keys never leave the secure element.') : t('Keys never leave the secure element. Double-tap the side button to approve.'), pin: [0.37, 0.405] };
+  const token: Callout = { key: 'token', title: t('Genesis Token'), line: big ? t('One per Seeker. Your wallet’s proof.') : t('Minted once per Seeker on Solana. Your wallet’s proof.'), pin: [0.66, 0.861] };
+  if (!finger) return [vault, token];
   return [
-    { key: 'cert', icon: 'cert', title: t('Google attestation'), line: big ? t('Google vouches for the phone.') : t('Google vouches for chip, boot and app.'), mark: [60, 30] },
-    { key: 'key', icon: 'key', title: t('StrongBox key'), line: big ? t('Signs only after your fingerprint.') : t('In the secure element. Signs only after your fingerprint.'), mark: [60, 98] },
+    { key: 'finger', title: t('Fingerprint'), line: big ? t('In the side button. Your key signs only after it.') : t('Built into the side button. Your StrongBox key signs only after it.'), pin: [0, 0.475] },
     vault,
     token,
   ];
 }
 
-// The parts, each drawable dim or lit.
-function ChainAbove({ tone, blocks }: { tone: string; blocks: boolean }) {
-  if (blocks) {
-    // Solana: three blocks above the phone, a line down into the vault.
-    return (
-      <G fill="none" stroke={tone} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
-        <Rect x={41} y={24} width={11} height={11} rx={2} />
-        <Rect x={54.5} y={24} width={11} height={11} rx={2} />
-        <Rect x={68} y={24} width={11} height={11} rx={2} />
-        <Path d="M52 29.5h2.5M65.5 29.5h2.5" />
-        <Path d="M60 35v19" strokeDasharray="2 3" />
-      </G>
-    );
-  }
-  // Google's root at the top, two certificates under it, the chain running
-  // down into the phone to the key.
+// A numbered pin: dim until its part lights, then filled, with one ring
+// going out from it while it is the one being told.
+function Pin({ n, k, here, x, y }: { n: number; k: SharedValue<number>; here: boolean; x: number; y: number }) {
+  const ring = useSharedValue(0);
+  useEffect(() => {
+    if (!here) { ring.value = 0; return; }
+    ring.value = withRepeat(withTiming(1, { duration: 1_400, easing: Easing.out(Easing.quad) }), -1, false);
+  }, [here, ring]);
+  const lit = useAnimatedStyle(() => ({ opacity: k.value }));
+  const out = useAnimatedStyle(() => ({ opacity: here ? 0.7 * (1 - ring.value) : 0, transform: [{ scale: 1 + ring.value * 1.6 }] }));
+  const box = { left: x - PIN / 2, top: y - PIN / 2, width: PIN, height: PIN };
   return (
-    <G fill="none" stroke={tone} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M60 5l2.2 5.3 5.3 2.2-5.3 2.2L60 20l-2.2-5.3-5.3-2.2 5.3-2.2L60 5Z" fill={tone} fillOpacity={0.9} />
-      <Rect x={52} y={25} width={16} height={9} rx={1.6} />
-      <Path d="M55.5 29.5h9" strokeWidth={1} />
-      <Rect x={52} y={40} width={16} height={9} rx={1.6} />
-      <Path d="M55.5 44.5h9" strokeWidth={1} />
-      <Path d="M60 20v5M60 34v6M60 49v5" />
-      <Path d="M60 54v30" strokeDasharray="2 3" />
-    </G>
+    <View pointerEvents="none" style={[styles.pin, box]}>
+      <Animated.View style={[styles.pinRing, out]} />
+      <View style={styles.pinDim}><Text maxFontSizeMultiplier={1} style={styles.pinTextDim}>{n}</Text></View>
+      <Animated.View style={[styles.pinLit, lit]}><Text maxFontSizeMultiplier={1} style={styles.pinText}>{n}</Text></Animated.View>
+    </View>
   );
 }
 
-function ChipInside({ tone }: { tone: string }) {
-  return (
-    <G fill="none" stroke={tone} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
-      <Rect x={47} y={85} width={26} height={26} rx={2.4} />
-      <Rect x={55} y={93} width={10} height={10} rx={1.4} />
-      <Path d="M52 85v-4M60 85v-4M68 85v-4M52 111v4M60 111v4M68 111v4M47 90h-4M47 98h-4M47 106h-4M73 90h4M73 98h4M73 106h4" />
-      {/* The key inside the chip. */}
-      <Circle cx={57.5} cy={98} r={1.6} fill={tone} stroke="none" />
-      <Path d="M59 98h4M62 98v1.4" strokeWidth={1} />
-      {/* The sensor under the screen, low down, and the line from the chip
-          to it: the key answers only to the finger. */}
-      <G transform="translate(48.5 197) scale(0.96)">
-        <Path d="M4.5 10.2a7.5 7.5 0 0 1 15 0" />
-        <Path d="M7.4 19.6c-.9-1.9-1.4-3.9-1.4-6.2a6 6 0 0 1 12 0c0 1.2-.1 2.3-.3 3.4" />
-        <Path d="M10.2 21.3c-1.1-2.3-1.6-4.7-1.6-7.3a3.4 3.4 0 0 1 6.8 0c0 2-.3 3.9-.9 5.6" />
-        <Path d="M12 13.6c0 3 .6 5.6 1.8 7.8" />
-      </G>
-    </G>
-  );
-}
-
-function VaultInside({ tone, y }: { tone: string; y: number }) {
-  return (
-    <G fill="none" stroke={tone} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
-      <Circle cx={60} cy={y} r={15} />
-      <Circle cx={60} cy={y} r={5.5} />
-      <Path d={`M60 ${y - 15}v4M60 ${y + 11}v4M45 ${y}h4M71 ${y}h4`} />
-      <Path d={`M49.4 ${y - 10.6}l2.8 2.8M67.8 ${y + 7.8}l2.8 2.8M70.6 ${y - 10.6}l-2.8 2.8M52.2 ${y + 7.8}l-2.8 2.8`} strokeWidth={1} />
-    </G>
-  );
-}
-
-function TokenInside({ tone, y }: { tone: string; y: number }) {
-  const r = 11;
-  const hex = Array.from({ length: 6 }, (_, i) => {
-    const a = (Math.PI / 3) * i - Math.PI / 2;
-    return `${(60 + r * Math.cos(a)).toFixed(2)} ${(y + r * Math.sin(a)).toFixed(2)}`;
-  }).join(' L ');
-  return (
-    <G fill="none" stroke={tone} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
-      <Path d={`M ${hex} Z`} />
-      <Path d={`M60 ${y - 4.6}l1.3 3.3 3.3 1.3-3.3 1.3-1.3 3.3-1.3-3.3-3.3-1.3 3.3-1.3L60 ${y - 4.6}Z`} fill={tone} stroke="none" />
-    </G>
-  );
-}
-
-function Part({ item, tone }: { item: Callout; tone: string }) {
-  switch (item.key) {
-    case 'cert': return <ChainAbove tone={tone} blocks={false} />;
-    case 'network': return <ChainAbove tone={tone} blocks />;
-    case 'key': return <ChipInside tone={tone} />;
-    case 'vault': return <VaultInside tone={tone} y={item.mark[1]} />;
-    case 'token': return <TokenInside tone={tone} y={item.mark[1]} />;
-    default: return null;
-  }
-}
-
-const AnimatedPath = Animated.createAnimatedComponent(Path);
-
-// One leader line from a mark on the phone to its row in the legend, drawn
-// on as the callout lights.
-function Leader({ d, length, k }: { d: string; length: number; k: SharedValue<number> }) {
-  const props = useAnimatedProps(() => ({ strokeDashoffset: length * (1 - k.value), opacity: k.value > 0.02 ? 1 : 0 }), [length]);
-  return <AnimatedPath d={d} fill="none" stroke={colors.accent} strokeWidth={1.1} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={[length, length]} animatedProps={props} />;
-}
-
-function LitLayer({ item, k, width, height }: { item: Callout; k: SharedValue<number>; width: number; height: number }) {
-  const style = useAnimatedStyle(() => ({ opacity: k.value }));
-  const [mx, my] = item.mark;
-  return (
-    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, style]}>
-      <Svg width={width} height={height} viewBox={`0 0 ${VB_W} ${VB_H}`}>
-        <Defs>
-          <RadialGradient id={`glow-${item.key}`} cx="0.5" cy="0.5" r="0.5">
-            <Stop offset="0" stopColor={colors.accent} stopOpacity="0.28" />
-            <Stop offset="1" stopColor={colors.accent} stopOpacity="0" />
-          </RadialGradient>
-        </Defs>
-        <Circle cx={mx} cy={my} r={30} fill={`url(#glow-${item.key})`} />
-        <Part item={item} tone={colors.accent} />
-        <Circle cx={mx} cy={my} r={2.2} fill="#E8FBFF" />
-      </Svg>
-    </Animated.View>
-  );
-}
-
-// Page two: built into your Seeker. A blueprint of the phone with the parts
-// the Eye uses, and a legend beside it; part and legend light together, one
-// by one, a leader line drawn from each mark to its words.
-export function Blueprint({ active, reduced, width, height: room, finger, noteFrom }: { active: boolean; reduced: boolean; width: number; height: number; finger: boolean; noteFrom: number }) {
+// Page two: your Seeker is the key. The phone itself, and beside it what
+// each marked part does; pin and row light together, one by one.
+export function SeekerParts({ active, reduced, width, height: room, finger, noteFrom }: { active: boolean; reduced: boolean; width: number; height: number; finger: boolean; noteFrom: number }) {
   const big = isBig();
   const items = useMemo(() => calloutsFor(finger, big), [finger, big]);
   const height = clamp(room, 220, 350);
-  const scale = height / VB_H;
-  const phoneW = Math.round(VB_W * scale);
-  const gap = spacing.sm;
-  const legendX = phoneW + gap;
-  // The legend sits on a dark plate, so no star shows through its words.
-  const plate = spacing.sm;
+  const phoneW = Math.round(height * SEEKER_ASPECT);
+  // Room on the left for the side button's pin, which sits on the edge.
+  const pad = PIN / 2 + 2;
   const [lit, setLit] = useState(reduced ? items.length : -1);
-  const [rows, setRows] = useState<Array<{ y: number; h: number } | null>>([]);
   const k0 = useSharedValue(reduced ? 1 : 0);
   const k1 = useSharedValue(reduced ? 1 : 0);
   const k2 = useSharedValue(reduced ? 1 : 0);
-  const k3 = useSharedValue(reduced ? 1 : 0);
-  const ks = useMemo(() => [k0, k1, k2, k3], [k0, k1, k2, k3]);
+  const ks = useMemo(() => [k0, k1, k2], [k0, k1, k2]);
+  const shown = useSharedValue(reduced ? 1 : 0);
 
   useEffect(() => {
     const set = (value: number) => ks.forEach((k) => { k.value = value; });
-    if (reduced) { setLit(items.length); set(1); return; }
-    if (!active) { setLit(-1); set(0); return; }
+    if (reduced) { setLit(items.length); set(1); shown.value = 1; return; }
+    if (!active) { setLit(-1); set(0); shown.value = 0; return; }
     setLit(-1);
     set(0);
-    return schedule(items.map((_, i) => [900 + i * 1_150, () => {
+    shown.value = 0;
+    shown.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.cubic) });
+    return schedule(items.map((_, i) => [1_000 + i * 1_300, () => {
       setLit(i);
-      note(noteFrom + i + 1, 0.28);
+      note(noteFrom + i + 1, 0.24);
       tap();
       const k = ks[i];
-      if (k) k.value = withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) });
+      if (k) k.value = withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) });
     }]));
-  }, [active, reduced, items, ks, noteFrom]);
+  }, [active, reduced, items, ks, noteFrom, shown]);
 
-  const onRow = useCallback((index: number, event: LayoutChangeEvent) => {
-    const { y, height: h } = event.nativeEvent.layout;
-    setRows((current) => {
-      const next = current.slice();
-      next[index] = { y, h };
-      return next;
-    });
-  }, []);
-
-  // The leaders: from the mark, out past the phone's edge, across to the row.
-  const leaders = items.map((item, i) => {
-    const row = rows[i];
-    if (!row) return null;
-    const [mx, my] = item.mark;
-    const sx = mx * scale;
-    const sy = my * scale;
-    const kx = phoneW + 5;
-    const ex = legendX + plate - 4;
-    const ey = row.y + plate + 15;
-    const d = `M ${sx.toFixed(1)} ${sy.toFixed(1)} L ${kx} ${sy.toFixed(1)} L ${(ex - 8).toFixed(1)} ${ey.toFixed(1)} L ${ex} ${ey.toFixed(1)}`;
-    const length = Math.abs(kx - sx) + Math.hypot(ex - 8 - kx, ey - sy) + 8;
-    return { d, length };
-  });
-
-  // The sheet itself never changes while the page is up: built once per size.
-  const sheet = useMemo(() => (
-    <Svg width={phoneW} height={height} viewBox={`0 0 ${VB_W} ${VB_H}`}>
-      {/* The sheet: a faint grid and a dimension line, so it reads as a drawing. */}
-      <G stroke="#56E0FF" strokeOpacity={0.07} strokeWidth={0.6}>
-        {Array.from({ length: 6 }, (_, i) => <Path key={`v${i}`} d={`M${i * 20 + 10} 0V${VB_H}`} />)}
-        {Array.from({ length: 12 }, (_, i) => <Path key={`h${i}`} d={`M0 ${i * 20 + 10}H${VB_W}`} />)}
-      </G>
-      <G stroke="#56E0FF" strokeOpacity={0.3} strokeWidth={0.7} strokeLinecap="round">
-        <Path d={`M6 ${PHONE.y}V${PHONE.y + PHONE.h}M3.5 ${PHONE.y}h5M3.5 ${PHONE.y + PHONE.h}h5`} />
-        <Path d={`M${PHONE.x} ${VB_H - 3}h${PHONE.w}M${PHONE.x} ${VB_H - 5.5}v5M${PHONE.x + PHONE.w} ${VB_H - 5.5}v5`} />
-      </G>
-      {/* The Seeker, cut open. */}
-      <Rect x={PHONE.x} y={PHONE.y} width={PHONE.w} height={PHONE.h} rx={PHONE.rx} fill="rgba(6, 12, 18, 0.55)" stroke="#56E0FF" strokeOpacity={0.7} strokeWidth={1.2} />
-      <Rect x={SCREEN.x} y={SCREEN.y} width={SCREEN.w} height={SCREEN.h} rx={SCREEN.rx} fill="none" stroke="#56E0FF" strokeOpacity={0.28} strokeWidth={0.8} strokeDasharray="3 3" />
-      <Circle cx={60} cy={SCREEN.y + 5} r={1.6} fill="none" stroke="#56E0FF" strokeOpacity={0.5} strokeWidth={0.8} />
-      {/* The parts, unlit. */}
-      {items.map((item) => <Part key={item.key} item={item} tone={DIM} />)}
-    </Svg>
-  ), [phoneW, height, items]);
+  const rise = useAnimatedStyle(() => ({ opacity: shown.value, transform: [{ translateY: (1 - shown.value) * 10 }] }));
 
   return (
-    <View style={{ width, minHeight: height, flexDirection: 'row', gap }}>
-      <View style={{ width: phoneW, height }}>
-        {sheet}
+    <View style={{ width, minHeight: height, flexDirection: 'row', gap: spacing.sm }}>
+      <Animated.View style={[{ width: phoneW + pad, height }, rise]}>
+        <Image source={SEEKER_BACK} style={{ position: 'absolute', left: pad, top: 0, width: phoneW, height }} resizeMode="contain" accessibilityLabel={t('Solana Mobile Seeker, back')} />
         {items.map((item, i) => {
           const k = ks[i];
-          return k ? <LitLayer key={item.key} item={item} k={k} width={phoneW} height={height} /> : null;
+          return k ? <Pin key={item.key} n={i + 1} k={k} here={lit === i} x={pad + item.pin[0] * phoneW} y={item.pin[1] * height} /> : null;
         })}
-      </View>
+      </Animated.View>
       <View style={styles.legend}>
         {items.map((item, i) => {
           const on = lit >= i;
           const here = lit === i;
           return (
-            <View key={item.key} onLayout={(event) => onRow(i, event)} style={styles.callout}>
+            <View key={item.key} style={styles.callout}>
               <View style={[styles.calloutIcon, on && styles.calloutIconOn, here && styles.calloutIconHere]}>
-                <Glyph name={item.icon} size={17} tone={on ? colors.accent : colors.dim} />
+                <Text maxFontSizeMultiplier={1} style={[styles.calloutNumber, on && styles.calloutNumberOn]}>{i + 1}</Text>
               </View>
               <View style={styles.calloutText}>
                 <Text maxFontSizeMultiplier={1.3} style={[styles.calloutTitle, !on && styles.calloutOff]}>{item.title}</Text>
@@ -507,12 +364,6 @@ export function Blueprint({ active, reduced, width, height: room, finger, noteFr
           );
         })}
       </View>
-      <Svg pointerEvents="none" style={StyleSheet.absoluteFill} width={width} height={Math.max(height, ...rows.map((row) => (row ? row.y + row.h : 0)))}>
-        {leaders.map((leader, i) => {
-          const k = ks[i];
-          return leader && k ? <Leader key={items[i]?.key ?? i} d={leader.d} length={leader.length} k={k} /> : null;
-        })}
-      </Svg>
     </View>
   );
 }
@@ -949,6 +800,14 @@ const styles = StyleSheet.create({
   calloutTitle: { color: colors.text, fontFamily: font.semibold, fontSize: 15, lineHeight: 20 },
   calloutLine: { color: '#A9BDCE', fontFamily: font.regular, fontSize: 14, lineHeight: 19 },
   calloutOff: { color: colors.faint, opacity: 0.6 },
+  calloutNumber: { color: colors.dim, fontFamily: font.semibold, fontSize: 14, lineHeight: 18 },
+  calloutNumberOn: { color: colors.accent },
+  pin: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  pinRing: { position: 'absolute', width: PIN, height: PIN, borderRadius: PIN / 2, borderWidth: 1.5, borderColor: colors.accent },
+  pinDim: { position: 'absolute', width: PIN, height: PIN, borderRadius: PIN / 2, borderWidth: 1, borderColor: 'rgba(242, 247, 251, 0.35)', backgroundColor: 'rgba(4, 7, 11, 0.75)', alignItems: 'center', justifyContent: 'center' },
+  pinLit: { position: 'absolute', width: PIN, height: PIN, borderRadius: PIN / 2, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', shadowColor: colors.accent, shadowOpacity: 0.9, shadowRadius: 8 },
+  pinTextDim: { color: 'rgba(242, 247, 251, 0.6)', fontFamily: font.semibold, fontSize: 12, lineHeight: 15 },
+  pinText: { color: colors.bg, fontFamily: font.semibold, fontSize: 12, lineHeight: 15 },
   // The road.
   roadEye: { alignItems: 'center', justifyContent: 'center' },
   roadCaption: { color: colors.text, fontFamily: font.medium, fontSize: 15.5, lineHeight: 21, textAlign: 'center', paddingHorizontal: spacing.sm },
