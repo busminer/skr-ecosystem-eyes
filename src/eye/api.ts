@@ -201,7 +201,10 @@ export const fetchEyeHealth = () => call<EyeHealth>('/eye/health');
 export const fetchEyeStatus = (wallet: string) => call<EyeStatus>(`/eye/status?wallet=${encodeURIComponent(wallet)}`);
 export const fetchWitnessClaim = (wallet: string, p256: string) => call<WitnessClaimOffer>(`/eye/witness/claim?wallet=${encodeURIComponent(wallet)}&p256=${encodeURIComponent(p256)}`);
 export const registerWitness = (wallet: string, record: unknown, claim: WitnessClaim) => call<unknown>('/eye/witness', { wallet, record, claim });
-export const fetchWitnessChallenge = (wallet: string) => call<{ challenge: string }>(`/eye/witness/challenge?wallet=${encodeURIComponent(wallet)}`);
+// The server also says whose challenge it is and the text it expects signed;
+// the app builds that text itself and compares (finger.ts).
+export type WitnessChallenge = { challenge: string; wallet?: string; message?: string; expiresAt?: string };
+export const fetchWitnessChallenge = (wallet: string) => call<WitnessChallenge>(`/eye/witness/challenge?wallet=${encodeURIComponent(wallet)}`);
 export const openEye = (wallet: string, witness?: WitnessProof) => call<EyeIntent>('/eye/open', witness ? { wallet, witness } : { wallet });
 export const blinkEye = (wallet: string, witness?: WitnessProof) => call<EyeIntent>('/eye/blink', witness ? { wallet, witness } : { wallet });
 export const submitEye = (intent: string, signedTransaction: string) => call<EyeSubmitResult>('/eye/submit', { intent, signedTransaction });

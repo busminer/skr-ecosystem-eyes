@@ -61,7 +61,6 @@
       "./plugins/withDebugAppId",
       "./plugins/withLabAppId",
       "./plugins/withArm64Only",
-      "./plugins/withLoopbackCleartext",
       "expo-sharing"
     ],
     "extra": {
