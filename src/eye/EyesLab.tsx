@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '../i18n';
 import { integer } from '../format';
@@ -10,13 +10,14 @@ import { isWalletCancel, connectReadOnlyWallet } from '../mwa';
 import { rememberConnectedWallet, useConnectedWallet } from '../wallet';
 import { colors, font, radius, spacing, type } from '../theme';
 import { Button, Eyebrow, Meter } from '../lab/kit';
-import { EyeApiError, fetchEyeNetwork, sendGaze, type EyeNetwork, type EyeStatus, type NetworkEye } from './api';
+import { EyeApiError, fetchEyeHealth, fetchEyeNetwork, sendGaze, type EyeHealth, type EyeNetwork, type EyePrices, type EyeStatus, type NetworkEye } from './api';
 import { EYE_BASE_URL, EYE_FINGER_ENABLED } from './config';
 import { EyePanel } from './EyePanel';
 import { EyeOnboarding } from './EyeOnboarding';
 import { PortalEye } from './PortalEye';
 import { WitnessWalkthrough, getWitnessState } from './WitnessWalkthrough';
-import { IrisScene, type IrisHandle } from './IrisScene';
+import { IrisScene, type IrisHandle, type IrisView } from './IrisScene';
+import { leftAtPrice, sol, usd } from './money';
 import { openEyeStream } from './stream';
 import { localHourOf, pulseInPhoneTime } from './time';
 
@@ -24,11 +25,19 @@ import { localHourOf, pulseInPhoneTime } from './time';
 //
 // On top, your own Eye (EyePanel): the card to open one, or the picture, the
 // streak and the Blink, and with no wallet the one button that connects.
+// Under the headline, for anyone without an Eye, what one costs right now:
+// the first thousand at the opening price and how many of them are left,
+// from the server's own numbers (the status when there is a wallet, the
+// health call when there is not).
 // Then the Iris: the radar's field from the Top tab with the Eye at its
 // centre. Every open Eye is a small eye on one of nine rings, closer to the
 // centre the longer its streak, lit if it blinked today, and the beam that
 // sweeps round lights what it passes. Yours is gold with a thread to the
-// centre. Under it, in this order: the Eyes themselves as a strip of small
+// centre. It takes the radar's hands too: one finger drags, two pinch, and
+// the Eye at the centre moves and grows with the field (the scene reports
+// its view, the tab moves the overlay on the UI thread). A touch that
+// starts on the field stays with it; off the field the tab scrolls.
+// Under it, in this order: the Eyes themselves as a strip of small
 // cards, who looked at your Eye today, the day's pulse hour by hour, the
 // ladder of the nine rings as nine small columns, the longest streaks, the
 // Eyes that opened today, and the Guardian circles when the server says
@@ -82,6 +91,29 @@ function PupilEye({ size, blink }: { size: number; blink: number }) {
     return () => clearInterval(timer);
   }, []);
   return <PortalEye size={size} open blink={blink + idle} />;
+}
+
+// What an Eye costs right now, in two plain sentences: the first thousand at
+// the opening price, with the dollar hint when the server has one, how many
+// of them are left, and the price after. True to the server's numbers, and
+// only the sentences the numbers allow.
+function offerLines(prices: EyePrices, nextSerial: number | null, eyesNow: number | null): string[] {
+  const price = sol(prices.openLamports);
+  const dollars = usd(prices.openLamports, prices.solUsd);
+  const tier = prices.tier;
+  // The live count when the network has been read, the server's word otherwise.
+  const left = tier ? (eyesNow != null ? Math.max(0, tier.serial - eyesNow) : leftAtPrice(prices, nextSerial)) : null;
+  if (!tier || left === 0) {
+    return [dollars ? t('An Eye costs {sol} SOL, about {usd}.', { sol: price, usd: dollars }) : t('An Eye costs {sol} SOL.', { sol: price })];
+  }
+  const first = dollars
+    ? t('The first {count} Eyes cost {sol} SOL, about {usd}.', { count: integer(tier.serial), sol: price, usd: dollars })
+    : t('The first {count} Eyes cost {sol} SOL.', { count: integer(tier.serial), sol: price });
+  const rest = [
+    left == null ? null : left === 1 ? t('1 left at this price.') : t('{count} left at this price.', { count: integer(left) }),
+    t('Then {sol} SOL.', { sol: sol(tier.afterLamports) }),
+  ].filter((line): line is string => Boolean(line)).join(' ');
+  return [first, rest];
 }
 
 // A few short facts in a row. They wrap when the font is large, so no fact
@@ -185,6 +217,9 @@ export function EyesLab() {
   // title has a number even while the Iris itself is still waking up.
   const [status, setStatus] = useState<EyeStatus | null>(null);
   const [network, setNetwork] = useState<EyeNetwork | null>(null);
+  // The prices for someone with no wallet yet, from the service's health
+  // call, read once when the tab opens.
+  const [health, setHealth] = useState<EyeHealth | null>(null);
   // The Seeker walk-through, shown over the tab before the first open when
   // the finger is on and this phone has not been through it. The open that
   // asked waits on `verdict` for the answer.
@@ -214,6 +249,24 @@ export function EyesLab() {
 
   // A status belongs to the wallet it was read for.
   useEffect(() => { setStatus(null); }, [wallet]);
+
+  useEffect(() => {
+    let live = true;
+    fetchEyeHealth().then((next) => { if (live) setHealth(next); }).catch(() => undefined);
+    return () => { live = false; };
+  }, []);
+
+  // The field's view, as the scene reports it: the Eye at the centre moves
+  // and grows with it, on the UI thread, without a render of the tab.
+  const zoom = useSharedValue(1);
+  const panX = useSharedValue(0);
+  const panY = useSharedValue(0);
+  const onView = useCallback((view: IrisView) => {
+    zoom.value = view.zoom;
+    panX.value = view.panX;
+    panY.value = view.panY;
+  }, [zoom, panX, panY]);
+  const pupilStyle = useAnimatedStyle(() => ({ transform: [{ translateX: panX.value }, { translateY: panY.value }, { scale: zoom.value }] }));
 
   const connect = useCallback(async () => {
     if (connecting) return;
@@ -426,6 +479,10 @@ export function EyesLab() {
       .slice(0, STRIP_MAX);
   }, [network]);
   const myEye = network?.me ? eyeOf(network.me.serial) : null;
+  // The offer, for anyone who has no Eye yet: the wallet's status knows the
+  // prices, and without a wallet the health call does.
+  const prices = status?.prices ?? health?.prices ?? null;
+  const offer = !status?.eye && prices ? offerLines(prices, nextSerial, network?.totals.eyes ?? status?.network.eyes ?? null) : null;
 
   return (
     <View style={styles.screen}>
@@ -452,16 +509,22 @@ export function EyesLab() {
               ]}
             />
           ) : null}
+          {offer ? (
+            <View style={styles.offer}>
+              <Text style={styles.offerLead}>{offer[0]}</Text>
+              {offer[1] ? <Text style={styles.offerRest}>{offer[1]}</Text> : null}
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.sceneBlock}>
           <View style={[styles.sceneWrap, { height: size }]}>
-            <IrisScene ref={scene} size={size} onTap={onTap} />
-            <View pointerEvents="none" style={[styles.pupilWrap, { top: (size - pupil) / 2, left: (size - pupil) / 2 }]}>
+            <IrisScene ref={scene} size={size} onTap={onTap} onView={onView} />
+            <Animated.View pointerEvents="none" style={[styles.pupilWrap, { top: (size - pupil) / 2, left: (size - pupil) / 2 }, pupilStyle]}>
               <PupilEye size={pupil} blink={pupilBlink} />
-            </View>
+            </Animated.View>
           </View>
-          <Text style={styles.sceneHint}>{t('Rings are streaks, the longest at the centre. Tap an Eye to see it.')}</Text>
+          <Text style={styles.sceneHint}>{t('Rings are streaks, the longest at the centre. Pinch to zoom, drag to look around, tap an Eye to see it.')}</Text>
         </View>
 
         {strip.length > 0 ? (
@@ -665,6 +728,11 @@ const styles = StyleSheet.create({
   facts: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.lg, rowGap: 2 },
   factsCenter: { justifyContent: 'center' },
   fact: { color: colors.muted, fontFamily: font.medium, ...type.small, fontVariant: ['tabular-nums'] },
+  // What an Eye costs, for anyone without one: the one gold line on the tab
+  // before the Iris, and the plain line after it.
+  offer: { marginTop: spacing.xs, gap: 2 },
+  offerLead: { color: colors.metal, fontFamily: font.semibold, fontSize: 15, lineHeight: 21, fontVariant: ['tabular-nums'] },
+  offerRest: { color: colors.muted, fontFamily: font.regular, ...type.small, fontVariant: ['tabular-nums'] },
   // The field bleeds to both edges of the screen, as the radar does.
   sceneBlock: { gap: spacing.sm, marginHorizontal: -spacing.lg },
   sceneWrap: { backgroundColor: colors.bg },

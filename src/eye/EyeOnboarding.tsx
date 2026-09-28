@@ -26,11 +26,14 @@ import { PortalEye } from './PortalEye';
 // one habit that keeps it; where they stand among the others; that it is a
 // card they can post; and what this wallet already has and what it costs.
 //
-//   01 · The idea         Every Seeker carries an Eye. The living Eye wakes
-//                         (two heartbeats, the lids part, the wake note), its
-//                         number rises under it, and the others come out of
-//                         the dark round it: a network keeping watch.
-//   02 · Inside your      Built into your Seeker. A blueprint cutaway of the
+//   01 · The idea         Every Solana Mobile Seeker carries an Eye. The
+//                         living Eye wakes (two heartbeats, the lids part,
+//                         the wake note), its number rises under it, and the
+//                         others come out of the dark round it: a network
+//                         keeping watch. Under it the hook, live from the
+//                         server: what the first Eyes cost and how many are
+//                         left at that price, then how many are already open.
+//   02 · Inside your      Your Solana Mobile Seeker is the key. A blueprint cutaway of the
 //        Seeker           phone: the key in the StrongBox secure element
 //                         under the fingerprint, the Seed Vault wallet, the Seeker
 //                         Genesis Token, and Google's attestation chain up
@@ -39,12 +42,13 @@ import { PortalEye } from './PortalEye';
 //                         guarantees. With the finger off (the store build)
 //                         the page shows only what that build uses: the
 //                         wallet, the Genesis Token and Solana.
-//   03 · How it opens     The exact road, in order and by name: once, Verify
-//                         my Seeker (Vault key, Seeker, Genesis Token,
-//                         Verified); then Open my Eye (Finger, Wallet,
-//                         Network, Eye opens). The same stations the real
-//                         stepper draws, each with the same glyph, turning
-//                         one after another until the lids part.
+//   03 · How it opens     How your Eye is minted: the exact road, in order
+//                         and by name. Once, Verify my Seeker (Vault key,
+//                         Seeker, Genesis Token, Wallet, Verified); then Open
+//                         my Eye (Finger, Wallet, Network, Eye opens). The
+//                         same stations the real stepper draws, each with the
+//                         same glyph, turning one after another until the
+//                         lids part.
 //   04 · The Blink        Blink every eight hours. The dial of the day round
 //                         the Eye, a hand walking it, the Eye blinking at the
 //                         end of each rest and the three numbers a Blink
@@ -58,9 +62,10 @@ import { PortalEye } from './PortalEye';
 //                         else's Eye), then the post it becomes on X with the
 //                         app's own caption, and the button that sends it,
 //                         drawn as part of the picture.
-//   07 · Ready            What this wallet has (wallet, Genesis Token, SKR
-//                         position, the finger), the price to the lamport
-//                         with the tier ladder, the one button.
+//   07 · Ready            Mint your Eye. What this wallet has (wallet,
+//                         Genesis Token, SKR position, the finger), the price
+//                         to the lamport and the dollar with the tier ladder,
+//                         the one button.
 //
 // The visual language is the NFT card's night: stars, two curtains of
 // aurora, the horizon, the sea catching the light, the cyan of the portal
@@ -211,13 +216,14 @@ function Row({ label, value, strong = false }: { label: string; value: string; s
 
 // Where the price steps up, drawn: the first tier lit, the next one dim, and
 // a mark where the next Eye will land. At large type, one line instead.
-function Ladder({ tier, open, nextSerial, left, compact }: { tier: { serial: number; afterLamports: number }; open: number; nextSerial: number | null; left: number | null; compact: boolean }) {
+function Ladder({ tier, open, openUsd, nextSerial, left, compact }: { tier: { serial: number; afterLamports: number }; open: number; openUsd: string | null; nextSerial: number | null; left: number | null; compact: boolean }) {
+  const price = `${sol(open)} SOL${openUsd ? ` (${openUsd})` : ''}`;
   if (compact) {
     return (
       <Text style={styles.ladderNote}>
         {left != null
-          ? t('{count} left at {sol} SOL, then {after} SOL', { count: integer(left), sol: sol(open), after: sol(tier.afterLamports) })
-          : t('#1 to #{last} at {sol} SOL, then {after} SOL', { last: integer(tier.serial), sol: sol(open), after: sol(tier.afterLamports) })}
+          ? t('{count} left at {price}, then {after} SOL', { count: integer(left), price, after: sol(tier.afterLamports) })
+          : t('#1 to #{last} at {price}, then {after} SOL', { last: integer(tier.serial), price, after: sol(tier.afterLamports) })}
       </Text>
     );
   }
@@ -233,7 +239,7 @@ function Ladder({ tier, open, nextSerial, left, compact }: { tier: { serial: num
       <View style={styles.ladderRow}>
         <View style={styles.ladderCell}>
           <Text style={styles.ladderText}>{t('#1 to #{last}', { last: integer(tier.serial) })}</Text>
-          <Text style={styles.ladderPrice}>{`${sol(open)} SOL`}</Text>
+          <Text style={styles.ladderPrice}>{price}</Text>
           {left != null ? <Text style={styles.ladderNote}>{t('{count} left at this price', { count: integer(left) })}</Text> : null}
         </View>
         <View style={[styles.ladderCell, styles.ladderCellRight]}>
@@ -298,7 +304,7 @@ export function EyeOnboarding({
     if (first.current) {
       first.current = false;
       cue('hum', 0.25);
-      return schedule([[420, () => note(1, 0.3)]]);
+      return schedule([[220, () => note(1, 0.3)]]);
     }
     return schedule([[120, () => note(page + 1, 0.3)]]);
   }, [page]);
@@ -345,6 +351,21 @@ export function EyeOnboarding({
   const blocked = Boolean(status && !hasEye && (gates?.staked === false || gates?.sgt === false));
   const ready = page === PAGES - 1;
 
+  // The hook: what the first Eyes cost and how many are left at that price,
+  // as the server says it right now. Never a zero as a hook: past the first
+  // tier it says the price of the day instead, and without a count it says
+  // only the price.
+  const openUsd = open != null ? usd(open, solUsd) : null;
+  const openPrice = open != null ? (openUsd ? t('about {usd}', { usd: openUsd }) : `${sol(open)} SOL`) : null;
+  const inTier = tier != null && (nextSerial == null || nextSerial <= tier.serial);
+  const hook = openPrice == null
+    ? null
+    : tier && inTier && left != null && left > 0
+      ? t('The first {count} Eyes cost {price}. {left} left.', { count: integer(tier.serial), price: openPrice, left: integer(left) })
+      : tier && inTier && left == null
+        ? t('The first {count} Eyes cost {price}.', { count: integer(tier.serial), price: openPrice })
+        : t('An Eye costs {price} to mint.', { price: openPrice });
+
   // The checks that pass light on their notes as the last page arrives.
   const passes = [Boolean(wallet), Boolean(wallet && status && gates?.sgt), Boolean(wallet && status && staked), finger ? verified : false].filter(Boolean).length;
   useEffect(() => {
@@ -369,16 +390,21 @@ export function EyeOnboarding({
       title: t('Every Solana Mobile\nSeeker carries an Eye'),
       body: big
         ? t('One NFT per wallet, minted on Solana. Your number is yours forever.')
-        : t('An NFT minted on Solana into your wallet. One per wallet, numbered in the order Eyes open. Your number is yours forever.'),
+        : t('An NFT minted on Solana into your wallet, one per wallet, numbered in the order Eyes open. Your number is yours forever.'),
       art: (box) => <Awakening active={page === 0} reduced={reduced} serial={serial} width={box.width} height={box.height} />,
-      foot: watching != null ? (
-        <Text style={styles.caption}>
-          {watching <= 0
-            ? t('Be one of the first.')
-            : watching === 1
-              ? t('1 Eye is already open. Be one of the first.')
-              : t('{count} Eyes are already open. A network of Seekers keeping watch.', { count: integer(watching) })}
-        </Text>
+      foot: hook || watching != null ? (
+        <View style={styles.footBlock}>
+          {hook ? <Text style={styles.captionGold}>{hook}</Text> : null}
+          {!big && watching != null ? (
+            <Text style={styles.captionDim}>
+              {watching <= 0
+                ? t('Be one of the first.')
+                : watching === 1
+                  ? t('1 Eye is already open. Be one of the first.')
+                  : t('{count} Eyes are already open. A network of Seekers keeping watch.', { count: integer(watching) })}
+            </Text>
+          ) : null}
+        </View>
       ) : null,
     },
     {
@@ -397,10 +423,10 @@ export function EyeOnboarding({
       overline: t('How it opens'),
       title: t('How your Eye\nis minted'),
       body: big
-        ? (finger ? t('Your Seeker proves itself once. Then one button, and the lids part.') : t('One button. Your wallet approves and pays, and the lids part.'))
+        ? (finger ? t('Your Seeker proves itself once. After that, one button does the rest.') : t('One button does the rest. Your wallet approves and pays, and the lids part.'))
         : (finger
-          ? t('Your Solana Mobile Seeker proves itself once. Then one button. Your finger, your wallet, Solana, and the lids part.')
-          : t('One button. Your Seed Vault wallet approves and pays, Solana mints it, and the lids part.')),
+          ? t('Your Solana Mobile Seeker proves itself once. After that, one button does the rest, from your finger to the lids parting.')
+          : t('One button does the rest. Your Seed Vault wallet approves and pays, Solana mints it, and the lids part.')),
       art: (box) => <OpeningRoad active={page === 2} reduced={reduced} width={box.width} height={box.height} finger={finger} />,
     },
     {
@@ -441,7 +467,7 @@ export function EyeOnboarding({
       title: t('Your Eye is a card'),
       body: big
         ? t('Redrawn after every Blink, your number on it. One button posts it to X.')
-        : t('Redrawn after every Blink with your number on it. After the mint and after every Blink, one button posts it to X with the caption written for you.'),
+        : t('Redrawn after every Blink, with your number on it. One button posts it to X, with the caption already written.'),
       art: (box) => <CardShare active={page === 5} reduced={reduced} width={box.width} height={box.height} caption={caption} />,
     },
   ];
@@ -486,7 +512,8 @@ export function EyeOnboarding({
               <PortalEye size={big ? 56 : 88} open={hasEye} instant />
             </View>
             <View style={{ flex: 1 }}>
-              <Text maxFontSizeMultiplier={big ? 1.2 : 1.3} style={styles.titleLeft}>{hasEye ? t('Your Eye is open') : t('Only a Solana Mobile Seeker can mint an Eye')}</Text>
+              <Text maxFontSizeMultiplier={big ? 1.2 : 1.3} style={styles.titleLeft}>{hasEye ? t('Your Eye is open') : t('Mint your Eye')}</Text>
+              {hasEye ? null : <Text style={styles.subLeft}>{t('Only a Solana Mobile Seeker can.')}</Text>}
               {serial && !hasEye ? <Text maxFontSizeMultiplier={1.2} style={styles.serialLeft}>{t('Next number: {serial}', { serial })}</Text> : null}
             </View>
           </View>
@@ -540,7 +567,7 @@ export function EyeOnboarding({
               <Row label={big ? t('Deposit in your Eye') : t('Deposit kept inside your Eye')} value={`≈ ${sol(rent)} SOL`} />
               <View style={styles.rule} />
               <Row label={t('Total')} value={`≈ ${sol(total)} SOL${usd(total, solUsd) ? ` (${usd(total, solUsd)})` : ''}`} strong />
-              {tier ? <Ladder tier={tier} open={open} nextSerial={nextSerial} left={left} compact={big} /> : null}
+              {tier ? <Ladder tier={tier} open={open} openUsd={openUsd} nextSerial={nextSerial} left={left} compact={big} /> : null}
               <View style={styles.rule} />
               {blinkPrice ? (big ? <Row label={t('Blink every {hours} hours', { hours })} value={blinkPrice} /> : <Row label={t('Blink')} value={`${blinkPrice} ${t('every {hours} hours', { hours })}`} />) : null}
               {big ? null : <Text style={styles.micro}>{t('The first Blink is included in the mint.')}</Text>}
@@ -591,9 +618,11 @@ const styles = StyleSheet.create({
   footBlock: { gap: 2 },
   caption: { color: colors.text, fontFamily: font.semibold, fontSize: 16, lineHeight: 22, textAlign: 'center', fontVariant: ['tabular-nums'] },
   captionDim: { color: colors.muted, fontFamily: font.regular, fontSize: 14, lineHeight: 20, textAlign: 'center' },
-  title: { color: colors.text, fontFamily: font.bold, fontSize: 26, lineHeight: 32, letterSpacing: -0.7, textAlign: 'center', marginTop: spacing.xs },
+  captionGold: { color: '#E8CF95', fontFamily: font.semibold, fontSize: 16, lineHeight: 22, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  title: { color: colors.text, fontFamily: font.bold, fontSize: 25, lineHeight: 31, letterSpacing: -0.7, textAlign: 'center', marginTop: spacing.xs },
   titleLeft: { color: colors.text, fontFamily: font.bold, fontSize: 24, lineHeight: 29, letterSpacing: -0.6 },
   body: { color: '#A9BDCE', fontFamily: font.regular, fontSize: 17, lineHeight: 25, textAlign: 'center', paddingHorizontal: spacing.xs },
+  subLeft: { color: colors.muted, fontFamily: font.regular, fontSize: 15, lineHeight: 21, marginTop: 2 },
   serialLeft: { color: colors.metal, fontFamily: font.monoSemibold, fontSize: 14, letterSpacing: 1.4, marginTop: 3 },
   readyHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.xs },
   readyEye: { width: 88, height: 88, alignItems: 'center', justifyContent: 'center' },

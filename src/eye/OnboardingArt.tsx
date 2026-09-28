@@ -209,9 +209,8 @@ function Watcher({ x, y, r, order, crowd }: { x: number; y: number; r: number; o
 // Page one: it wakes. Two heartbeats, the lids part, the number rises under
 // it, and the others come out of the dark round it one by one.
 export function Awakening({ active, reduced, serial, width, height }: { active: boolean; reduced: boolean; serial: string | null; width: number; height: number }) {
-  const big = isBig();
   // The eye and its watchers take what the box leaves after the number.
-  const size = clamp(Math.min(Math.round(width * 0.85), height - (big ? 36 : 60)), 130, 330);
+  const size = clamp(Math.min(Math.round(width * 0.85), height - 36), 130, 330);
   const [open, setOpen] = useState(reduced);
   const [blink, setBlink] = useState(0);
   const shown = useSharedValue(reduced ? 1 : 0);
@@ -223,9 +222,9 @@ export function Awakening({ active, reduced, serial, width, height }: { active: 
     shown.value = 0;
     crowd.value = 0;
     const stop = schedule([
-      [400, () => cue('heart', 0.4)],
-      [1_300, () => cue('heart', 0.35)],
-      [2_150, () => {
+      [700, () => cue('heart', 0.4)],
+      [1_550, () => cue('heart', 0.35)],
+      [2_400, () => {
         setOpen(true);
         thud();
         cue('wake', 0.4);
@@ -250,7 +249,6 @@ export function Awakening({ active, reduced, serial, width, height }: { active: 
       </View>
       <Animated.View style={[styles.serialBlock, tag]}>
         <Text maxFontSizeMultiplier={1.2} style={styles.serial}>{serial ?? ' '}</Text>
-        {big ? null : <Text style={styles.serialNote}>{t('Your number. It never changes.')}</Text>}
       </Animated.View>
     </View>
   );
@@ -537,6 +535,7 @@ export function OpeningRoad({ active, reduced, width, height, finger }: { active
     { icon: 'key', name: t('Vault key'), copy: t('A key is born in the StrongBox secure element. It answers only to your finger.') },
     { icon: 'cert', name: t('Seeker'), copy: t('Google’s certificate chain confirms a real Seeker, verified boot and this app.') },
     { icon: 'token', name: t('Genesis Token'), copy: t('Your Seeker Genesis Token is found in the wallet.') },
+    { icon: 'wallet', name: t('Wallet'), copy: t('Sign once in your Seed Vault wallet. No transaction, no fee.') },
     { icon: 'check', name: t('Verified'), copy: t('Our attestor signs it. This phone is known from now on.') },
   ] : [], [finger]);
   const open = useMemo<RoadStop[]>(() => [
@@ -569,7 +568,7 @@ export function OpeningRoad({ active, reduced, width, height, finger }: { active
         steps.push([clock, () => {
           setAt(i + 1);
           if (last) { setLidsOpen(true); if (first) { thud(); cue('wake', 0.35); } else tap(); }
-          else if (first) cue('chime', 0.26);
+          else if (first && i >= verify.length) cue('chime', 0.26);
           else tick();
         }]);
         clock += BEAT_MS;
@@ -939,7 +938,6 @@ const styles = StyleSheet.create({
   twinkle: { position: 'absolute', backgroundColor: '#E8FBFF' },
   serialBlock: { alignItems: 'center', gap: 2, marginTop: spacing.xs },
   serial: { color: colors.metal, fontFamily: font.monoSemibold, fontSize: 20, letterSpacing: 2.4, textShadowColor: 'rgba(0, 0, 0, 0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2.5 },
-  serialNote: { color: colors.muted, fontFamily: font.regular, fontSize: 14, lineHeight: 19 },
   // The blueprint's legend.
   legend: { flex: 1, justifyContent: 'space-around', gap: spacing.sm, padding: spacing.sm, borderRadius: radius.card, backgroundColor: 'rgba(4, 7, 11, 0.6)' },
   callout: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },

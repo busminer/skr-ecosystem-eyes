@@ -19,13 +19,18 @@ export type IrisMessage =
   | { type: 'network'; eyes: Array<{ s: number; r: number; b: number; pf: number }>; ringCounts: number[] | null; me: { serial: number; ring: number } | null; callout: { title: string; sub: string } | null; empty: boolean }
   | { type: 'blink'; items: Array<{ serial: number; ring: number }> }
   | { type: 'motion'; mode: 'live' | 'calm' | 'off' }
-  | { type: 'pause'; on: boolean };
+  | { type: 'pause'; on: boolean }
+  | { type: 'reset' };
+
+// How far in and where to the person has moved the field: the same numbers
+// the radar keeps, so the tab can move the Eye at the centre with it.
+export type IrisView = { zoom: number; panX: number; panY: number };
 
 export type IrisHandle = { push: (message: IrisMessage) => void };
 
 const motionMode = (): 'live' | 'calm' | 'off' => (prefValue('motion:off', false) ? 'off' : prefValue('motion:calm', false) ? 'calm' : 'live');
 
-export const IrisScene = forwardRef<IrisHandle, { size: number; onTap?: (serial: number) => void }>(function IrisScene({ size, onTap }, ref) {
+export const IrisScene = forwardRef<IrisHandle, { size: number; onTap?: (serial: number) => void; onView?: (view: IrisView) => void }>(function IrisScene({ size, onTap, onView }, ref) {
   const web = useRef<WebView>(null);
   const ready = useRef(false);
   const queue = useRef<IrisMessage[]>([]);
@@ -73,7 +78,7 @@ export const IrisScene = forwardRef<IrisHandle, { size: number; onTap?: (serial:
 
   const onMessage = useCallback((event: WebViewMessageEvent) => {
     try {
-      const data = JSON.parse(event.nativeEvent.data) as { type: string; serial?: number };
+      const data = JSON.parse(event.nativeEvent.data) as { type: string; serial?: number; zoom?: number; panX?: number; panY?: number };
       if (data.type === 'ready') {
         ready.current = true;
         const kept = picture.current;
@@ -84,11 +89,13 @@ export const IrisScene = forwardRef<IrisHandle, { size: number; onTap?: (serial:
         pending.forEach((message) => send(message));
       } else if (data.type === 'tap' && typeof data.serial === 'number' && onTap) {
         onTap(data.serial);
+      } else if (data.type === 'view' && typeof data.zoom === 'number' && typeof data.panX === 'number' && typeof data.panY === 'number' && onView) {
+        onView({ zoom: data.zoom, panX: data.panX, panY: data.panY });
       }
     } catch {
       // A message the scene did not mean to send is not worth a crash.
     }
-  }, [onTap, send]);
+  }, [onTap, onView, send]);
 
   if (failed) return <View style={[styles.wrap, { width: size, height: size }]} />;
 
@@ -102,6 +109,10 @@ export const IrisScene = forwardRef<IrisHandle, { size: number; onTap?: (serial:
         javaScriptEnabled
         domStorageEnabled={false}
         scrollEnabled={false}
+        // A touch that starts on the field stays with the field: the list
+        // around it does not take a drag for a scroll, so one finger pans
+        // and two pinch, as on the radar. Off the field the page scrolls.
+        nestedScrollEnabled
         bounces={false}
         overScrollMode="never"
         androidLayerType="hardware"
