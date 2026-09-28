@@ -2,7 +2,7 @@ import { Buffer } from 'buffer';
 import { t } from '../i18n';
 import { getSeekerWitness, WITNESS_ERROR } from '../../modules/seeker-witness';
 import { fetchWitnessChallenge, type WitnessProof } from './api';
-import { enrollWitness, forgetWitness, readWitness, registerRecord, WitnessError, witnessSign, type WitnessRecord, type WitnessStageListener } from './witness';
+import { enrollWitness, forgetWitness, keyMatches, readWitness, registerRecord, WitnessError, witnessSign, type WitnessRecord, type WitnessStageListener } from './witness';
 
 // What EyePanel does with the finger, kept out of EyePanel.
 //
@@ -55,10 +55,15 @@ function checkChallenge(wallet: string, offer: { challenge: unknown; wallet?: un
 // signed claim, so the wallet opens then, once. `onStage` hears a fresh
 // enrollment's steps as they happen; the on-file path says only the wallet's
 // two moments, and only when it still has a hand-over to make.
+//
+// Two wallets on one phone share the one key: a record whose key is no
+// longer the phone's (another wallet enrolled since) is dropped and this
+// wallet enrolls again, rather than signing with a key the server does not
+// know for it. Switching back and forth costs one enrollment each way.
 export async function ensureWitness(wallet: string, onStage?: WitnessStageListener): Promise<WitnessRecord> {
   const stored = await readWitness(wallet);
   const module = getSeekerWitness();
-  if (stored && module && await module.hasKey().catch(() => false)) return registerRecord(stored, onStage);
+  if (stored && module && await module.hasKey().catch(() => false) && await keyMatches(stored)) return registerRecord(stored, onStage);
   if (stored) await forgetWitness(wallet);
   return enrollWitness(wallet, onStage);
 }

@@ -16,10 +16,10 @@ import expo.modules.kotlin.records.Record
 // Seeker Witness: a hardware key in this phone that signs only under a living
 // finger, with Google's attestation chain to prove both facts.
 //
-// Four calls. `createKey` is born with the attestor's challenge and hands back
+// Five calls. `createKey` is born with the attestor's challenge and hands back
 // the chain for the attestor to read; `sign` shows the system fingerprint
-// prompt and returns one DER signature; `hasKey` and `deleteKey` are what they
-// say. Every failure carries a stable code from the list below, so the screen
+// prompt and returns one DER signature; `hasKey`, `publicKey` and `deleteKey`
+// are what they say. Every failure carries a stable code from the list below, so the screen
 // can tell a cancelled prompt from a locked sensor without reading messages.
 class SeekerWitnessModule : Module() {
   object Codes {
@@ -96,6 +96,17 @@ class SeekerWitnessModule : Module() {
     AsyncFunction("hasKey") {
       supported()
       WitnessKey.exists()
+    }
+
+    // The compressed public key of the key in this phone right now, hex, or
+    // null when there is none. The phone holds one key under one alias while
+    // the JS side keeps one enrolment per wallet, so a second wallet enrolled
+    // here replaces the first one's key. The JS side compares this with the
+    // record it is about to use and enrolls again when they differ, instead
+    // of signing for a key the server no longer has for that wallet.
+    AsyncFunction("publicKey") {
+      supported()
+      if (WitnessKey.exists()) hex(WitnessKey.compressedPublicKey()) else null
     }
 
     // Born with the attestor's challenge (base64 of its raw bytes). Refuses up

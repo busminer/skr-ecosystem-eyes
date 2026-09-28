@@ -8,7 +8,7 @@ import { getSeekerWitness, WITNESS_ERROR } from '../../modules/seeker-witness';
 import { ensureWitness, isFingerCancel } from './finger';
 import { fontScale } from './fit';
 import { Overline } from './glyphs';
-import { isWalletCancelled, readWitness, WitnessError, type WitnessRecord, type WitnessStage } from './witness';
+import { isWalletCancelled, keyMatches, readWitness, WitnessError, type WitnessRecord, type WitnessStage } from './witness';
 import { BEAT_MS, Stepper, keyFingerprint, shorten, usePaced, type Failure, type StepModel } from './Stepper';
 import { PortalEye } from './PortalEye';
 import { ritual } from '../sound';
@@ -54,7 +54,8 @@ import { ritual } from '../sound';
 export type WitnessState =
   // Not Android, or a build without the module: the Eye works unwitnessed.
   | { kind: 'unavailable' }
-  // Never verified on this phone, or the key is gone (new fingerprint, reinstall).
+  // Never verified on this phone, or the key is gone (new fingerprint,
+  // reinstall), or the phone's key now belongs to another wallet's enrolment.
   | { kind: 'none' }
   | { kind: 'verified'; record: WitnessRecord };
 
@@ -64,7 +65,7 @@ export async function getWitnessState(wallet: string): Promise<WitnessState> {
   const record = await readWitness(wallet);
   if (!record) return { kind: 'none' };
   const present = await module.hasKey().catch(() => false);
-  return present ? { kind: 'verified', record } : { kind: 'none' };
+  return present && await keyMatches(record) ? { kind: 'verified', record } : { kind: 'none' };
 }
 
 const STEPS = 5;

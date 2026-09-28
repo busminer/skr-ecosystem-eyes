@@ -243,6 +243,21 @@ export async function readWitness(wallet: string): Promise<WitnessRecord | null>
   }
 }
 
+// Whether the key in this phone right now is the one a record names. The
+// phone holds one witness key (WitnessKey.kt, one alias) while the records
+// here are kept per wallet, so enrolling a second wallet on the same phone
+// replaces the key the first wallet's record names. That record then vouches
+// for a key the phone no longer has, every signature made for it fails at the
+// server, and it would go on failing for good. A record is good only while
+// the phone's key is its key; when the phone cannot say (a build without
+// `publicKey`, no key, an error), the answer is left to `hasKey` as before.
+export async function keyMatches(record: WitnessRecord): Promise<boolean> {
+  const module = getSeekerWitness();
+  if (!module || typeof module.publicKey !== 'function') return true;
+  const current = await module.publicKey().catch(() => null);
+  return current == null || current.toLowerCase() === record.p256.toLowerCase();
+}
+
 // Forgets the wallet's record and destroys the key. The next enrollment
 // starts from nothing, with a fresh challenge and a fresh verdict.
 export async function forgetWitness(wallet: string): Promise<void> {

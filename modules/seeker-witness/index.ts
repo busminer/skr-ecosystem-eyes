@@ -68,6 +68,12 @@ export type SeekerWitnessModule = {
   readonly PACKAGE: string;
   readonly KEY_ALIAS: string;
   hasKey(): Promise<boolean>;
+  // The key in the phone right now: 33-byte compressed P-256, hex, or null
+  // when there is none. There is one key per phone and one record per wallet,
+  // so this is how a record learns that another wallet's enrolment has since
+  // replaced its key (src/eye/witness.ts keyMatches). Optional: a build
+  // without it keeps the old behaviour.
+  publicKey?(): Promise<string | null>;
   createKey(challengeBase64: string): Promise<CreatedKey>;
   sign(messageBase64: string, texts: PromptTexts): Promise<WitnessSignature>;
   deleteKey(): Promise<void>;
