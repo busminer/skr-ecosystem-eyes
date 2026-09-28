@@ -205,8 +205,9 @@ export function MoveSheet({ kind, wallet, onDone, onClose }: { kind: MoveKind; w
   if (finger) {
     steps.push({
       key: 'finger',
+      icon: 'finger',
       title: t('Finger'),
-      copy: sub === 'challenge' ? t('Asking the Eye service for a one-time challenge.') : t("Touch the sensor: the key in your Seeker's secure chip signs the challenge."),
+      copy: sub === 'challenge' ? t('Asking the Eye service for a one-time challenge.') : t("Touch the sensor: the key in your Seeker's StrongBox secure element signs the challenge."),
       status: statusOf('finger'),
       failure,
       result: p256 ? (
@@ -219,6 +220,7 @@ export function MoveSheet({ kind, wallet, onDone, onClose }: { kind: MoveKind; w
   }
   steps.push({
     key: 'wallet',
+    icon: 'wallet',
     title: t('Wallet'),
     copy: sub === 'wallet' ? t('Approve the transaction in your Seeker wallet.') : t('Asking the Eye service for the transaction.'),
     status: statusOf('wallet'),
@@ -227,6 +229,7 @@ export function MoveSheet({ kind, wallet, onDone, onClose }: { kind: MoveKind; w
   });
   steps.push({
     key: 'network',
+    icon: 'network',
     title: t('Network'),
     copy: t('Sending the transaction to Solana and waiting for it to confirm.'),
     status: statusOf('network'),
@@ -241,6 +244,7 @@ export function MoveSheet({ kind, wallet, onDone, onClose }: { kind: MoveKind; w
   if (kind === 'open') {
     steps.push({
       key: 'eye',
+      icon: 'eye',
       title: t('Eye opens'),
       copy: t('Your Eye is about to open.'),
       status: statusOf('eye'),

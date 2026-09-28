@@ -6,6 +6,7 @@ import Animated, { Easing, ZoomIn, cancelAnimation, useAnimatedStyle, useSharedV
 import { t } from '../i18n';
 import { Eyebrow, Panel } from '../lab/kit';
 import { colors, font, spacing, type } from '../theme';
+import { Glyph, Overline, type GlyphName } from './glyphs';
 
 // A stepper: the one way this app shows a thing that takes several steps and
 // real time, so a person is never left with a spinner and a guess.
@@ -36,6 +37,12 @@ export type StepModel = {
   key: string;
   // The step's name; what was found may replace it once the step is done.
   title: string;
+  // The step's glyph (src/eye/glyphs.tsx): the same drawing the walk-through
+  // of the Eye showed next to this step, so the person recognises it.
+  icon?: GlyphName;
+  // The short name the walk-through used for this step, when the title is a
+  // sentence that changes as the step runs; shown small above the title.
+  name?: string;
   // One line, present tense: what the phone is doing right now.
   copy: string | null;
   status: StepStatus;
@@ -126,10 +133,11 @@ export function Stepper({ steps, reduced, eyebrow }: { steps: StepModel[]; reduc
 }
 
 function Step({ model, last, reduced }: { model: StepModel; last: boolean; reduced: boolean }) {
-  const { status, title, copy, result, failure } = model;
+  const { status, title, copy, result, failure, icon, name } = model;
   const pending = status === 'pending';
   const failed = status === 'failed';
   const stopped = status === 'stopped';
+  const tone = status === 'done' ? colors.positive : status === 'working' ? colors.accent : failed ? colors.negative : stopped ? colors.pending : colors.dim;
   return (
     <View style={styles.row}>
       <View style={styles.railCol}>
@@ -137,7 +145,17 @@ function Step({ model, last, reduced }: { model: StepModel; last: boolean; reduc
         {last ? null : <Rail filled={status === 'done'} reduced={reduced} />}
       </View>
       <Panel style={styles.card} flat={pending} tone={failed ? colors.negative : stopped ? colors.pending : undefined}>
-        <Text style={[styles.title, pending && styles.titlePending]}>{title}</Text>
+        <View style={styles.titleRow}>
+          {icon ? (
+            <View style={[styles.glyph, !pending && { borderColor: tone }]}>
+              <Glyph name={icon} size={17} tone={tone} />
+            </View>
+          ) : null}
+          <View style={styles.titleText}>
+            {name ? <Overline tone={pending ? colors.dim : colors.faint}>{name}</Overline> : null}
+            <Text style={[styles.title, pending && styles.titlePending]}>{title}</Text>
+          </View>
+        </View>
         {status === 'working' && copy ? <Text style={styles.copy}>{copy}</Text> : null}
         {status === 'done' && result ? <View style={styles.result}>{result}</View> : null}
         {(failed || stopped) && failure ? (
@@ -195,11 +213,13 @@ function Progress({ status, reduced }: { status: StepStatus; reduced: boolean })
 // The mark on the rail beside a card: a dot for a step still to come, a ring
 // turning while it runs, a mint check once it is done, a red cross if it
 // failed, an amber ring if the person stopped it. The change from one to the
-// next is the moment the person is meant to catch.
-function Station({ status, reduced }: { status: StepStatus; reduced: boolean }) {
+// next is the moment the person is meant to catch. Exported so the
+// walk-through of the Eye can draw the very same marks on its road; `flush`
+// drops the margin that lines a station up with a card's title here.
+export function Station({ status, reduced, flush = false }: { status: StepStatus; reduced: boolean; flush?: boolean }) {
   const pop = reduced || status === 'working' || status === 'pending' ? undefined : ZoomIn.duration(220);
   return (
-    <View style={styles.station}>
+    <View style={[styles.station, flush && styles.stationFlush]}>
       <Animated.View key={status} entering={pop}>
         {status === 'pending' ? <View style={styles.dot} /> : null}
         {status === 'working' ? <Ring reduced={reduced} /> : null}
@@ -277,6 +297,10 @@ const styles = StyleSheet.create({
   railCol: { width: STATION, alignItems: 'center' },
   // Level with the card's title line.
   station: { width: STATION, height: STATION, marginTop: spacing.md, alignItems: 'center', justifyContent: 'center' },
+  stationFlush: { marginTop: 0 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  glyph: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.inset, alignItems: 'center', justifyContent: 'center' },
+  titleText: { flex: 1, gap: 1 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.dim },
   ring: { width: STATION, height: STATION },
   rail: { flex: 1, width: 2, borderRadius: 1, marginTop: spacing.xs, backgroundColor: colors.line, overflow: 'hidden' },

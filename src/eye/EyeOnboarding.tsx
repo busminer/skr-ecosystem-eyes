@@ -1,464 +1,120 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
-import * as Haptics from 'expo-haptics';
-import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
-import Svg, { Circle, Defs, G, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { t } from '../i18n';
 import { integer, shortAddress } from '../format';
-import { prefValue } from '../prefs';
-import { ritual, type Cue } from '../sound';
 import { useReducedMotion } from '../useReducedMotion';
 import { Button } from '../lab/kit';
-import { colors, font, radius, spacing, type } from '../theme';
-import { fetchEyeHealth, type EyePrices, type EyeStatus } from './api';
+import { colors, font, radius, spacing } from '../theme';
+import { fetchEyeHealth, type Eye, type EyePrices, type EyeStatus } from './api';
 import { EYE_FINGER_ENABLED } from './config';
 import { cooldownHours, leftAtPrice, rentOf, sol, usd } from './money';
+import { eyeCaption } from './shareEye';
+import { Glyph, Overline, type GlyphName } from './glyphs';
+import { Awakening, BlinkDial, Blueprint, Breath, CardShare, IrisClimb, NightSky, OpeningRoad, cue, note, schedule, tick } from './OnboardingArt';
 import { PortalEye } from './PortalEye';
 
-// The Eye, before it is bought: a small ritual rather than a tutorial.
+// The Eye, before it is opened: seven pages that make a person want one and
+// leave nothing later a surprise.
 //
-// Night sky, the same as the NFT's (stars, a green-blue aurora low down, the
-// sea catching it), and in the middle of every page the Eye itself, the
-// portal cut from the collection card, alive: it wakes, it blinks, it waits.
-// Five pages, one idea each, each told by the Eye doing the thing:
+// DESIGN DIRECTION
 //
-//   1. It wakes: two heartbeats, the lids part, its number rises under it.
-//   2. It is opened by you: three lights round it, one per touch (finger,
-//      wallet, network), each struck like glass, then the heartbeat and the
-//      lids part. The line under it says what that light is.
-//   3. It blinks every eight hours: a dial of three arcs round it, a hand
-//      walking it, and at each arc's end the Eye blinks.
-//   4. It is one of many: the Iris, every Eye a small eye on its ring, yours
-//      stepping ring by ring to the pupil and turning gold at thirty days.
-//   5. It is yours to open: what this wallet and this phone already have,
-//      the number it will carry, the price to the lamport, the one button.
+// The story. A person is told, in this order: what the Eye is; what in their
+// Seeker makes it possible; the exact road they will walk to open it; the
+// one habit that keeps it; where they stand among the others; that it is a
+// card they can post; and what this wallet already has and what it costs.
 //
-// Every action has its sound and its touch: a low fifth swells as a page
-// arrives, glass for each light, two soft knocks before the lids part, the
-// wake note as they do, the wink on a blink. Both follow the app's own
-// switches for sound and vibration; a person who asked the phone for less
-// motion gets the pages still.
+//   01 · The idea         Every Seeker carries an Eye. The living Eye wakes
+//                         (two heartbeats, the lids part, the wake note), its
+//                         number rises under it, and the others come out of
+//                         the dark round it: a network keeping watch.
+//   02 · Inside your      Built into your Seeker. A blueprint cutaway of the
+//        Seeker           phone: the key in the StrongBox secure element
+//                         under the fingerprint, the Seed Vault wallet, the Seeker
+//                         Genesis Token, and Google's attestation chain up
+//                         to its root. Each part lights on its own note and
+//                         a leader line is drawn to one short line of what it
+//                         guarantees. With the finger off (the store build)
+//                         the page shows only what that build uses: the
+//                         wallet, the Genesis Token and Solana.
+//   03 · How it opens     The exact road, in order and by name: once, Verify
+//                         my Seeker (Vault key, Seeker, Genesis Token,
+//                         Verified); then Open my Eye (Finger, Wallet,
+//                         Network, Eye opens). The same stations the real
+//                         stepper draws, each with the same glyph, turning
+//                         one after another until the lids part.
+//   04 · The Blink        Blink every eight hours. The dial of the day round
+//                         the Eye, a hand walking it, the Eye blinking at the
+//                         end of each rest and the three numbers a Blink
+//                         rewrites on Solana moving under it. A tap tries one.
+//   05 · The Iris         One of many, move inward. The nine rings with the
+//                         streak each stands for, the network blinking round
+//                         the pupil, your Eye stepping ring by ring to the
+//                         centre and turning gold at thirty days. Live counts.
+//   06 · Your card        The Eye is a card. A sample card the server's own
+//                         renderer drew (bundled, so it is never somebody
+//                         else's Eye), then the post it becomes on X with the
+//                         app's own caption, and the button that sends it,
+//                         drawn as part of the picture.
+//   07 · Ready            What this wallet has (wallet, Genesis Token, SKR
+//                         position, the finger), the price to the lamport
+//                         with the tier ladder, the one button.
 //
-// Nothing is promised that the app does not do: the card does not grow new
-// rings, so no page says it does; the streak moves the Eye on the Iris.
+// The visual language is the NFT card's night: stars, two curtains of
+// aurora, the horizon, the sea catching the light, the cyan of the portal
+// ring (#56E0FF) and the gold of the iris (#C9A96A) on near-black. Thin,
+// precise line work in one stroke weight; glow as radial light, never as a
+// box shadow; one overline in mono at the top of every page saying where in
+// the sequence the person is, a seven-segment progress bar under it, a
+// headline, at most two short sentences, and the rest in the picture and its
+// labels. Everything is SVG and reanimated on the UI thread; Skia is not
+// linked into this app.
+//
+// Sound and touch, sparingly. The pad (`hum`) once, when the walk-through
+// first appears. Each page arrives on its own soft glass note, tone1 to
+// tone7, a rising scale; the lights on a page continue up the scale from
+// the page's note. Two heartbeats and the wake note when the lids part
+// (pages one and three), with the heaviest touch the phone has. The chime
+// where a real step lands (page three), because that is the sound the real
+// stepper makes. The wink on every Blink (page four). A selection tick on
+// every ring climbed and a chime at Perfect (page five). All of it through
+// `ritual`, which follows the app's own switches for sound and vibration,
+// and none of it runs for a person who asked the phone for less motion:
+// they get every page still, in its finished state.
+//
+// Nothing is promised that the app does not do. The steps on page three are
+// the sheet's own (MoveSheet.tsx, WitnessWalkthrough.tsx); the rings on page
+// five are the Iris's (irisSceneHtml.ts); the caption on page six is the one
+// shareEye.ts writes; the prices on page seven are the server's.
 
-const PAGES = 5;
+const PAGES = 7;
 
-// A sound with its touch, each only if the person has left it on.
-const cue = (name: Cue, volume: number) => ritual(name, volume);
-
-function tick() {
-  if (prefValue('buzz', true)) void Haptics.selectionAsync().catch(() => undefined);
-}
-
-function thud() {
-  if (prefValue('buzz', true)) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
-}
-
-// ------------------------------------------------------------------- sky --
-
-// Placed the same way every time: a small hash, not Math.random.
-function hash(n: number) {
-  let x = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
-  return x - Math.floor(x);
-}
-
-const STARS = Array.from({ length: 110 }, (_, i) => ({ x: hash(i * 3 + 1), y: hash(i * 7 + 2) * 0.8, r: 0.5 + hash(i * 11 + 3) * 1.1, a: 0.2 + hash(i * 13 + 4) * 0.6 }));
-const TWINKLES = Array.from({ length: 16 }, (_, i) => ({ x: hash(i * 17 + 5), y: 0.08 + hash(i * 19 + 6) * 0.6, r: 0.7 + hash(i * 23 + 7) * 0.6, d: 1_400 + hash(i * 29 + 8) * 2_200, o: hash(i * 31 + 9) * 2_000 }));
-
-function Twinkle({ x, y, r, d, o, still }: { x: number; y: number; r: number; d: number; o: number; still: boolean }) {
-  const glow = useSharedValue(0.2);
-  useEffect(() => {
-    if (still) { glow.value = 0.5; return; }
-    glow.value = withDelay(o, withRepeat(withSequence(withTiming(0.85, { duration: d, easing: Easing.inOut(Easing.sin) }), withTiming(0.1, { duration: d, easing: Easing.inOut(Easing.sin) })), -1, false));
-  }, [still, d, o, glow]);
-  const style = useAnimatedStyle(() => ({ opacity: glow.value }));
-  return <Animated.View pointerEvents="none" style={[styles.twinkle, { left: x - r, top: y - r, width: r * 2, height: r * 2, borderRadius: r }, style]} />;
-}
-
-// The NFT's night: stars, an aurora low down, the sea catching it.
-function NightSky({ width, height, still }: { width: number; height: number; still: boolean }) {
-  return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <Svg width={width} height={height}>
-        <Defs>
-          <RadialGradient id="aurora1" cx="0.22" cy="0.8" rx="0.8" ry="0.28">
-            <Stop offset="0" stopColor="#1FD6A8" stopOpacity="0.20" />
-            <Stop offset="1" stopColor="#1FD6A8" stopOpacity="0" />
-          </RadialGradient>
-          <RadialGradient id="aurora2" cx="0.85" cy="0.66" rx="0.6" ry="0.26">
-            <Stop offset="0" stopColor="#2FA8FF" stopOpacity="0.16" />
-            <Stop offset="1" stopColor="#2FA8FF" stopOpacity="0" />
-          </RadialGradient>
-          <RadialGradient id="halo" cx="0.5" cy="0.34" rx="0.6" ry="0.3">
-            <Stop offset="0" stopColor="#56E0FF" stopOpacity="0.10" />
-            <Stop offset="1" stopColor="#56E0FF" stopOpacity="0" />
-          </RadialGradient>
-          <LinearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#0B2A33" stopOpacity="0" />
-            <Stop offset="1" stopColor="#0B2A33" stopOpacity="0.55" />
-          </LinearGradient>
-        </Defs>
-        <Rect x={0} y={0} width={width} height={height} fill="#03060A" />
-        <Rect x={0} y={0} width={width} height={height} fill="url(#aurora1)" />
-        <Rect x={0} y={0} width={width} height={height} fill="url(#aurora2)" />
-        <Rect x={0} y={0} width={width} height={height} fill="url(#halo)" />
-        {STARS.map((star, i) => <Circle key={i} cx={star.x * width} cy={star.y * height} r={star.r} fill="#D8F4FF" opacity={star.a} />)}
-        <Rect x={0} y={height * 0.78} width={width} height={height * 0.22} fill="url(#sea)" />
-      </Svg>
-      {TWINKLES.map((star, i) => <Twinkle key={i} x={star.x * width} y={star.y * height} r={star.r} d={star.d} o={star.o} still={still} />)}
-    </View>
-  );
-}
-
-// A soft light that breathes behind the Eye.
-function Breath({ size, still, tone = colors.accent }: { size: number; still: boolean; tone?: string }) {
-  const k = useSharedValue(0.5);
-  useEffect(() => {
-    if (still) { k.value = 0.6; return; }
-    k.value = withRepeat(withSequence(withTiming(1, { duration: 2_400, easing: Easing.inOut(Easing.sin) }), withTiming(0.35, { duration: 2_400, easing: Easing.inOut(Easing.sin) })), -1, false);
-  }, [still, k]);
-  const style = useAnimatedStyle(() => ({ opacity: 0.35 + k.value * 0.55, transform: [{ scale: 0.94 + k.value * 0.1 }] }));
-  const half = size / 2;
-  return (
-    <Animated.View pointerEvents="none" style={[{ position: 'absolute', width: size, height: size }, styles.breath, style]}>
-      <Svg width={size} height={size}>
-        <Defs>
-          <RadialGradient id="breath" cx="0.5" cy="0.5" r="0.5">
-            <Stop offset="0.45" stopColor={tone} stopOpacity="0.32" />
-            <Stop offset="0.7" stopColor={tone} stopOpacity="0.12" />
-            <Stop offset="1" stopColor={tone} stopOpacity="0" />
-          </RadialGradient>
-        </Defs>
-        <Circle cx={half} cy={half} r={half} fill="url(#breath)" />
-      </Svg>
-    </Animated.View>
-  );
-}
-
-// ---------------------------------------------------------------- pictures --
-
-// Page one: it wakes. Two heartbeats, the lids part, the number rises.
-function Awakening({ active, reduced, serial, size }: { active: boolean; reduced: boolean; serial: string | null; size: number }) {
-  const [open, setOpen] = useState(reduced);
-  const [blink, setBlink] = useState(0);
-  const shown = useSharedValue(reduced ? 1 : 0);
-  useEffect(() => {
-    if (reduced) { setOpen(true); shown.value = 1; return; }
-    if (!active) { setOpen(false); shown.value = 0; return; }
-    setOpen(false);
-    shown.value = 0;
-    const timers = [
-      setTimeout(() => cue('heart', 0.55), 350),
-      setTimeout(() => cue('heart', 0.45), 1_250),
-      setTimeout(() => { setOpen(true); thud(); cue('wake', 0.42); shown.value = withDelay(700, withTiming(1, { duration: 700 })); }, 2_100),
-    ];
-    const loop = setInterval(() => setBlink((count) => count + 1), 4_800);
-    return () => { timers.forEach(clearTimeout); clearInterval(loop); };
-  }, [active, reduced, shown]);
-  const tag = useAnimatedStyle(() => ({ opacity: shown.value, transform: [{ translateY: (1 - shown.value) * 12 }] }));
-  return (
-    <View style={{ width: size, alignItems: 'center' }}>
-      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        <Breath size={size * 1.35} still={reduced} />
-        <PortalEye size={Math.round(size * 0.92)} open={open} blink={blink} instant={reduced} />
-      </View>
-      <Animated.Text style={[styles.serial, tag]}>{serial ?? ' '}</Animated.Text>
-    </View>
-  );
-}
-
-// The three touches, drawn small.
-function TouchIcon({ name, tone }: { name: 'finger' | 'wallet' | 'network'; tone: string }) {
-  return (
-    <Svg width={24} height={24} viewBox="0 0 26 26">
-      {name === 'finger' ? (
-        <G fill="none" stroke={tone} strokeWidth={1.7} strokeLinecap="round">
-          <Path d="M5.2 10.8a8 8 0 0 1 15.6 0" />
-          <Path d="M8.2 21.2c-1-2-1.5-4.2-1.5-6.7a6.3 6.3 0 0 1 12.6 0c0 1.3-.1 2.5-.3 3.6" />
-          <Path d="M11.1 23c-1.2-2.5-1.7-5-1.7-7.9a3.6 3.6 0 0 1 7.2 0c0 2.2-.3 4.2-1 6" />
-          <Path d="M13 14.8c0 3.2.6 6 1.9 8.4" />
-        </G>
-      ) : name === 'wallet' ? (
-        <G fill="none" stroke={tone} strokeWidth={1.7} strokeLinejoin="round">
-          <Path d="M6 8.2 17.5 4.6l1.3 3.6" />
-          <Rect x={3} y={8.2} width={20} height={13.6} rx={3} />
-          <Path d="M23 12.6h-5.2a2.4 2.4 0 0 0 0 4.8H23" />
-        </G>
-      ) : (
-        <G fill="none" stroke={tone} strokeWidth={1.7} strokeLinejoin="round">
-          <Rect x={1.8} y={9.8} width={6.4} height={6.4} rx={1.5} />
-          <Rect x={9.8} y={9.8} width={6.4} height={6.4} rx={1.5} />
-          <Rect x={17.8} y={9.8} width={6.4} height={6.4} rx={1.5} />
-          <Path d="M8.2 13h1.6M16.2 13h1.6" strokeLinecap="round" />
-        </G>
-      )}
-    </Svg>
-  );
-}
-
-// An arc round a centre, degrees clockwise from twelve o'clock.
-function arc(cx: number, cy: number, r: number, from: number, to: number): string {
-  const point = (deg: number) => {
-    const rad = ((deg - 90) * Math.PI) / 180;
-    return `${(cx + r * Math.cos(rad)).toFixed(2)} ${(cy + r * Math.sin(rad)).toFixed(2)}`;
-  };
-  const large = to - from > 180 ? 1 : 0;
-  return `M ${point(from)} A ${r} ${r} 0 ${large} 1 ${point(to)}`;
-}
-
-const TOUCHES = ['finger', 'wallet', 'network'] as const;
-
-// Page two: opened by you. Three lights round the Eye, one per touch; the
-// line under it says what each is; then the heartbeat, and it opens.
-function Orbit({ active, reduced, size, finger, onCaption }: { active: boolean; reduced: boolean; size: number; finger: boolean; onCaption: (text: string) => void }) {
-  const stops = finger ? TOUCHES : TOUCHES.slice(1);
-  const n = stops.length;
-  const [at, setAt] = useState(reduced ? n : -1);
-  const captions = useMemo<Record<(typeof TOUCHES)[number] | 'eye', string>>(() => ({
-    finger: t('Your fingerprint signs'),
-    wallet: t('Your wallet approves and pays'),
-    network: t('Solana writes it down'),
-    eye: t('Your Eye opens'),
-  }), []);
-  useEffect(() => {
-    if (reduced) { setAt(n); onCaption(captions.eye); return; }
-    if (!active) { setAt(-1); return; }
-    let step = -1;
-    let pass = 0;
-    setAt(-1);
-    onCaption(' ');
-    const timer = setInterval(() => {
-      step += 1;
-      if (step > n + 2) { step = -1; pass += 1; }
-      const loud = pass === 0;
-      if (step >= 0 && step < n) { if (loud) cue('chime', 0.32); else tick(); onCaption(captions[stops[step] ?? 'eye']); }
-      if (step === n && loud) cue('heart', 0.5);
-      if (step === n + 1) { if (loud) { thud(); cue('wake', 0.38); } onCaption(captions.eye); }
-      if (step === -1) onCaption(' ');
-      setAt(Math.min(step, n + 1));
-    }, 1_050);
-    return () => clearInterval(timer);
-  }, [active, reduced, n, stops, captions, onCaption]);
-
-  const half = size / 2;
-  const R = size * 0.42;
-  const node = Math.round(size * 0.2);
-  const angles = stops.map((_, i) => (360 / n) * i);
-  const open = at >= n + 1 || (reduced && at >= n);
-  return (
-    <View style={{ width: size, height: size }}>
-      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
-        <Circle cx={half} cy={half} r={R} fill="none" stroke={colors.line} strokeWidth={1.2} strokeDasharray="2 5" />
-        {angles.map((from, i) => {
-          const to = i + 1 < n ? (angles[i + 1] ?? 360) : 360;
-          const lit = at > i;
-          return <Path key={i} d={arc(half, half, R, from + 9, to - 9)} fill="none" stroke={lit ? colors.accent : 'transparent'} strokeWidth={2.4} strokeLinecap="round" opacity={0.85} />;
-        })}
-      </Svg>
-      <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-        <Breath size={size * 0.8} still={reduced} />
-        <PortalEye size={Math.round(size * 0.56)} open={open} instant={reduced} />
-      </View>
-      {stops.map((name, i) => {
-        const rad = (((angles[i] ?? 0) - 90) * Math.PI) / 180;
-        const x = half + R * Math.cos(rad) - node / 2;
-        const y = half + R * Math.sin(rad) - node / 2;
-        const lit = at >= i;
-        const here = at === i;
-        const tone = here ? colors.accent : lit ? colors.positive : colors.dim;
-        return (
-          <View key={name} style={[styles.orb, { left: x, top: y, width: node, height: node, borderRadius: node / 2, borderColor: tone, backgroundColor: here ? 'rgba(86, 224, 255, 0.16)' : lit ? 'rgba(124, 240, 188, 0.08)' : 'rgba(7, 12, 18, 0.9)', shadowColor: tone, shadowOpacity: here ? 0.9 : 0, shadowRadius: 12 }]}>
-            <TouchIcon name={name} tone={tone} />
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-// Page three: blink every eight hours. A dial of three arcs round the Eye, a
-// hand walking it; at each arc's end the Eye blinks.
-function BlinkDial({ active, reduced, size, slots }: { active: boolean; reduced: boolean; size: number; slots: number }) {
-  const [blink, setBlink] = useState(0);
-  const [slot, setSlot] = useState(0);
-  const turn = useSharedValue(0);
-  const per = 360 / slots;
-  useEffect(() => {
-    setSlot(0);
-    turn.value = 0;
-    if (reduced || !active) return;
-    let ticks = 0;
-    const SLOT_MS = 1_900;
-    turn.value = withTiming(per, { duration: SLOT_MS, easing: Easing.linear });
-    const timer = setInterval(() => {
-      ticks += 1;
-      setBlink((count) => count + 1);
-      setSlot(ticks % slots);
-      if (ticks <= slots) cue('wink', 0.3);
-      turn.value = withTiming((ticks + 1) * per, { duration: SLOT_MS, easing: Easing.linear });
-    }, SLOT_MS);
-    return () => clearInterval(timer);
-  }, [active, reduced, per, slots, turn]);
-  const hand = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value}deg` }] }));
-  const half = size / 2;
-  const r = half - 10;
-  const gap = 8;
-  return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
-        {Array.from({ length: slots }, (_, index) => (
-          <Path
-            key={index}
-            d={arc(half, half, r, index * per + gap / 2, (index + 1) * per - gap / 2)}
-            fill="none"
-            stroke={index === slot ? colors.accent : colors.line}
-            strokeWidth={index === slot ? 7 : 5}
-            strokeLinecap="round"
-          />
-        ))}
-      </Svg>
-      {reduced ? null : (
-        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, hand]}>
-          <View style={[styles.handDot, { left: half - 6, top: 10 - 6 }]} />
-        </Animated.View>
-      )}
-      <Breath size={size * 0.95} still={reduced} />
-      <Pressable onPress={() => { setBlink((count) => count + 1); cue('wink', 0.45); }} accessibilityRole="button" accessibilityLabel={t('Tap the Eye to try a Blink')}>
-        <PortalEye size={Math.round(size * 0.66)} open blink={blink} instant={reduced} />
-      </Pressable>
-    </View>
-  );
-}
-
-// The Iris's ring thresholds, outermost first: the streak an Eye needs to
-// stand on each ring (src/iris.mjs in the service). Ring 0 is Perfect.
-const RING_STREAK = [30, 21, 14, 10, 7, 5, 3, 2, 1];
-
-// The other Eyes on the rings, placed the same way every time.
-function crowd(count: number) {
-  return Array.from({ length: count }, (_, i) => {
-    const roll = hash(i * 41 + 3);
-    const ring = roll < 0.3 ? 8 : roll < 0.52 ? 7 : roll < 0.68 ? 6 : roll < 0.79 ? 5 : roll < 0.87 ? 4 : roll < 0.93 ? 3 : roll < 0.96 ? 2 : roll < 0.985 ? 1 : 0;
-    return { ring, angle: hash(i * 43 + 5) * 360, open: hash(i * 47 + 7) < 0.6 };
-  });
-}
-
-// One small Eye, the NFT's shape: a glowing ring, a gold iris, shut if it
-// has not blinked today.
-function SmallEye({ x, y, r, open, perfect }: { x: number; y: number; r: number; open: boolean; perfect: boolean }) {
-  const tone = perfect ? colors.metal : open ? '#6EF0FF' : '#5E7890';
-  return (
-    <G>
-      {open ? <Circle cx={x} cy={y} r={r * 1.9} fill={perfect ? colors.metal : '#56E0FF'} opacity={0.12} /> : null}
-      <Circle cx={x} cy={y} r={r} fill="#050B10" stroke={tone} strokeWidth={Math.max(1, r * 0.28)} opacity={open ? 1 : 0.75} />
-      {open ? (
-        <>
-          <Circle cx={x} cy={y} r={r * 0.46} fill="#D6B56A" />
-          <Circle cx={x} cy={y} r={r * 0.21} fill="#020304" />
-        </>
-      ) : <Path d={`M ${x - r * 0.55} ${y} L ${x + r * 0.55} ${y}`} stroke="#3A5B68" strokeWidth={Math.max(0.8, r * 0.14)} />}
-    </G>
-  );
-}
-
-// Page four: one of many. The Iris, every Eye a small eye; yours steps ring
-// by ring to the pupil, a touch each ring, gold and a chime at thirty days.
-function IrisClimb({ active, reduced, size }: { active: boolean; reduced: boolean; size: number }) {
-  const half = size / 2;
-  const pupil = size * 0.15;
-  const outer = half - 6;
-  const step = (outer - pupil) / 9;
-  const radiusOf = (ring: number) => pupil + (ring + 0.5) * step;
-  const angle = -38;
-  const at = useCallback((ring: number) => {
-    const rad = ((angle - 90) * Math.PI) / 180;
-    return { x: half + radiusOf(ring) * Math.cos(rad), y: half + radiusOf(ring) * Math.sin(rad) };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [size]);
-  const others = useMemo(() => crowd(40), []);
-  const [ring, setRing] = useState(reduced ? 0 : 8);
-  const [blink, setBlink] = useState(0);
-  const x = useSharedValue(at(reduced ? 0 : 8).x);
-  const y = useSharedValue(at(reduced ? 0 : 8).y);
-  useEffect(() => {
-    const place = (next: number, ms: number) => {
-      setRing(next);
-      const point = at(next);
-      x.value = ms ? withTiming(point.x, { duration: ms, easing: Easing.out(Easing.cubic) }) : point.x;
-      y.value = ms ? withTiming(point.y, { duration: ms, easing: Easing.out(Easing.cubic) }) : point.y;
-    };
-    if (reduced) { place(0, 0); return; }
-    place(8, 0);
-    if (!active) return;
-    let current = 8;
-    let hold = 0;
-    let arrived = false;
-    const timer = setInterval(() => {
-      if (current === 0) {
-        hold += 1;
-        if (hold < 3) return;
-        hold = 0;
-        current = 8;
-        place(8, 0);
-        return;
-      }
-      current -= 1;
-      place(current, 420);
-      if (current === 0) { if (!arrived) cue('chime', 0.45); else tick(); arrived = true; setBlink((count) => count + 1); } else tick();
-    }, 720);
-    return () => clearInterval(timer);
-  }, [active, reduced, at, x, y]);
-  const you = useAnimatedStyle(() => ({ transform: [{ translateX: x.value - 9 }, { translateY: y.value - 9 }] }));
-  const perfect = ring === 0;
-  const small = Math.max(3.2, step * 0.36);
-  return (
-    <View style={{ width: size, height: size }}>
-      <Svg width={size} height={size}>
-        <Circle cx={half} cy={half} r={outer} fill="rgba(6, 12, 18, 0.72)" />
-        <Circle cx={half} cy={half} r={pupil + step} fill="rgba(201, 169, 106, 0.10)" />
-        {Array.from({ length: 10 }, (_, index) => (
-          <Circle key={index} cx={half} cy={half} r={pupil + index * step} fill="none" stroke={index === 1 ? 'rgba(201, 169, 106, 0.5)' : 'rgba(120, 200, 230, 0.13)'} strokeWidth={1} />
-        ))}
-        {others.map((eye, index) => {
-          const rad = ((eye.angle - 90) * Math.PI) / 180;
-          const r = radiusOf(eye.ring);
-          return <SmallEye key={index} x={half + r * Math.cos(rad)} y={half + r * Math.sin(rad)} r={small} open={eye.open} perfect={eye.ring === 0} />;
-        })}
-      </Svg>
-      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-        <PortalEye size={Math.round(pupil * 2.3)} open blink={blink} instant={reduced} />
-      </View>
-      <Animated.View pointerEvents="none" style={[styles.youEye, { borderColor: perfect ? colors.metal : colors.accent, shadowColor: perfect ? colors.metal : colors.accent }, you]}>
-        <View style={[styles.youIris, { backgroundColor: perfect ? colors.metal : '#D6B56A' }]} />
-      </Animated.View>
-      <View pointerEvents="none" style={[styles.youTag, { left: half + 8, top: 4 }]}>
-        <Text style={[styles.youTagText, { color: perfect ? colors.metal : colors.accent }]}>
-          {perfect ? t('Perfect Eye') : (RING_STREAK[ring] ?? 1) === 1 ? t('day 1') : t('{count} days in a row', { count: RING_STREAK[ring] ?? 1 })}
-        </Text>
-      </View>
-    </View>
-  );
-}
+const pad = (serial: number) => `EYE #${String(serial).padStart(4, '0')}`;
 
 // ------------------------------------------------------------------ ready --
 
-function Check({ state, label, detail, index, active }: { state: 'yes' | 'no' | 'wait' | 'later'; label: string; detail?: string | null; index: number; active: boolean }) {
+function Check({ icon, state, label, detail, index, active }: { icon: GlyphName; state: 'yes' | 'no' | 'wait' | 'later'; label: string; detail?: string | null; index: number; active: boolean }) {
   const tone = state === 'yes' ? colors.positive : state === 'no' ? colors.negative : colors.faint;
   return (
     <Animated.View key={active ? 'on' : 'off'} entering={active ? FadeInDown.delay(250 + index * 220).duration(380) : undefined} style={styles.check}>
-      <View style={[styles.checkMark, { borderColor: tone, backgroundColor: state === 'yes' ? 'rgba(124, 240, 188, 0.12)' : 'transparent' }]}>
-        {state === 'wait' ? <ActivityIndicator size="small" color={colors.faint} /> : (
-          <Svg width={14} height={14} viewBox="0 0 14 14">
-            {state === 'yes' ? <Path d="M3 7.4 5.8 10 11 4.2" fill="none" stroke={tone} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" /> : null}
-            {state === 'no' ? <Path d="M4 4l6 6M10 4l-6 6" fill="none" stroke={tone} strokeWidth={1.8} strokeLinecap="round" /> : null}
-            {state === 'later' ? <Circle cx={7} cy={7} r={2} fill={tone} /> : null}
-          </Svg>
-        )}
+      <View style={[styles.checkIcon, state === 'yes' && styles.checkIconYes, state === 'no' && styles.checkIconNo]}>
+        <Glyph name={icon} size={18} tone={state === 'yes' ? colors.accent : state === 'no' ? colors.negative : colors.dim} />
       </View>
       <View style={styles.checkText}>
-        <Text style={styles.checkLabel}>{label}</Text>
-        {detail ? <Text style={styles.checkDetail}>{detail}</Text> : null}
+        <Text maxFontSizeMultiplier={1.25} style={styles.checkLabel}>{label}</Text>
+        {detail ? <Text maxFontSizeMultiplier={1.25} style={styles.checkDetail}>{detail}</Text> : null}
+      </View>
+      <View style={styles.checkMark}>
+        {state === 'wait' ? <ActivityIndicator size="small" color={colors.faint} /> : (
+          <Svg width={22} height={22} viewBox="0 0 22 22">
+            {state === 'yes' ? <Circle cx={11} cy={11} r={10} fill={colors.positive} /> : null}
+            {state === 'yes' ? <Path d="M6.5 11.3 9.6 14.4 15.6 8.2" fill="none" stroke={colors.bg} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" /> : null}
+            {state === 'no' ? <Circle cx={11} cy={11} r={9.5} fill="none" stroke={tone} strokeWidth={1.8} /> : null}
+            {state === 'no' ? <Path d="M7.5 7.5l7 7M14.5 7.5l-7 7" fill="none" stroke={tone} strokeWidth={2} strokeLinecap="round" /> : null}
+            {state === 'later' ? <Circle cx={11} cy={11} r={3} fill={colors.dim} /> : null}
+          </Svg>
+        )}
       </View>
     </Animated.View>
   );
@@ -467,8 +123,35 @@ function Check({ state, label, detail, index, active }: { state: 'yes' | 'no' | 
 function Row({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
   return (
     <View style={styles.row}>
-      <Text style={[styles.rowLabel, strong && styles.rowStrong]}>{label}</Text>
-      <Text style={[styles.rowValue, strong && styles.rowStrong]}>{value}</Text>
+      <Text maxFontSizeMultiplier={1.25} style={[styles.rowLabel, strong && styles.rowStrong]}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.25} style={[styles.rowValue, strong && styles.rowStrong]}>{value}</Text>
+    </View>
+  );
+}
+
+// Where the price steps up, drawn: the first tier lit, the next one dim, and
+// a mark where the next Eye will land.
+function Ladder({ tier, open, nextSerial, left }: { tier: { serial: number; afterLamports: number }; open: number; nextSerial: number | null; left: number | null }) {
+  const at = nextSerial != null ? Math.max(0.02, Math.min(0.98, nextSerial / Math.max(1, tier.serial))) : null;
+  return (
+    <View style={styles.ladder}>
+      <View style={styles.ladderBar}>
+        <View style={styles.ladderTier}>
+          {at != null ? <View style={[styles.ladderYou, { left: `${at * 100}%` }]} /> : null}
+        </View>
+        <View style={styles.ladderNext} />
+      </View>
+      <View style={styles.ladderRow}>
+        <View style={styles.ladderCell}>
+          <Text maxFontSizeMultiplier={1.2} style={styles.ladderText}>{t('#1 to #{last}', { last: integer(tier.serial) })}</Text>
+          <Text maxFontSizeMultiplier={1.2} style={styles.ladderPrice}>{`${sol(open)} SOL`}</Text>
+          {left != null ? <Text maxFontSizeMultiplier={1.2} style={styles.ladderNote}>{t('{count} left at this price', { count: integer(left) })}</Text> : null}
+        </View>
+        <View style={[styles.ladderCell, styles.ladderCellRight]}>
+          <Text maxFontSizeMultiplier={1.2} style={[styles.ladderText, styles.ladderDim]}>{t('From #{first}', { first: integer(tier.serial + 1) })}</Text>
+          <Text maxFontSizeMultiplier={1.2} style={[styles.ladderPrice, styles.ladderDim]}>{`${sol(tier.afterLamports)} SOL`}</Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -504,11 +187,12 @@ export function EyeOnboarding({
   onOpen: () => void;
   onClose: () => void;
 }) {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
+  const [height, setHeight] = useState(0);
   const reduced = useReducedMotion();
   const pager = useRef<ScrollView>(null);
   const [page, setPage] = useState(0);
-  const [caption, setCaption] = useState(' ');
+  const finger = EYE_FINGER_ENABLED;
   // Prices come with the wallet's status; before a wallet, from the service's health.
   const [health, setHealth] = useState<EyePrices | null>(null);
   useEffect(() => {
@@ -518,32 +202,50 @@ export function EyeOnboarding({
   }, []);
   const prices: EyePrices | null = status?.prices ?? health;
 
-  // Every page arrives on the low fifth.
+  // The pad once, as the walk-through appears; then every page on its own note.
+  const first = useRef(true);
   useEffect(() => {
-    if (reduced) return;
-    const timer = setTimeout(() => cue('hum', 0.3), 120);
-    return () => clearTimeout(timer);
-  }, [page, reduced]);
+    if (first.current) {
+      first.current = false;
+      cue('hum', 0.25);
+      return schedule([[420, () => note(1, 0.3)]]);
+    }
+    return schedule([[120, () => note(page + 1, 0.3)]]);
+  }, [page]);
 
-  const go = useCallback((next: number) => {
+  const go = (next: number) => {
     const target = Math.max(0, Math.min(PAGES - 1, next));
     pager.current?.scrollTo({ x: target * width, animated: !reduced });
     setPage(target);
     tick();
-  }, [width, reduced]);
+  };
 
-  const onScrolled = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const onScrolled = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const next = Math.round(event.nativeEvent.contentOffset.x / Math.max(1, width));
     if (next !== page) { setPage(next); tick(); }
-  }, [width, page]);
+  };
 
-  const art = Math.min(290, Math.round(width * 0.72), Math.round(height * 0.36));
-  const serial = nextSerial != null ? `EYE #${String(nextSerial).padStart(4, '0')}` : null;
+  const onLayout = (event: LayoutChangeEvent) => setHeight(event.nativeEvent.layout.height);
+
+  // The pictures take a little over a third of the screen, never more than
+  // the width allows; the text under them scrolls if a large font needs it.
+  const inner = width - spacing.lg * 2;
+  const stage = Math.min(320, inner);
+  const art = height > 0 ? Math.max(220, Math.min(stage, Math.round(height * 0.37))) : Math.min(stage, 270);
+  const serial = nextSerial != null ? pad(nextSerial) : null;
   const hours = cooldownHours(prices, status?.blink?.cooldownSeconds);
   const slots = Math.max(1, Math.round(24 / Math.max(1, hours)));
   const solUsd = prices?.solUsd ?? null;
   const blinkUsd = prices ? usd(prices.blinkLamports, solUsd) : null;
   const blinkPrice = prices ? `${sol(prices.blinkLamports)} SOL${blinkUsd ? ` ≈ ${blinkUsd}` : ''}` : null;
+
+  // The card on page six is the bundled sample (EYE #0042, streak 7, 9
+  // blinks); the caption under it is the one the app writes for that Eye
+  // after its seventh day, so the post matches the card.
+  const caption = useMemo(() => {
+    const eye: Eye = { serial: 42, asset: '', name: pad(42), openedAt: '', streak: 7, blinks: 9, lastBlinkDay: null, image: '', json: '', perfect: [] };
+    return eyeCaption(eye, 'blink');
+  }, []);
 
   // The last page, worked out for this wallet.
   const gates = status?.gates ?? null;
@@ -555,6 +257,14 @@ export function EyeOnboarding({
   const tier = prices?.tier ?? null;
   const staked = gates?.staked;
   const blocked = Boolean(status && !hasEye && (gates?.staked === false || gates?.sgt === false));
+  const ready = page === PAGES - 1;
+
+  // The checks that pass light on their notes as the last page arrives.
+  const passes = [Boolean(wallet), Boolean(wallet && status && gates?.sgt), Boolean(wallet && status && staked), finger ? verified : false].filter(Boolean).length;
+  useEffect(() => {
+    if (!ready || reduced || passes === 0) return;
+    return schedule(Array.from({ length: passes }, (_, k) => [420 + k * 240, () => note(4 + k, 0.22)]));
+  }, [ready, reduced, passes]);
 
   let action: { label: string; onPress?: () => void; disabled?: boolean };
   if (!wallet) action = { label: connecting ? t('Connecting…') : t('Connect Solana Mobile'), onPress: onConnect, disabled: connecting };
@@ -562,60 +272,98 @@ export function EyeOnboarding({
   else if (hasEye) action = { label: t('See my Eye'), onPress: onClose };
   else if (gates?.staked === false) action = { label: t('Needs an active SKR position'), disabled: true };
   else if (gates?.sgt === false) action = { label: t('Needs a Seeker Genesis Token'), disabled: true };
-  else action = { label: EYE_FINGER_ENABLED && !verified ? t('Verify my Seeker') : t('Open my Eye'), onPress: onOpen };
+  else action = { label: finger && !verified ? t('Verify my Seeker') : t('Open my Eye'), onPress: onOpen };
 
-  const pages: Array<{ key: string; title: string; body: string; art: ReactElement; foot?: ReactElement | null }> = [
+  const pages: Array<{ key: string; overline: string; title: string; body: string; art: ReactElement; foot?: ReactElement | null }> = [
     {
-      key: 'wake',
-      title: t('Every Seeker carries an Eye'),
-      body: t('Yours is still closed. It is an NFT that lives in your wallet, one per wallet, numbered in the order Eyes open.'),
-      art: <Awakening active={page === 0} reduced={reduced} serial={serial} size={art} />,
+      key: 'idea',
+      overline: t('The idea'),
+      title: t('Every Seeker\ncarries an Eye'),
+      body: t('An NFT minted on Solana into your wallet: one per wallet, numbered in the order Eyes open. Your number is yours forever.'),
+      art: <Awakening active={page === 0} reduced={reduced} serial={serial} width={inner} size={art} />,
+      foot: watching != null ? (
+        <Text maxFontSizeMultiplier={1.25} style={styles.caption}>
+          {watching <= 0
+            ? t('Be one of the first.')
+            : watching === 1
+              ? t('1 Eye is already open. Be one of the first.')
+              : t('{count} Eyes are already open. A network of Seekers keeping watch.', { count: integer(watching) })}
+        </Text>
+      ) : null,
+    },
+    {
+      key: 'seeker',
+      overline: t('Inside your Seeker'),
+      title: t('Your Seeker\nis the key'),
+      body: finger
+        ? t('No passwords, no forms. Your Seeker’s secure hardware, your fingerprint and your wallet do the proving.')
+        : t('No passwords, no forms. Your Seeker wallet and its Genesis Token do the proving.'),
+      art: <Blueprint active={page === 1} reduced={reduced} width={inner} height={Math.min(350, Math.round(art * 1.25))} finger={finger} noteFrom={2} />,
     },
     {
       key: 'open',
-      title: t('Only you can open it'),
-      body: EYE_FINGER_ENABLED
-        ? t('Your fingerprint, your Seeker wallet, then Solana. Each light comes on the moment its step is done.')
-        : t('Your Seeker wallet, then Solana. Each light comes on the moment its step is done.'),
-      art: <Orbit active={page === 1} reduced={reduced} size={art} finger={EYE_FINGER_ENABLED} onCaption={setCaption} />,
-      foot: <Animated.Text key={caption} entering={reduced ? undefined : FadeIn.duration(260)} style={styles.caption}>{caption}</Animated.Text>,
+      overline: t('How it opens'),
+      title: t('How your Eye\nis minted'),
+      body: finger
+        ? t('Your Seeker proves itself once. Then one button: your finger, your wallet, Solana, and the lids part.')
+        : t('One button: your wallet approves and pays, Solana mints it, and the lids part.'),
+      art: <OpeningRoad active={page === 2} reduced={reduced} width={inner} finger={finger} />,
     },
     {
       key: 'blink',
-      title: t('Blink your Eye every {hours} hours', { hours }),
-      body: t('Once a day keeps it open. Each Blink is a small mark on Solana that says: I was here. Tap the Eye to try one, free.'),
-      art: <BlinkDial active={page === 2} reduced={reduced} size={art} slots={slots} />,
-      foot: blinkPrice ? <Text style={styles.caption}>{`${blinkPrice} · ${t('every {hours} hours', { hours })}`}</Text> : null,
+      overline: t('The Blink'),
+      title: t('Blink every {hours} hours', { hours }),
+      body: t('One Blink a day keeps your streak alive; every Blink is written on Solana into your Eye. Miss a day and the streak starts over.'),
+      art: <BlinkDial active={page === 3} reduced={reduced} size={Math.round(art * 0.92)} slots={slots} hours={hours} />,
+      foot: (
+        <View style={styles.footBlock}>
+          {blinkPrice ? <Text maxFontSizeMultiplier={1.25} style={styles.caption}>{`${blinkPrice} · ${t('every {hours} hours', { hours })}`}</Text> : null}
+          <Text maxFontSizeMultiplier={1.25} numberOfLines={1} style={styles.captionDim}>{t('Tap the Eye to try a Blink')}</Text>
+        </View>
+      ),
     },
     {
       key: 'iris',
-      title: t('Keep your rhythm, move inward'),
-      body: t('Each light is a Seeker keeping watch. Every day you blink, your Eye moves one ring closer to the centre. Thirty days unbroken and it turns gold. Miss a day and you start again.'),
-      art: <IrisClimb active={page === 3} reduced={reduced} size={Math.min(320, Math.round(width * 0.8), Math.round(height * 0.4))} />,
-      foot: watching != null ? (
-        <Text style={styles.caption}>
+      overline: t('The Iris'),
+      title: t('One of many.\nMove inward.'),
+      body: t('The longer your streak, the closer your Eye sits to the centre. Thirty days unbroken and it turns gold; miss one and you start again from the edge.'),
+      art: <IrisClimb active={page === 4} reduced={reduced} size={Math.min(330, inner, Math.round(art * 1.1))} />,
+      foot: watching != null && watching > 0 ? (
+        <Text maxFontSizeMultiplier={1.25} style={styles.caption}>
           {[
             watching === 1 ? t('1 Eye is watching') : t('{count} Eyes are watching', { count: integer(watching) }),
-            blinkedToday != null ? t('{count} blinked today', { count: integer(blinkedToday) }) : null,
+            blinkedToday != null && blinkedToday > 0 ? t('{count} blinked today', { count: integer(blinkedToday) }) : null,
           ].filter(Boolean).join(' · ')}
         </Text>
       ) : null,
     },
+    {
+      key: 'card',
+      overline: t('Your card'),
+      title: t('Your Eye is a card'),
+      body: t('Redrawn after every Blink with your number on it. After the mint and every Blink, one button posts it to X, caption ready.'),
+      art: <CardShare active={page === 5} reduced={reduced} width={inner} caption={caption} />,
+    },
   ];
 
+  const overline = ready ? t('Ready') : pages[page]?.overline ?? '';
+
   return (
-    <View style={styles.screen}>
-      <NightSky width={width} height={height} still={reduced} />
+    <View style={styles.screen} onLayout={onLayout}>
+      <NightSky width={width} height={Math.max(height, 400)} still={reduced} />
       <View style={styles.top}>
-        <View style={styles.bars}>
-          {Array.from({ length: PAGES }, (_, index) => (
-            <Pressable key={index} onPress={() => go(index)} style={styles.barHit} accessibilityRole="button" accessibilityLabel={`${index + 1} / ${PAGES}`}>
-              <View style={[styles.bar, { backgroundColor: index <= page ? colors.accent : 'rgba(120, 200, 230, 0.16)', opacity: index === page ? 1 : index < page ? 0.55 : 1 }]} />
-            </Pressable>
-          ))}
+        <View style={styles.topText}>
+          <Overline>{`${String(page + 1).padStart(2, '0')} · ${overline}`}</Overline>
+          <View style={styles.bars}>
+            {Array.from({ length: PAGES }, (_, index) => (
+              <Pressable key={index} onPress={() => go(index)} style={styles.barHit} accessibilityRole="button" accessibilityLabel={`${index + 1} / ${PAGES}`}>
+                <View style={[styles.bar, { backgroundColor: index <= page ? colors.accent : 'rgba(120, 200, 230, 0.16)', opacity: index === page ? 1 : index < page ? 0.5 : 1 }]} />
+              </Pressable>
+            ))}
+          </View>
         </View>
         <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button">
-          <Text style={styles.skip}>{page < PAGES - 1 ? t('Skip') : t('Close')}</Text>
+          <Text maxFontSizeMultiplier={1.2} style={styles.skip}>{ready ? t('Close') : t('Skip')}</Text>
         </Pressable>
       </View>
 
@@ -630,16 +378,16 @@ export function EyeOnboarding({
         {pages.map((item, index) => (
           <ScrollView key={item.key} style={{ width }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
             <View style={styles.art}>{item.art}</View>
-            {item.foot ?? <View style={styles.captionGap} />}
+            {item.foot ?? null}
             {page === index ? (
               <>
-                <Animated.Text entering={reduced ? undefined : FadeInDown.delay(180).duration(420)} style={styles.title}>{item.title}</Animated.Text>
-                <Animated.Text entering={reduced ? undefined : FadeInDown.delay(420).duration(420)} style={styles.body}>{item.body}</Animated.Text>
+                <Animated.Text maxFontSizeMultiplier={1.15} entering={reduced ? undefined : FadeInDown.delay(180).duration(420)} style={styles.title}>{item.title}</Animated.Text>
+                <Animated.Text maxFontSizeMultiplier={1.2} entering={reduced ? undefined : FadeInDown.delay(420).duration(420)} style={styles.body}>{item.body}</Animated.Text>
               </>
             ) : (
               <>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.body}>{item.body}</Text>
+                <Text maxFontSizeMultiplier={1.15} style={styles.title}>{item.title}</Text>
+                <Text maxFontSizeMultiplier={1.2} style={styles.body}>{item.body}</Text>
               </>
             )}
           </ScrollView>
@@ -647,42 +395,47 @@ export function EyeOnboarding({
 
         <ScrollView style={{ width }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
           <View style={styles.readyHead}>
-            <View style={{ width: 84, height: 84, alignItems: 'center', justifyContent: 'center' }}>
-              <Breath size={76} still={reduced} />
-              <PortalEye size={84} open={hasEye} instant />
+            <View style={styles.readyEye}>
+              <Breath size={84} still={reduced} />
+              <PortalEye size={88} open={hasEye} instant />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.titleLeft}>{hasEye ? t('Your Eye is open') : t('Only a Seeker can open an Eye')}</Text>
-              {serial && !hasEye ? <Text style={styles.serialLeft}>{t('Next: {serial}', { serial })}</Text> : null}
+              <Text maxFontSizeMultiplier={1.25} style={styles.titleLeft}>{hasEye ? t('Your Eye is open') : t('Only a Seeker can mint an Eye')}</Text>
+              {serial && !hasEye ? <Text maxFontSizeMultiplier={1.2} style={styles.serialLeft}>{t('Next number: {serial}', { serial })}</Text> : null}
             </View>
           </View>
 
           <View style={styles.card}>
+            <Overline tone={colors.faint}>{t('This wallet')}</Overline>
             <Check
               index={0}
-              active={page === PAGES - 1}
+              icon="wallet"
+              active={ready}
               state={wallet ? 'yes' : 'later'}
               label={t('Wallet connected')}
               detail={wallet ? shortAddress(wallet) : t('Read only. Nothing is signed here.')}
             />
             <Check
               index={1}
-              active={page === PAGES - 1}
+              icon="token"
+              active={ready}
               state={!wallet ? 'later' : !status ? 'wait' : gates?.sgt ? 'yes' : gates?.sgt === false ? 'no' : 'later'}
               label={t('Seeker Genesis Token')}
               detail={!wallet ? t('Proves this phone is a Seeker') : gates?.sgt === false ? t('Not found in this wallet') : gates?.sgt ? t('Found in your wallet') : null}
             />
             <Check
               index={2}
-              active={page === PAGES - 1}
+              icon="skr"
+              active={ready}
               state={!wallet ? 'later' : !status ? 'wait' : staked ? 'yes' : staked === false ? 'no' : 'later'}
               label={t('Staked SKR')}
               detail={!wallet ? t('You need SKR in staking') : staked && gates?.activeStaked ? `${integer(Number(gates.activeStaked))} SKR` : staked === false ? t('No active SKR position') : null}
             />
-            {EYE_FINGER_ENABLED ? (
+            {finger ? (
               <Check
                 index={3}
-                active={page === PAGES - 1}
+                icon="finger"
+                active={ready}
                 state={verified ? 'yes' : 'later'}
                 label={t('Fingerprint on this Seeker')}
                 detail={verified ? t('Already verified on this phone.') : t('Checked in the next step')}
@@ -692,39 +445,28 @@ export function EyeOnboarding({
 
           {open != null && total != null ? (
             <View style={styles.card}>
+              <Overline tone={colors.faint}>{t('The mint')}</Overline>
               <Row label={t('Opening fee')} value={`${sol(open)} SOL`} />
               <Row label={t('Deposit kept inside your Eye')} value={`≈ ${sol(rent)} SOL`} />
               <View style={styles.rule} />
               <Row label={t('Total')} value={`≈ ${sol(total)} SOL${usd(total, solUsd) ? ` · ${usd(total, solUsd)}` : ''}`} strong />
-              {tier ? (
-                <View style={styles.ladder}>
-                  <View style={styles.rung}>
-                    <View style={[styles.rungDot, { backgroundColor: colors.accent }]} />
-                    <Text style={styles.rungText}>{t('Eyes #1 to #{last}', { last: integer(tier.serial) })}</Text>
-                    <Text style={styles.rungPrice}>{`${sol(open)} SOL`}</Text>
-                  </View>
-                  {left != null ? <Text style={styles.rungNote}>{t('{count} left at this price', { count: integer(left) })}</Text> : null}
-                  <View style={styles.rung}>
-                    <View style={[styles.rungDot, { backgroundColor: colors.dim }]} />
-                    <Text style={styles.rungText}>{t('From #{first}', { first: integer(tier.serial + 1) })}</Text>
-                    <Text style={styles.rungPrice}>{`${sol(tier.afterLamports)} SOL`}</Text>
-                  </View>
-                </View>
-              ) : null}
+              {tier ? <Ladder tier={tier} open={open} nextSerial={nextSerial} left={left} /> : null}
+              <View style={styles.rule} />
               {blinkPrice ? <Row label={t('Blink')} value={`${blinkPrice} · ${t('every {hours} hours', { hours })}`} /> : null}
+              <Text maxFontSizeMultiplier={1.25} style={styles.micro}>{t('The first Blink is included in the mint.')}</Text>
             </View>
           ) : (
             <View style={styles.card}><ActivityIndicator size="small" color={colors.faint} /></View>
           )}
 
-          <Text style={styles.fine}>{t('The opening fee and every Blink go to the maker of SKR Eyes. The deposit stays inside your Eye, in your wallet. No token is sold here.')}</Text>
-          {connectError ? <Text style={styles.error}>{connectError}</Text> : null}
-          {blocked ? <Text style={styles.fine}>{t('An Eye opens for a wallet on a Seeker with an active SKR position.')}</Text> : null}
+          <Text maxFontSizeMultiplier={1.25} style={styles.fine}>{t('The opening fee and every Blink go to the maker of SKR Eyes. The deposit stays inside your Eye, in your wallet. No token is sold here.')}</Text>
+          {connectError ? <Text maxFontSizeMultiplier={1.25} style={styles.error}>{connectError}</Text> : null}
+          {blocked ? <Text maxFontSizeMultiplier={1.25} style={styles.fine}>{t('An Eye opens for a wallet on a Seeker with an active SKR position.')}</Text> : null}
         </ScrollView>
       </ScrollView>
 
       <View style={styles.bottom}>
-        {page < PAGES - 1 ? (
+        {!ready ? (
           <Button label={t('Next')} onPress={() => go(page + 1)} hero />
         ) : (
           <Animated.View entering={reduced ? undefined : FadeIn.duration(200)} style={styles.bottomStack}>
@@ -739,48 +481,52 @@ export function EyeOnboarding({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#03060A' },
-  twinkle: { position: 'absolute', backgroundColor: '#E8FBFF' },
-  breath: { alignSelf: 'center' },
-  top: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm },
-  bars: { flex: 1, flexDirection: 'row', gap: 6 },
-  barHit: { flex: 1, paddingVertical: 8 },
+  top: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xs },
+  topText: { flex: 1, gap: 6 },
+  bars: { flexDirection: 'row', gap: 5 },
+  barHit: { flex: 1, paddingVertical: 6 },
   bar: { height: 3, borderRadius: 2 },
-  skip: { color: colors.muted, fontFamily: font.medium, fontSize: 15 },
+  skip: { color: colors.muted, fontFamily: font.medium, fontSize: 15, paddingTop: 1 },
   pager: { flex: 1 },
-  page: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.xl, gap: spacing.sm },
-  art: { alignItems: 'center', justifyContent: 'center', minHeight: 250, marginTop: spacing.sm },
-  caption: { color: colors.text, fontFamily: font.semibold, fontSize: 19, lineHeight: 25, textAlign: 'center', minHeight: 25, marginTop: spacing.sm, fontVariant: ['tabular-nums'] },
-  captionGap: { height: 25 + spacing.sm },
-  title: { color: colors.text, fontFamily: font.bold, fontSize: 32, lineHeight: 38, letterSpacing: -0.8, textAlign: 'center', marginTop: spacing.md },
-  titleLeft: { color: colors.text, fontFamily: font.bold, fontSize: 27, lineHeight: 32, letterSpacing: -0.6 },
-  body: { color: '#A9BDCE', fontFamily: font.regular, fontSize: 17.5, lineHeight: 26, textAlign: 'center', paddingHorizontal: spacing.xs },
-  serial: { color: colors.metal, fontFamily: font.mono, fontSize: 19, letterSpacing: 2.2, marginTop: spacing.sm },
-  serialLeft: { color: colors.metal, fontFamily: font.mono, fontSize: 15, letterSpacing: 1.2, marginTop: 2 },
-  orb: { position: 'absolute', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, elevation: 0 },
-  handDot: { position: 'absolute', width: 12, height: 12, borderRadius: 6, backgroundColor: '#E8FBFF', shadowColor: '#56E0FF', shadowOpacity: 1, shadowRadius: 8 },
-  youEye: { position: 'absolute', left: 0, top: 0, width: 18, height: 18, borderRadius: 9, borderWidth: 2.5, backgroundColor: '#050B10', alignItems: 'center', justifyContent: 'center', shadowOpacity: 1, shadowRadius: 10 },
-  youIris: { width: 7, height: 7, borderRadius: 3.5 },
-  youTag: { position: 'absolute' },
-  youTagText: { fontFamily: font.semibold, fontSize: 15, lineHeight: 20, fontVariant: ['tabular-nums'] },
+  page: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md, gap: spacing.sm },
+  art: { alignItems: 'center', justifyContent: 'center' },
+  footBlock: { gap: 2 },
+  caption: { color: colors.text, fontFamily: font.semibold, fontSize: 16, lineHeight: 22, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  captionDim: { color: colors.muted, fontFamily: font.regular, fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  title: { color: colors.text, fontFamily: font.bold, fontSize: 29, lineHeight: 35, letterSpacing: -0.8, textAlign: 'center', marginTop: spacing.sm },
+  titleLeft: { color: colors.text, fontFamily: font.bold, fontSize: 26, lineHeight: 31, letterSpacing: -0.6 },
+  body: { color: '#A9BDCE', fontFamily: font.regular, fontSize: 17, lineHeight: 25, textAlign: 'center', paddingHorizontal: spacing.xs },
+  serialLeft: { color: colors.metal, fontFamily: font.monoSemibold, fontSize: 14, letterSpacing: 1.4, marginTop: 3 },
   readyHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.xs },
-  card: { backgroundColor: 'rgba(10, 16, 23, 0.86)', borderRadius: radius.card, borderWidth: 1, borderColor: '#13212C', padding: spacing.md, gap: spacing.md },
-  check: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
-  checkMark: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  checkText: { flex: 1, gap: 2 },
-  checkLabel: { color: colors.text, fontFamily: font.semibold, fontSize: 17, lineHeight: 23 },
-  checkDetail: { color: '#8FA6B9', fontFamily: font.regular, fontSize: 15, lineHeight: 21, fontVariant: ['tabular-nums'] },
+  readyEye: { width: 88, height: 88, alignItems: 'center', justifyContent: 'center' },
+  card: { backgroundColor: 'rgba(10, 16, 23, 0.88)', borderRadius: radius.card, borderWidth: 1, borderColor: '#13212C', padding: spacing.md, gap: spacing.md },
+  check: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  checkIcon: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: colors.line, backgroundColor: 'rgba(6, 12, 18, 0.9)', alignItems: 'center', justifyContent: 'center' },
+  checkIconYes: { borderColor: colors.accentDim, backgroundColor: 'rgba(86, 224, 255, 0.08)' },
+  checkIconNo: { borderColor: 'rgba(255, 126, 121, 0.5)' },
+  checkText: { flex: 1, gap: 1 },
+  checkLabel: { color: colors.text, fontFamily: font.semibold, fontSize: 16, lineHeight: 21 },
+  checkDetail: { color: '#8FA6B9', fontFamily: font.regular, fontSize: 14, lineHeight: 19, fontVariant: ['tabular-nums'] },
+  checkMark: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md },
-  rowLabel: { color: colors.muted, fontFamily: font.regular, fontSize: 16, lineHeight: 22, flexShrink: 1 },
-  rowValue: { color: colors.text, fontFamily: font.medium, fontSize: 16, lineHeight: 22, fontVariant: ['tabular-nums'], flexShrink: 1, textAlign: 'right' },
+  rowLabel: { color: colors.muted, fontFamily: font.regular, fontSize: 15.5, lineHeight: 21, flexShrink: 1 },
+  rowValue: { color: colors.text, fontFamily: font.medium, fontSize: 15.5, lineHeight: 21, fontVariant: ['tabular-nums'], flexShrink: 1, textAlign: 'right' },
   rowStrong: { color: colors.text, fontFamily: font.bold },
   rule: { height: 1, backgroundColor: colors.line },
-  ladder: { gap: 6, paddingTop: spacing.xs },
-  rung: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  rungDot: { width: 8, height: 8, borderRadius: 4 },
-  rungText: { flex: 1, color: colors.muted, fontFamily: font.regular, fontSize: 15, lineHeight: 21, fontVariant: ['tabular-nums'] },
-  rungPrice: { color: colors.text, fontFamily: font.medium, fontSize: 15, lineHeight: 21, fontVariant: ['tabular-nums'] },
-  rungNote: { color: colors.accent, fontFamily: font.medium, fontSize: 14, lineHeight: 19, marginLeft: 16, fontVariant: ['tabular-nums'] },
-  fine: { color: '#8FA6B9', fontFamily: font.regular, fontSize: 14.5, lineHeight: 21, textAlign: 'center', paddingHorizontal: spacing.sm },
+  ladder: { gap: spacing.sm, paddingTop: spacing.xs },
+  ladderBar: { flexDirection: 'row', gap: 3, height: 6 },
+  ladderTier: { flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.accentDim, overflow: 'visible' },
+  ladderYou: { position: 'absolute', top: -3, marginLeft: -6, width: 12, height: 12, borderRadius: 6, backgroundColor: colors.accent, borderWidth: 2, borderColor: '#0A1017' },
+  ladderNext: { flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.line },
+  ladderRow: { flexDirection: 'row', gap: spacing.md },
+  ladderCell: { flex: 1, gap: 1 },
+  ladderCellRight: { alignItems: 'flex-end' },
+  ladderText: { color: colors.muted, fontFamily: font.regular, fontSize: 13.5, lineHeight: 18, fontVariant: ['tabular-nums'] },
+  ladderPrice: { color: colors.text, fontFamily: font.semibold, fontSize: 14.5, lineHeight: 19, fontVariant: ['tabular-nums'] },
+  ladderNote: { color: colors.accent, fontFamily: font.medium, fontSize: 13, lineHeight: 18, fontVariant: ['tabular-nums'] },
+  ladderDim: { color: colors.faint },
+  micro: { color: colors.faint, fontFamily: font.regular, fontSize: 13, lineHeight: 18 },
+  fine: { color: '#8FA6B9', fontFamily: font.regular, fontSize: 14, lineHeight: 20, textAlign: 'center', paddingHorizontal: spacing.sm },
   error: { color: colors.negative, fontFamily: font.medium, fontSize: 14.5, textAlign: 'center' },
   bottom: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
   bottomStack: { gap: spacing.xs },

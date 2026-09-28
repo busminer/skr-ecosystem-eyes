@@ -250,8 +250,10 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
   const steps: StepModel[] = [
     {
       key: 'vault',
+      icon: 'key',
+      name: t('Vault key'),
       title: done >= 1 ? t("A key was born in the phone's vault") : t("Reading the phone's vault"),
-      copy: sub === 'challenge' ? t('Asking the attestor for a one-time challenge.') : t("Asking your Seeker's secure chip for a new key. It will answer only to your fingerprint."),
+      copy: sub === 'challenge' ? t('Asking the attestor for a one-time challenge.') : t("Asking your Seeker's StrongBox secure element for a new key. It will answer only to your fingerprint."),
       status: statusOf(1),
       failure,
       result: key ? (
@@ -267,8 +269,10 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
     },
     {
       key: 'seeker',
+      icon: 'cert',
+      name: t('Seeker'),
       title: done >= 2 ? t('This is a Seeker') : t('Google is vouching for this Seeker'),
-      copy: t("Sending Google's certificate chain to the attestor. It checks the chip, the bootloader and this app."),
+      copy: t("Sending Google's certificate chain to the attestor. It checks the secure element, the bootloader and this app."),
       status: statusOf(2),
       failure,
       result: checks ? (
@@ -281,6 +285,8 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
     },
     {
       key: 'sgt',
+      icon: 'token',
+      name: t('Genesis Token'),
       title: done >= 3 ? t('Your Seeker Genesis Token') : t('Looking for your Seeker Genesis Token'),
       copy: t('Looking for the Seeker Genesis Token in your wallet.'),
       status: statusOf(3),
@@ -295,6 +301,8 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
     },
     {
       key: 'verdict',
+      icon: 'check',
+      name: t('Verified'),
       title: t('Device verified'),
       copy: t('The attestor signs its verdict; from now on this phone is known.'),
       status: statusOf(4),
