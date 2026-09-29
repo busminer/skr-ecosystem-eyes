@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
 import { resolveAlertThresholds } from '../alertThresholds';
-import { fetchEcosystemState, fetchWalletProfile } from '../api';
+import { fetchEcosystemState } from '../api';
 import { LANGS, LANG_LABEL, lang, setLang, t, useLang, type Lang } from '../i18n';
 import { compact } from '../format';
-import { scheduleDailyNudge, clearStoredSchedule, hasUnlockAlerts, scheduleNotificationProof, scheduleUnlockAlerts } from '../notifications';
 import { usePref } from '../prefs';
-import { readSessionAddress } from '../session';
 import { colors, font, numeric, radius, spacing, type } from '../theme';
-import type { EcosystemState, WalletProfile } from '../types';
+import type { EcosystemState } from '../types';
 import { Button, Chevron, Evidence, Eyebrow, Hairline, Inset, Panel, RangeSwitch } from './kit';
 import { TipSheet } from './TipSheet';
 
@@ -59,13 +57,7 @@ export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onT
   const [canAsk, setCanAsk] = useState(true);
   const [state, setState] = useState<EcosystemState | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-  // The one alert that exists, and the truth about whether it is armed — read
-  // from the schedule itself, never from a remembered intention.
-  const [profile, setProfile] = useState<WalletProfile | null>(null);
-  const [armed, setArmed] = useState<boolean | null>(null);
-  const [arming, setArming] = useState(false);
   const [largeAlerts, setLargeAlerts] = usePref('alert:large', true);
-  const [nudge, setNudge] = usePref('nudge:daily', true);
   // The opening: the turn from 1.0, back by request, or the first stone from 1.1.
   const [splashTurn, setSplashTurn] = usePref('splash:turn', true);
   const [tipping, setTipping] = useState(false);
@@ -85,11 +77,6 @@ export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onT
       setCanAsk(result.canAskAgain !== false);
     }).catch(() => setGranted(null));
     fetchEcosystemState().then(setState).catch(() => undefined);
-    void readSessionAddress().then(async (address) => {
-      if (!address) return setArmed(false);
-      setArmed(await hasUnlockAlerts(address));
-      await fetchWalletProfile(address).then(setProfile).catch(() => undefined);
-    }).catch(() => setArmed(false));
   }, []);
 
   // Android stops showing the dialog once it has been refused for good. Asking
@@ -114,41 +101,7 @@ export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onT
     void Linking.openSettings().catch(() => setStatus(t('This phone would not open its settings screen.')));
   }, []);
 
-  const toggleUnlock = useCallback(async (next: boolean) => {
-    if (!profile) return;
-    setArming(true);
-    setStatus(null);
-    void Haptics.selectionAsync();
-    try {
-      if (next) {
-        const count = await scheduleUnlockAlerts(profile);
-        setArmed(true);
-        setStatus(count === 1 ? t('1 reminder set on this phone for your unlock.') : t('{count} reminders set on this phone for your unlock.', { count }));
-      } else {
-        await clearStoredSchedule(profile.wallet);
-        setArmed(false);
-        setStatus(t('The reminders for your unlock were cancelled.'));
-      }
-    } catch (caught) {
-      setArmed(await hasUnlockAlerts(profile.wallet).catch(() => false));
-      setStatus(caught instanceof Error ? caught.message : t('The alert could not be changed.'));
-    } finally {
-      setArming(false);
-    }
-  }, [profile]);
-
-  const proof = useCallback(async () => {
-    try {
-      await scheduleNotificationProof();
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setStatus(t('A test notification will arrive in a few seconds.'));
-    } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : t('The test notification could not be scheduled'));
-    }
-  }, []);
-
   const { config, fallback } = resolveAlertThresholds(state);
-  const canArm = Boolean(profile && profile.nextUnlockAt);
 
   const body = (
     <>
@@ -160,7 +113,7 @@ export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onT
           <View style={styles.permissionCopy}>
             <Eyebrow tone={granted ? colors.positive : colors.pending}>{granted ? t('Notifications allowed') : t('Notifications off')}</Eyebrow>
             <Text style={styles.permissionText}>
-              {granted ? t('Alerts are scheduled on the phone itself. Nothing about you leaves the device.') : t('Allow notifications and this app can wake you exactly when your cooldown ends.')}
+              {granted ? t('Blink reminders are scheduled on the phone itself. Nothing about you leaves the device.') : t('Allow notifications and your Eye can tell you when its next Blink is ready.')}
             </Text>
           </View>
         </View>
@@ -173,45 +126,11 @@ export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onT
         ) : null}
       </Panel>
 
-      {/* Three switches, one column, one width. The opening moved out: it is a
+      {/* One switch, the sound of large moves while the app is open; nothing
+          here wakes the phone about staking (29.09.2026). The opening moved out: it is a
           choice about the app, not about being woken, and its wide two-way
           control was the thing breaking the column. */}
       <Panel style={styles.panel}>
-        <Setting
-          label={t('Wake me at my unlock')}
-          open={peek === 'unlock' || !canArm}
-          onPeek={() => toggle('unlock')}
-          note={(
-            <View style={styles.noteStack}>
-              <Text style={styles.noteText}>
-                {!profile
-                  ? t('Connect your wallet on the Me screen and this switch becomes live.')
-                  : profile.nextUnlockAt
-                    ? t('One hour before, and again the moment the cooldown ends. Scheduled by this phone from the exact on-chain time.')
-                    : t('Nothing of yours is unlocking, so there is nothing to wake you for yet.')}
-              </Text>
-              {/* This used to hang at the bottom of the panel with no heading
-                  and no control beside it, reading like a setting somebody
-                  forgot to finish. It belongs to this switch, because this
-                  switch is the only thing in the app that wakes the phone. */}
-              <Text style={styles.noteText}>
-                {t("Other people's moves do not wake the phone while the app is closed. Only your own unlock does.")}
-              </Text>
-            </View>
-          )}
-          control={arming
-            ? <ActivityIndicator color={colors.accent} />
-            : (
-              <Switch
-                value={armed === true}
-                disabled={!canArm}
-                onValueChange={(value) => void toggleUnlock(value)}
-                trackColor={{ true: colors.accentDim, false: colors.line }}
-                thumbColor={armed ? colors.accent : colors.faint}
-              />
-            )}
-        />
-        <Hairline />
         <Setting
           label={t('Large moves, heard and felt')}
           open={peek === 'large'}
@@ -223,21 +142,6 @@ export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onT
               onValueChange={(value) => { void Haptics.selectionAsync(); setLargeAlerts(value); }}
               trackColor={{ true: colors.accentDim, false: colors.line }}
               thumbColor={largeAlerts ? colors.accent : colors.faint}
-            />
-          )}
-        />
-        <Hairline />
-        <Setting
-          label={t('A daily look in')}
-          open={peek === 'nudge'}
-          onPeek={() => toggle('nudge')}
-          note={t('Once a day, around six in the evening, one line about the vault, a different one each day. It never asks you to stake. Set on the phone itself, nothing is sent anywhere.')}
-          control={(
-            <Switch
-              value={nudge}
-              onValueChange={(value) => { void Haptics.selectionAsync(); setNudge(value); void scheduleDailyNudge(value); }}
-              trackColor={{ true: colors.accentDim, false: colors.line }}
-              thumbColor={nudge ? colors.accent : colors.faint}
             />
           )}
         />
@@ -324,7 +228,6 @@ export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onT
       {/* The status line used to appear out of nowhere and shove everything
           under it down the screen. The room for it is now always there. */}
       <View style={styles.proof}>
-        <Button label={t('Send a test notification')} onPress={() => void proof()} quiet />
         <View style={styles.statusSlot}>{status ? <Text style={styles.status}>{status}</Text> : null}</View>
       </View>
 

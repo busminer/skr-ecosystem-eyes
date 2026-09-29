@@ -12,7 +12,7 @@ import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { fetchEcosystemState } from './src/api';
 import { langReady, t, useLang } from './src/i18n';
-import { askNotificationPermissionOnce, configureNotifications, scheduleDailyNudge } from './src/notifications';
+import { askNotificationPermissionOnce, configureNotifications } from './src/notifications';
 import { useEyeReminderTaps } from './src/eye/reminders';
 import { hydratePrefs, prefValue, prefsReady } from './src/prefs';
 import { prepareSound } from './src/sound';
@@ -150,10 +150,11 @@ export default function App() {
   const appState = useRef(AppState.currentState);
   const reading = useRef(false);
   // The opening ends, the person sees the vault, and only then the phone asks
-  // about notifications: once, and with the daily nudge set the moment it may be.
+  // about notifications, once: they are the Eye's Blink reminders and nothing
+  // else (src/notifications.ts; no staking notification exists any more).
   const finishOpening = useCallback(() => {
     setOpening(false);
-    void prefsReady.then(() => askNotificationPermissionOnce()).then(() => scheduleDailyNudge(prefValue('nudge:daily', true)));
+    void prefsReady.then(() => askNotificationPermissionOnce());
   }, []);
   const [fontsLoaded] = useFonts({
     Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold, Geist_900Black,

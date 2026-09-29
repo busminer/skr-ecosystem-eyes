@@ -8,7 +8,6 @@ import { requestTab, takeTabRequest } from '../nav';
 import { t } from '../i18n';
 import { compact, integer, shortAddress } from '../format';
 import { connectReadOnlyWallet, forgetWalletAuthorization } from '../mwa';
-import { clearStoredSchedule, scheduleUnlockAlerts } from '../notifications';
 import { SESSION_KEY } from '../session';
 import { connectedWallet, forgetConnectedWallet, rememberConnectedWallet } from '../wallet';
 import { usePref } from '../prefs';
@@ -204,21 +203,6 @@ export function MyLab() {
     }
   }, [inspect]);
 
-  const enableAlerts = useCallback(async () => {
-    if (!profile) return;
-    setBusy(true);
-    setAlertStatus(null);
-    try {
-      const count = await scheduleUnlockAlerts(profile);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setAlertStatus(count ? (count === 1 ? t('1 unlock alert armed on this phone.') : t('{count} unlock alerts armed on this phone.', { count })) : t('Nothing left to wait for — the cooldown is already over.'));
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t('Alerts could not be scheduled'));
-    } finally {
-      setBusy(false);
-    }
-  }, [profile]);
-
   // The picture is built from what the chain proved, and from nothing else.
   // A fact still on its way is left off the card rather than guessed at.
   const shareCard = useCallback(async () => {
@@ -300,7 +284,6 @@ export function MyLab() {
     // this phone must be asked, not silently handed the last wallet.
     await forgetWalletAuthorization();
     forgetConnectedWallet();
-    if (previous) await clearStoredSchedule(previous).catch(() => undefined);
     setProfile(null);
     setAge(null);
     setStanding(null);
@@ -437,14 +420,12 @@ export function MyLab() {
               They were three identical grey rectangles; now two quiet words
               and a drawn arrow, in that order of importance. */}
           <View style={styles.actions}>
-            <Button label={alertStatus ? t('Alerts armed') : t('Wake me at unlock')} onPress={() => void enableAlerts()} disabled={busy || !nextUnlock} quiet />
             <Button label={t('Disconnect')} onPress={() => void disconnect()} quiet />
             <Pressable accessibilityRole="button" accessibilityLabel={t('Refresh')} disabled={busy} onPress={() => void inspect(address)} style={({ pressed }) => [styles.refreshBtn, (pressed || busy) && { opacity: 0.6 }]}>
               <Svg width={17} height={17} viewBox="0 0 24 24"><Path d="M20 12a8 8 0 1 1-2.4-5.7M20 3.6v4.2h-4.2" stroke={colors.muted} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" /></Svg>
             </Pressable>
           </View>
           {shareNote ? <Text style={styles.status}>{shareNote}</Text> : null}
-          {alertStatus ? <Text style={styles.status}>{alertStatus}</Text> : null}
 
           <Evidence
             lines={[
