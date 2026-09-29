@@ -51,6 +51,10 @@ export type EyePrices = {
   openRentLamports?: number;
   blinkCooldownSeconds?: number;
   solUsd?: number | null;
+  // What the maker is paid in, and in SKR the amounts in its smallest units
+  // (6 decimals): the next Eye's mint, a Blink, and the mint after the tier.
+  currency?: 'sol' | 'skr';
+  skr?: { openUnits: number; blinkUnits: number; tier?: { serial: number; afterUnits: number } };
 };
 
 export type EyeStatus = {
@@ -71,6 +75,8 @@ export type EyeIntent = {
   serial?: number;
   asset?: string;
   image?: string;
+  currency?: 'sol' | 'skr';
+  skrUnits?: number | null;
   expiresAt: string | number;
 };
 

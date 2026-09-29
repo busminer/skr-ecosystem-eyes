@@ -29,6 +29,17 @@ export function sol(lamports: number): string {
 }
 
 export const rentOf = (prices: EyePrices | null | undefined) => prices?.openRentLamports ?? OPEN_RENT_FALLBACK;
+
+// SKR, in its smallest units (6 decimals), as a person reads it: 100, 1, 1.5.
+export function skr(units: number): string {
+  const value = units / 1_000_000;
+  return Number.isInteger(value) ? String(value) : value.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+}
+// The SKR the server asks right now, or null while it has not said (then
+// nothing is shown and nothing can be signed: the check wants the shown sum).
+export const openSkrOf = (prices: EyePrices | null | undefined) => prices?.skr?.openUnits ?? null;
+export const blinkSkrOf = (prices: EyePrices | null | undefined) => prices?.skr?.blinkUnits ?? null;
+export const openSkrAfterOf = (prices: EyePrices | null | undefined) => prices?.skr?.tier?.afterUnits ?? null;
 export const cooldownHours = (prices: EyePrices | null | undefined, seconds?: number | null) =>
   Math.round((seconds ?? prices?.blinkCooldownSeconds ?? BLINK_COOLDOWN_FALLBACK) / 3_600);
 

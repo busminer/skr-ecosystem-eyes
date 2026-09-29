@@ -10,7 +10,7 @@ import { colors, font, radius, spacing } from '../theme';
 import { fetchEyeHealth, type Eye, type EyePrices, type EyeStatus } from './api';
 import { EYE_FINGER_ENABLED } from './config';
 import { isBig } from './fit';
-import { CORE_CREATE_FEE, cooldownHours, depositOf, leftAtPrice, rentOf, sol } from './money';
+import { CORE_CREATE_FEE, blinkSkrOf, cooldownHours, depositOf, leftAtPrice, openSkrAfterOf, openSkrOf, rentOf, skr, sol } from './money';
 import { eyeCaption } from './shareEye';
 import { Glyph, Overline, type GlyphName } from './glyphs';
 import { Awakening, BlinkDial, Breath, CardShare, IrisClimb, NightSky, OpeningRoad, SeekerParts, cue, note, schedule, tick } from './OnboardingArt';
@@ -219,17 +219,17 @@ function Row({ label, value, note, strong = false }: { label: string; value: str
 
 // The mint by Eye number, in words: the first thousand and how many of them
 // are left, then the mint after them. No bar: a person reads the two lines.
-function Ladder({ tier, open, left }: { tier: { serial: number; afterLamports: number }; open: number; left: number | null }) {
+function Ladder({ tier, open, after, left }: { tier: { serial: number }; open: number; after: number; left: number | null }) {
   return (
     <View style={styles.ladder}>
       <View style={styles.row}>
         <Text style={styles.rowLabel}>{t('Eyes #1 to #{last}', { last: integer(tier.serial) })}</Text>
-        <Text style={styles.rowValue}>{`${sol(open)} SOL`}</Text>
+        <Text style={styles.rowValue}>{`${skr(open)} SKR`}</Text>
       </View>
       {left != null ? <Text style={styles.ladderNote}>{left === 1 ? t('1 of them left') : t('{count} of them left', { count: integer(left) })}</Text> : null}
       <View style={styles.row}>
         <Text style={[styles.rowLabel, styles.ladderDim]}>{t('From Eye #{first}', { first: integer(tier.serial + 1) })}</Text>
-        <Text style={[styles.rowValue, styles.ladderDim]}>{`${sol(tier.afterLamports)} SOL`}</Text>
+        <Text style={[styles.rowValue, styles.ladderDim]}>{`${skr(after)} SKR`}</Text>
       </View>
     </View>
   );
@@ -311,7 +311,8 @@ export function EyeOnboarding({
   const serial = nextSerial != null ? pad(nextSerial) : null;
   const hours = cooldownHours(prices, status?.blink?.cooldownSeconds);
   const slots = Math.max(1, Math.round(24 / Math.max(1, hours)));
-  const blinkSol = prices ? sol(prices.blinkLamports) : null;
+  const blinkUnits = blinkSkrOf(prices);
+  const blinkSkr = blinkUnits != null ? skr(blinkUnits) : null;
 
   // The card on page six is the bundled sample (EYE #0042, streak 7, 9
   // blinks); the caption under it is the one the app writes for that Eye
@@ -324,9 +325,11 @@ export function EyeOnboarding({
   // The last page, worked out for this wallet.
   const gates = status?.gates ?? null;
   const hasEye = Boolean(status?.eye);
-  const open = prices?.openLamports ?? null;
+  // The mint in SKR to the maker; the rent (storage and Metaplex's fee) in SOL.
+  const open = openSkrOf(prices);
+  const after = openSkrAfterOf(prices);
   const rent = rentOf(prices);
-  const total = open != null ? open + rent : null;
+  const total = open != null ? rent : null;
   const left = leftAtPrice(prices, nextSerial);
   const tier = prices?.tier ?? null;
   const staked = gates?.staked;
@@ -419,7 +422,7 @@ export function EyeOnboarding({
       art: (box) => <BlinkDial active={page === 3} reduced={reduced} width={box.width} height={box.height} slots={slots} hours={hours} />,
       foot: (
         <View style={styles.footBlock}>
-          {blinkSol ? <Text style={styles.caption}>{t('{sol} SOL per Blink, every {hours} hours', { sol: blinkSol, hours })}</Text> : null}
+          {blinkSkr ? <Text style={styles.caption}>{t('{skr} SKR per Blink, every {hours} hours', { skr: blinkSkr, hours })}</Text> : null}
           {big ? null : <Text style={styles.captionDim}>{t('Tap the Eye to try a Blink')}</Text>}
         </View>
       ),
@@ -543,17 +546,17 @@ export function EyeOnboarding({
           {open != null && total != null ? (
             <View style={[styles.card, big && styles.cardTight]}>
               {big ? null : <Overline tone={colors.faint}>{t('To mint your Eye')}</Overline>}
-              <Row label={t('Once, from your wallet')} value={t('about {sol} SOL', { sol: sol(total) })} strong />
+              <Row label={t('Once, from your wallet')} value={t('{skr} SKR + about {sol} SOL', { skr: skr(open), sol: sol(total) })} strong />
               {big ? null : <Text style={styles.rowNote}>{t('It is made of these parts:')}</Text>}
-              <Row label={t('Mint')} value={`${sol(open)} SOL`} note={t('to the maker of SKR Eyes')} />
+              <Row label={t('Mint')} value={`${skr(open)} SKR`} note={t('to the maker of SKR Eyes')} />
               <Row label={t('Storage deposit')} value={t('about {sol} SOL', { sol: sol(depositOf(prices)) })} note={t('stays inside your Eye on Solana, nobody receives it')} />
               <Row label={t('Metaplex fee')} value={`${sol(CORE_CREATE_FEE)} SOL`} note={t('to Metaplex, the NFT standard your Eye is built on')} />
               <Row label={t('Network fee')} value={t('tiny')} note={t('to Solana validators, set by your wallet')} />
               {tier ? <View style={styles.rule} /> : null}
               {tier && !big ? <Overline tone={colors.faint}>{t('Early Eyes')}</Overline> : null}
-              {tier ? <Ladder tier={tier} open={open} left={left} /> : null}
+              {tier && after != null ? <Ladder tier={tier} open={open} after={after} left={left} /> : null}
               <View style={styles.rule} />
-              {blinkSol ? <Text style={styles.rowNote}>{t('After the mint, each Blink is {sol} SOL to the maker of SKR Eyes, once every {hours} hours. Your first Blink comes with the mint.', { sol: blinkSol, hours })}</Text> : null}
+              {blinkSkr ? <Text style={styles.rowNote}>{t('After the mint, each Blink is {skr} SKR to the maker of SKR Eyes, once every {hours} hours. Your first Blink comes with the mint.', { skr: blinkSkr, hours })}</Text> : null}
             </View>
           ) : (
             <View style={styles.card}><ActivityIndicator size="small" color={colors.faint} /></View>

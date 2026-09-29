@@ -9,7 +9,7 @@ import { EyePicture, type Motion } from './EyePicture';
 import { clock, epochMs } from './time';
 import { MoveSheet } from './MoveSheet';
 import type { MoveKind } from './move';
-import { CORE_CREATE_FEE, cooldownHours, depositOf, leftAtPrice, rentOf, sol } from './money';
+import { CORE_CREATE_FEE, blinkSkrOf, cooldownHours, depositOf, leftAtPrice, openSkrAfterOf, openSkrOf, rentOf, skr, sol } from './money';
 import { askForEyeRemindersOnce, syncEyeReminders } from './reminders';
 import { shareEye, type ShareMoment } from './shareEye';
 
@@ -46,21 +46,24 @@ const GOLD_DAY = 30;
 // after; then what the mint is made of and who gets each part. True to the
 // server's numbers, and only the sentences the numbers allow.
 export function offerLines(prices: EyePrices, nextSerial: number | null, eyesNow: number | null): string[] {
-  const price = sol(prices.openLamports);
+  const units = openSkrOf(prices);
+  if (units == null) return [];
+  const price = skr(units);
+  const after = openSkrAfterOf(prices);
   const tier = prices.tier;
   // The live count when the network has been read, the server's word otherwise.
   const left = tier ? (eyesNow != null ? Math.max(0, tier.serial - eyesNow) : leftAtPrice(prices, nextSerial)) : null;
   const cost = [
-    t('{sol} SOL to the maker of SKR Eyes, a storage deposit of about {rent} SOL that stays inside your Eye on Solana, a {fee} SOL fee to Metaplex, the NFT standard it is built on, and a tiny network fee to Solana validators, set by your wallet.', { sol: price, rent: sol(depositOf(prices)), fee: sol(CORE_CREATE_FEE) }),
-    t('About {sol} SOL in all.', { sol: sol(prices.openLamports + rentOf(prices)) }),
+    t('{skr} SKR to the maker of SKR Eyes. From your SOL: a storage deposit of about {rent} SOL that stays inside your Eye on Solana, a {fee} SOL fee to Metaplex, the NFT standard it is built on, and a tiny network fee to Solana validators, set by your wallet.', { skr: price, rent: sol(depositOf(prices)), fee: sol(CORE_CREATE_FEE) }),
+    t('{skr} SKR and about {sol} SOL in all.', { skr: price, sol: sol(rentOf(prices)) }),
   ].join(' ');
-  if (!tier || left === 0) {
-    return [t('An Eye mints for {sol} SOL.', { sol: price }), cost];
+  if (!tier || left === 0 || after == null) {
+    return [t('An Eye mints for {skr} SKR.', { skr: price }), cost];
   }
-  const first = t('The first {count} Eyes mint for {sol} SOL each.', { count: integer(tier.serial), sol: price });
+  const first = t('The first {count} Eyes mint for {skr} SKR each.', { count: integer(tier.serial), skr: price });
   const rest = [
     left == null ? null : left === 1 ? t('1 of them left.') : t('{count} of them left.', { count: integer(left) }),
-    t('After them, {sol} SOL.', { sol: sol(tier.afterLamports) }),
+    t('After them, {skr} SKR.', { skr: skr(after) }),
   ].filter((line): line is string => Boolean(line)).join(' ');
   return [first, rest, cost];
 }
@@ -348,7 +351,7 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
       key={move}
       kind={move}
       wallet={wallet}
-      expect={{ shownLamports: move === 'open' ? prices.openLamports : prices.blinkLamports, asset: eye?.asset ?? null }}
+      expect={{ shownSkr: move === 'open' ? openSkrOf(prices) : blinkSkrOf(prices), asset: eye?.asset ?? null }}
       onDone={(result) => onMoved(move, result)}
       onClose={() => { setMove(null); void read(true); }}
     />
@@ -393,9 +396,12 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
       : time
         ? t('Shared. Your next Blink opens in {time}.', { time })
         : t('Shared.');
-  const priceLine = paced
-    ? t('{sol} SOL per Blink to the maker of SKR Eyes, every {hours} hours.', { sol: sol(prices.blinkLamports), hours })
-    : t('{sol} SOL per Blink to the maker of SKR Eyes.', { sol: sol(prices.blinkLamports) });
+  const blinkUnits = blinkSkrOf(prices);
+  const priceLine = blinkUnits == null
+    ? null
+    : paced
+      ? t('{skr} SKR per Blink to the maker of SKR Eyes, every {hours} hours.', { skr: skr(blinkUnits), hours })
+      : t('{skr} SKR per Blink to the maker of SKR Eyes.', { skr: skr(blinkUnits) });
   // One nudge, never two: the share right after a move, or a look at
   // somebody's Eye on any other visit while the person has not looked today.
   const shareLoud = moment !== 'any';

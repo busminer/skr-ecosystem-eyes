@@ -13,7 +13,7 @@ import { EYE_FINGER_ENABLED } from './config';
 import { isFingerCancel } from './finger';
 import { fontScale } from './fit';
 import { intentFresh, MoveRefused, runMove, stepFor, type MoveExpect, type MoveKind, type MoveResume, type MoveStage, type MoveStep } from './move';
-import { sol } from './money';
+import { skr, sol } from './money';
 import type { EyeTxSummary } from './txCheck';
 import { BEAT_MS, Stepper, keyFingerprint, shorten, usePaced, type Failure, type StepModel, type StepStatus } from './Stepper';
 import { epochMs } from './time';
@@ -81,6 +81,24 @@ function describe(error: unknown): Failure {
     }
     return { title: t('Your Eye is resting'), body: time ? t('The next Blink opens at {time}.', { time }) : null, detail: null };
   }
+  // Not enough in the wallet: said plainly, with what is missing.
+  if (error instanceof EyeApiError && error.code === 'not_enough_skr') {
+    const needed = Number(error.extra.skrNeeded);
+    const held = Number(error.extra.skrHeld);
+    return {
+      title: t('Not enough SKR in this wallet'),
+      body: Number.isFinite(needed) && Number.isFinite(held) ? t('This needs {need} SKR. The wallet holds {have} SKR.', { need: skr(needed), have: skr(held) }) : null,
+      detail: null,
+    };
+  }
+  if (error instanceof EyeApiError && error.code === 'not_enough_sol') {
+    const needed = Number(error.extra.lamportsNeeded);
+    return {
+      title: t('Not enough SOL for the network'),
+      body: Number.isFinite(needed) ? t('Keep about {sol} SOL in this wallet for the network fee and the storage of your Eye.', { sol: sol(needed) }) : null,
+      detail: null,
+    };
+  }
   if (error instanceof EyeApiError) return { title: error.message, body: null, detail: error.code };
   if (error instanceof MoveRefused) return { title: error.message, body: null, detail: error.code };
   return { title: error instanceof Error && error.message ? error.message : t('The Eye service did not answer'), body: null, detail: null };
@@ -89,6 +107,11 @@ function describe(error: unknown): Failure {
 // What the wallet will be asked for, in one sentence, from the transaction's
 // own bytes.
 function askLine(summary: EyeTxSummary): string {
+  if (summary.pay === 'skr') {
+    return summary.storage > 0
+      ? t("Read from the transaction: {skr} SKR to the maker of SKR Eyes, about {rent} SOL into your Eye's own account on Solana, and the network fee your wallet sets.", { skr: skr(summary.toMakerSkr), rent: sol(summary.storage) })
+      : t('Read from the transaction: {skr} SKR to the maker of SKR Eyes, and the network fee your wallet sets.', { skr: skr(summary.toMakerSkr) });
+  }
   const toMaker = sol(summary.toMaker + summary.priorityFee);
   return summary.storage > 0
     ? t("Read from the transaction: {sol} SOL to the maker of SKR Eyes, about {rent} SOL into your Eye's own account on Solana, and the network fee your wallet sets.", { sol: toMaker, rent: sol(summary.storage) })

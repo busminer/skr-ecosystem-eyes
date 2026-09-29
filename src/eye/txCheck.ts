@@ -114,7 +114,7 @@ export type EyeTxExpect = {
   collection: string;
   // The lamports the screen showed for this move, to the maker. Null when the
   // screen had no number: then only the ceiling above holds.
-  shownLamports: number | null;
+  shownLamports?: number | null;
   // For a Blink, the Eye it must touch, when the app knows it.
   asset?: string | null;
   // Defaults to MAKER_WALLET; only the test passes another.

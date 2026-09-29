@@ -22,8 +22,15 @@ export const EYE_BASE_URL = IS_LAB_BUILD ? 'https://skr.alexkosa.dev/eye-lab' : 
 // never taken from the server. Production: "SKR Eyes", owned by kosa.skr.
 // Lab: "SKR Eyes lab", the lab service's own throwaway collection (its
 // config on 28.09.2026); change it here when the lab gets a new one.
-export const LAB_COLLECTION = 'FCB6vdAbVoerZWd97JQaMSEc2hzPFYgukyVpqd3Jrwd9';
+// 29.09.2026: "SKR Eyes test", paid in SKR, owned by kosa.skr like production,
+// with its own server key.
+export const LAB_COLLECTION = 'DEth9rJRLboUWBabyCLZHLoR2j51tPbxn79a5aWjJGi3';
 export const EYE_COLLECTION = IS_LAB_BUILD ? LAB_COLLECTION : PRODUCTION_COLLECTION;
+
+// What the maker is paid in. SKR only (Alex, 29.09.2026): the transaction
+// check refuses any SOL to the maker, and every amount on screen is SKR. The
+// rent of a new Eye and the network fee are still the wallet's SOL.
+export const EYE_PAY = 'skr' as const;
 
 // The attestor that reads Google's key-attestation chain and says whether the
 // key was born in a real Seeker's StrongBox, under a fingerprint, inside our
