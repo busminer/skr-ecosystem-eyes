@@ -28,6 +28,17 @@ import { PublicKey, SystemProgram, Transaction, type TransactionInstruction } fr
 // more than the screen showed plus a tenth, and never more than the server's
 // own ceiling for that move.
 //
+// A second rail, SKR (research/skr-pay, a prototype): the same open and the
+// same Blink, paid in SKR instead of SOL. Then the maker's money is exactly
+// one SPL Token transferChecked of SKR from the wallet's own SKR account to
+// the maker's, for exactly the SKR the screen showed, and no System call at
+// all: the rent of a new Eye and the network fee still come from the
+// wallet's SOL, but Core takes the rent itself inside its create, so the
+// transaction names no SOL transfer. Both SKR accounts are derived here from
+// the two wallets and the SKR mint, never read from the server. Lighthouse,
+// which the Seeker wallet puts in front after this check (mwa.ts), is not
+// something the server builds, so here it stays a foreign program.
+//
 // This file is pure on purpose: no React Native, no i18n, nothing but
 // web3.js and Buffer, so `npm run test:eye` can run it in Node against
 // transactions built by the server's own builder (scripts/test-eye-tx.mjs).
@@ -43,6 +54,15 @@ export const MAKER_WALLET = 'BmJaEmaEURBDpj91GUTvJcpKy2MAu8ZtRFRPaMpEuuax';
 export const PRODUCTION_COLLECTION = '3FY7WBpvYFXTh4yMdFWp15C2LVVQdA6qKRfvPiBFdvgU';
 
 export const CORE_PROGRAM_ID = 'CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d';
+// SKR: the classic SPL Token program (not Token-2022), 6 decimals.
+export const TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+export const ASSOCIATED_TOKEN_PROGRAM_ID = 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL';
+export const SKR_MINT = 'SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3';
+export const SKR_DECIMALS = 6;
+// The maker's SKR account, the associated account of kosa.skr for the SKR
+// mint. Written here only to be compared with what is derived: a derivation
+// that ever gives anything else refuses every SKR move.
+export const MAKER_SKR_ACCOUNT = 'CmTWwMrSusqhxrABLMnMfTKnZHosoHWczRbnsj5cLGX4';
 export const COMPUTE_BUDGET_PROGRAM_ID = 'ComputeBudget111111111111111111111111111111';
 const SYSTEM_PROGRAM_ID = SystemProgram.programId.toBase58();
 
@@ -55,6 +75,17 @@ export const BLINK_MAX_LAMPORTS = 2_000_000;
 // How far over the amount on screen a transaction may go before it is
 // refused: a tenth, for a price that moved between the screen and the build.
 export const SHOWN_MARGIN = 0.1;
+// SKR, in its smallest units (6 decimals). A mint is 100 SKR for the first
+// thousand Eyes (the next tier is not set yet), a Blink 1 SKR. The SKR
+// amount must be exactly what the screen showed, with no margin, and never
+// past these ceilings, twice today's amounts.
+export const OPEN_MAX_SKR_UNITS = 200_000_000;
+export const BLINK_MAX_SKR_UNITS = 2_000_000;
+// In SKR mode no SOL goes to the maker; the only SOL the transaction itself
+// can ask for is a ComputeBudget priority fee, and never more than this.
+export const SKR_MODE_MAX_PRIORITY_LAMPORTS = 100_000;
+// SPL Token's TransferChecked: amount (u64) and decimals (u8).
+const TOKEN_TRANSFER_CHECKED = 12;
 
 // What the new Eye's own account holds once it exists, so the last screen can
 // say it before the wallet opens. Rent: 5 080 lamports per byte of the
@@ -72,6 +103,8 @@ const MAX_ASSET_BYTES = 600;
 const MAX_ATTRIBUTE_BYTES = 512;
 
 export type EyeTxKind = 'open' | 'blink';
+// Which rail pays the maker: SOL (the only one until now) or SKR.
+export type EyeTxPay = 'sol' | 'skr';
 
 export type EyeTxExpect = {
   kind: EyeTxKind;
@@ -86,6 +119,11 @@ export type EyeTxExpect = {
   asset?: string | null;
   // Defaults to MAKER_WALLET; only the test passes another.
   maker?: string;
+  // Defaults to 'sol'. In 'skr' mode `shownSkr` is the SKR, in its smallest
+  // units, the screen showed, and the transfer must be exactly that;
+  // `shownLamports` is then not used.
+  pay?: EyeTxPay;
+  shownSkr?: number | null;
 };
 
 // What the transaction asks of the wallet, read from its bytes: lamports to
@@ -93,7 +131,10 @@ export type EyeTxExpect = {
 // open, what the new Eye's own account will hold (rent and Core's fee).
 export type EyeTxSummary = {
   kind: EyeTxKind;
+  pay: EyeTxPay;
   toMaker: number;
+  // SKR to the maker, in its smallest units; 0 when paid in SOL.
+  toMakerSkr: number;
   priorityFee: number;
   storage: number;
   assetBytes: number | null;
@@ -302,6 +343,39 @@ function checkTransfer(instruction: TransactionInstruction): { to: string; lampo
   return { to: (instruction.keys[1] as { pubkey: PublicKey }).pubkey.toBase58(), lamports };
 }
 
+// The associated token account of `owner` for `mint` under the classic Token
+// program: the address every wallet shows as its SKR account.
+export function associatedTokenAccount(owner: string, mint: string = SKR_MINT): string {
+  const [address] = PublicKey.findProgramAddressSync(
+    [new PublicKey(owner).toBuffer(), new PublicKey(TOKEN_PROGRAM_ID).toBuffer(), new PublicKey(mint).toBuffer()],
+    new PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID),
+  );
+  return address.toBase58();
+}
+
+// The one SPL Token instruction an SKR move may carry: TransferChecked
+// (index 12) of SKR, 6 decimals, from the wallet's own SKR account, signed by
+// the wallet alone, to `destination`. Accounts: source, mint, destination,
+// authority. Anything else the Token program can do, a plain Transfer (3)
+// or an Approve (4) above all, is refused. Returns the amount.
+function checkSkrTransfer(instruction: TransactionInstruction, wallet: string, destination: string): number {
+  const reader: Reader = { bytes: new Uint8Array(instruction.data), at: 0 };
+  const tag = u8(reader);
+  if (tag !== TOKEN_TRANSFER_CHECKED) refuse('token_instruction', `SPL Token instruction ${tag} is not a checked transfer`);
+  const amount = u64(reader);
+  const decimals = u8(reader);
+  done(reader);
+  const keys = instruction.keys.map((meta) => meta.pubkey.toBase58());
+  if (keys.length !== 4) refuse('shape', `a token transfer has ${keys.length} accounts, not 4`);
+  const [source, mint, to, owner] = keys;
+  if (mint !== SKR_MINT) refuse('skr_mint', `the token transfer moves ${mint}, not SKR`);
+  if (decimals !== SKR_DECIMALS) refuse('skr_mint', `the token transfer says ${decimals} decimals, not SKR's ${SKR_DECIMALS}`);
+  if (owner !== wallet || !instruction.keys[3]?.isSigner) refuse('skr_source', 'the token transfer is not signed by this wallet');
+  if (source !== associatedTokenAccount(wallet)) refuse('skr_source', "the SKR would come from an account other than this wallet's own SKR account");
+  if (to !== destination) refuse('transfer_elsewhere', `${amount} SKR units would go to ${to}, not to the maker's SKR account`);
+  return amount;
+}
+
 // ComputeBudget: the heap, the unit limit, the unit price, the loaded-data
 // limit. The price is what could cost the wallet money, so it is returned.
 function checkComputeBudget(instruction: TransactionInstruction): { limit: number | null; price: number | null } {
@@ -335,7 +409,18 @@ export function checkEyeTransaction(base64: string, expect: EyeTxExpect): EyeTxS
   }
   if (!tx.feePayer || tx.feePayer.toBase58() !== expect.wallet) refuse('fee_payer', 'the fee payer is not this wallet');
 
+  const pay: EyeTxPay = expect.pay === 'skr' ? 'skr' : 'sol';
+  // In SKR mode the maker's SKR account, derived, and checked against the
+  // one written above when the maker is kosa.skr.
+  let makerSkr: string | null = null;
+  if (pay === 'skr') {
+    makerSkr = associatedTokenAccount(maker);
+    if (maker === MAKER_WALLET && makerSkr !== MAKER_SKR_ACCOUNT) refuse('maker_account', "the maker's SKR account does not derive to the one written in the app");
+  }
+
   let toMaker = 0;
+  let toMakerSkr = 0;
+  let skrTransfers = 0;
   let limit: number | null = null;
   let price: number | null = null;
   let creates = 0;
@@ -346,6 +431,7 @@ export function checkEyeTransaction(base64: string, expect: EyeTxExpect): EyeTxS
   for (const instruction of tx.instructions) {
     const program = instruction.programId.toBase58();
     if (program === SYSTEM_PROGRAM_ID) {
+      if (pay === 'skr') refuse('system_instruction', 'a move paid in SKR sends no SOL and makes no other System call');
       const transfer = checkTransfer(instruction);
       if (transfer.to !== maker) refuse('transfer_elsewhere', `a transfer of ${transfer.lamports} lamports goes to ${transfer.to}, not to the maker`);
       toMaker += transfer.lamports;
@@ -364,6 +450,11 @@ export function checkEyeTransaction(base64: string, expect: EyeTxExpect): EyeTxS
         updates += 1;
       } else refuse('core_instruction', `Core instruction ${tag} is neither a mint nor a Blink`);
       others += 1;
+    } else if (pay === 'skr' && program === TOKEN_PROGRAM_ID) {
+      toMakerSkr += checkSkrTransfer(instruction, expect.wallet, makerSkr as string);
+      skrTransfers += 1;
+      if (skrTransfers > 1) refuse('shape', 'a move paid in SKR carries more than one token transfer');
+      others += 1;
     } else {
       refuse('foreign_program', `an instruction calls ${program}, which a mint or a Blink never does`);
     }
@@ -378,12 +469,25 @@ export function checkEyeTransaction(base64: string, expect: EyeTxExpect): EyeTxS
   const units = limit ?? Math.min(1_400_000, 200_000 * others);
   const priorityFee = price ? Math.ceil((price * units) / 1_000_000) : 0;
 
+  const storage = assetBytes == null ? 0 : (RENT_ACCOUNT_OVERHEAD + assetBytes) * RENT_LAMPORTS_PER_BYTE + CORE_CREATE_FEE_LAMPORTS;
+
+  if (pay === 'skr') {
+    // Exactly one SKR transfer, of exactly what the screen showed, under the
+    // ceiling; and of SOL nothing but a small priority fee.
+    if (skrTransfers !== 1) refuse('shape', 'a move paid in SKR must carry exactly one SKR transfer');
+    const skrCeiling = expect.kind === 'open' ? OPEN_MAX_SKR_UNITS : BLINK_MAX_SKR_UNITS;
+    if (toMakerSkr > skrCeiling) refuse('over_amount', `the transaction takes ${toMakerSkr} SKR units, more than the ${skrCeiling} a ${expect.kind} ever takes`);
+    const shownSkr = typeof expect.shownSkr === 'number' && Number.isSafeInteger(expect.shownSkr) && expect.shownSkr > 0 ? expect.shownSkr : null;
+    if (shownSkr == null || toMakerSkr !== shownSkr) refuse('skr_amount', `the transaction takes ${toMakerSkr} SKR units, not the ${String(expect.shownSkr)} the screen showed`);
+    if (priorityFee > SKR_MODE_MAX_PRIORITY_LAMPORTS) refuse('over_amount', `the priority fee of ${priorityFee} lamports is more than the ${SKR_MODE_MAX_PRIORITY_LAMPORTS} allowed`);
+    return { kind: expect.kind, pay, toMaker, toMakerSkr, priorityFee, storage, assetBytes };
+  }
+
   const ceiling = expect.kind === 'open' ? OPEN_MAX_LAMPORTS : BLINK_MAX_LAMPORTS;
   const shown = typeof expect.shownLamports === 'number' && Number.isFinite(expect.shownLamports) && expect.shownLamports > 0 ? expect.shownLamports : null;
   const allowed = shown == null ? ceiling : Math.min(ceiling, Math.floor(shown * (1 + SHOWN_MARGIN)));
   const outflow = toMaker + priorityFee;
   if (outflow > allowed) refuse('over_amount', `the transaction takes ${outflow} lamports, more than the ${allowed} allowed for what the screen showed`);
 
-  const storage = assetBytes == null ? 0 : (RENT_ACCOUNT_OVERHEAD + assetBytes) * RENT_LAMPORTS_PER_BYTE + CORE_CREATE_FEE_LAMPORTS;
-  return { kind: expect.kind, toMaker, priorityFee, storage, assetBytes };
+  return { kind: expect.kind, pay, toMaker, toMakerSkr, priorityFee, storage, assetBytes };
 }

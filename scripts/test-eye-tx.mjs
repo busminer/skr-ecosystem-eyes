@@ -14,7 +14,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction, ComputeBudgetProgram, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
-import { BLINK_MAX_LAMPORTS, CORE_PROGRAM_ID, EyeTxRefused, MAKER_WALLET, OPEN_MAX_LAMPORTS, PRODUCTION_COLLECTION, checkEyeTransaction } from '../src/eye/txCheck.ts';
+import { BLINK_MAX_LAMPORTS, BLINK_MAX_SKR_UNITS, CORE_PROGRAM_ID, EyeTxRefused, MAKER_SKR_ACCOUNT, MAKER_WALLET, OPEN_MAX_LAMPORTS, OPEN_MAX_SKR_UNITS, PRODUCTION_COLLECTION, SKR_MINT, SKR_MODE_MAX_PRIORITY_LAMPORTS, associatedTokenAccount, checkEyeTransaction } from '../src/eye/txCheck.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(here, 'fixtures', 'eye-tx.json');
@@ -216,4 +216,138 @@ test('a versioned transaction is refused', () => {
   const message = new TransactionMessage({ payerKey: user.publicKey, recentBlockhash: blockhash, instructions: issued.instructions }).compileToV0Message();
   const versioned = Buffer.from(new VersionedTransaction(message).serialize()).toString('base64');
   refused(versioned, openExpect, 'not_legacy');
+});
+
+// The SKR rail (research/skr-pay): the same open and Blink, with the System
+// transfer to the maker swapped for one SPL Token transferChecked of SKR, the
+// way the server would build it once it has an SKR mode. Until it does, the
+// SKR transactions are made here from the server's own SOL ones.
+const OPEN_SKR = 100_000_000;
+const BLINK_SKR = 1_000_000;
+const SKR_MINT_KEY = new PublicKey(SKR_MINT);
+const makerSkr = new PublicKey(MAKER_SKR_ACCOUNT);
+const walletSkr = new PublicKey(associatedTokenAccount(wallet));
+const LIGHTHOUSE = new PublicKey('L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95');
+const ATA_PROGRAM = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+
+function tokenIx({ tag = 12, amount = OPEN_SKR, decimals = 6, programId = TOKEN_PROGRAM, source = walletSkr, mint = SKR_MINT_KEY, destination = makerSkr, owner = user.publicKey, signer = true, extra = [] } = {}) {
+  const data = Buffer.alloc(tag === 12 ? 10 : 9);
+  data[0] = tag;
+  data.writeBigUInt64LE(BigInt(amount), 1);
+  if (tag === 12) data[9] = decimals;
+  const keys = tag === 12
+    ? [source, mint, destination, owner].map((pubkey, index) => ({ pubkey, isSigner: index === 3 && signer, isWritable: index === 0 || index === 2 }))
+    : [source, destination, owner].map((pubkey, index) => ({ pubkey, isSigner: index === 2 && signer, isWritable: index < 2 }));
+  return new TransactionInstruction({ programId, keys: [...keys, ...extra], data });
+}
+
+// The server's SOL transaction with its System transfer replaced.
+const skrTx = (base64, ...payment) => tamper(base64, {
+  mutate: (ixs) => [...payment, ...ixs.filter((ix) => !ix.programId.equals(SystemProgram.programId))],
+});
+const skrOpen = skrTx(built.open, tokenIx());
+const skrBlink = skrTx(built.blink, tokenIx({ amount: BLINK_SKR }));
+const skrOpenExpect = { ...openExpect, pay: 'skr', shownLamports: null, shownSkr: OPEN_SKR };
+const skrBlinkExpect = { ...blinkExpect, pay: 'skr', shownLamports: null, shownSkr: BLINK_SKR };
+
+test('the maker SKR account is derived from kosa.skr and the SKR mint, and is CmTWw...', () => {
+  assert.equal(associatedTokenAccount(MAKER_WALLET), MAKER_SKR_ACCOUNT);
+  assert.equal(MAKER_SKR_ACCOUNT, 'CmTWwMrSusqhxrABLMnMfTKnZHosoHWczRbnsj5cLGX4');
+});
+
+test('an open and a Blink paid in SKR pass, and read their SKR from the bytes', () => {
+  const open = checkEyeTransaction(skrOpen, skrOpenExpect);
+  assert.equal(open.pay, 'skr');
+  assert.equal(open.toMakerSkr, OPEN_SKR);
+  assert.equal(open.toMaker, 0);
+  assert.equal(open.assetBytes, 337);
+  assert.equal(open.storage, (128 + 337) * 5_080 + 1_500_000);
+  const blink = checkEyeTransaction(skrBlink, skrBlinkExpect);
+  assert.equal(blink.toMakerSkr, BLINK_SKR);
+  assert.equal(blink.toMaker, 0);
+  // The SOL rail reports itself as such.
+  const sol = checkEyeTransaction(built.open, openExpect);
+  assert.equal(sol.pay, 'sol');
+  assert.equal(sol.toMakerSkr, 0);
+});
+
+test('an SKR transfer is still a foreign program on the SOL rail', () => {
+  refused(skrOpen, openExpect, 'foreign_program');
+  refused(tamper(built.blink, { mutate: (ixs) => [...ixs, tokenIx({ amount: BLINK_SKR })] }), blinkExpect, 'foreign_program');
+});
+
+test('in SKR mode no SOL goes to the maker, and no System call at all', () => {
+  refused(built.open, skrOpenExpect, 'system_instruction');
+  refused(tamper(skrOpen, { mutate: (ixs) => [...ixs, SystemProgram.transfer({ fromPubkey: user.publicKey, toPubkey: new PublicKey(MAKER_WALLET), lamports: 1 })] }), skrOpenExpect, 'system_instruction');
+  refused(tamper(skrBlink, { mutate: (ixs) => [SystemProgram.assign({ accountPubkey: user.publicKey, programId: stranger }), ...ixs] }), skrBlinkExpect, 'system_instruction');
+});
+
+test('in SKR mode exactly one SKR transfer: none, or a second, is refused', () => {
+  refused(tamper(skrOpen, { mutate: (ixs) => ixs.filter((ix) => !ix.programId.equals(TOKEN_PROGRAM)) }), skrOpenExpect, 'shape');
+  refused(tamper(skrBlink, { mutate: (ixs) => [...ixs, tokenIx({ amount: 1 })] }), { ...skrBlinkExpect, shownSkr: BLINK_SKR + 1 }, 'shape');
+});
+
+test('any other Token instruction, and Token-2022, is refused', () => {
+  // A plain Transfer (3) and an Approve (4) of the wallet's SKR.
+  refused(skrTx(built.open, tokenIx({ tag: 3 })), skrOpenExpect, 'token_instruction');
+  refused(skrTx(built.blink, tokenIx({ tag: 4, amount: BLINK_SKR, destination: stranger })), skrBlinkExpect, 'token_instruction');
+  // A checked transfer, but under Token-2022.
+  refused(skrTx(built.open, tokenIx({ programId: TOKEN_2022_PROGRAM })), skrOpenExpect, 'foreign_program');
+  // Creating an associated account, and a Lighthouse assertion: the server
+  // builds neither, so the app's check refuses both before the wallet.
+  const createAta = new TransactionInstruction({ programId: ATA_PROGRAM, keys: [], data: Buffer.from([1]) });
+  refused(tamper(skrOpen, { mutate: (ixs) => [createAta, ...ixs] }), skrOpenExpect, 'foreign_program');
+  const lighthouse = new TransactionInstruction({ programId: LIGHTHOUSE, keys: [{ pubkey: walletSkr, isSigner: false, isWritable: false }], data: Buffer.from([4, 0]) });
+  refused(tamper(skrOpen, { mutate: (ixs) => [lighthouse, ...ixs] }), skrOpenExpect, 'foreign_program');
+});
+
+test('another mint, other decimals, another source or signer is refused', () => {
+  refused(skrTx(built.open, tokenIx({ mint: stranger })), skrOpenExpect, 'skr_mint');
+  refused(skrTx(built.open, tokenIx({ decimals: 9 })), skrOpenExpect, 'skr_mint');
+  refused(skrTx(built.open, tokenIx({ source: new PublicKey(associatedTokenAccount(stranger.toBase58())) })), skrOpenExpect, 'skr_source');
+  refused(skrTx(built.open, tokenIx({ source: user.publicKey })), skrOpenExpect, 'skr_source');
+  refused(skrTx(built.open, tokenIx({ owner: stranger })), skrOpenExpect, 'skr_source');
+  // Signed by a multisig, or with an extra account after the four.
+  refused(skrTx(built.open, tokenIx({ extra: [{ pubkey: stranger, isSigner: false, isWritable: false }] })), skrOpenExpect, 'shape');
+});
+
+test('SKR to anywhere but the derived maker account is refused', () => {
+  refused(skrTx(built.open, tokenIx({ destination: stranger })), skrOpenExpect, 'transfer_elsewhere');
+  // The maker's wallet address itself is not its SKR account.
+  refused(skrTx(built.open, tokenIx({ destination: new PublicKey(MAKER_WALLET) })), skrOpenExpect, 'transfer_elsewhere');
+  // Somebody else's SKR account, derived the same way.
+  refused(skrTx(built.blink, tokenIx({ amount: BLINK_SKR, destination: new PublicKey(associatedTokenAccount(stranger.toBase58())) })), skrBlinkExpect, 'transfer_elsewhere');
+});
+
+test('the SKR amount is exactly what the screen showed, and never past the ceiling', () => {
+  refused(skrTx(built.open, tokenIx({ amount: OPEN_SKR + 1 })), skrOpenExpect, 'skr_amount');
+  refused(skrTx(built.open, tokenIx({ amount: OPEN_SKR - 1 })), skrOpenExpect, 'skr_amount');
+  refused(skrOpen, { ...skrOpenExpect, shownSkr: null }, 'skr_amount');
+  refused(skrOpen, { ...skrOpenExpect, shownSkr: OPEN_SKR / 2 }, 'skr_amount');
+  // A screen that showed the same too-large number does not help.
+  const huge = OPEN_MAX_SKR_UNITS + 1;
+  refused(skrTx(built.open, tokenIx({ amount: huge })), { ...skrOpenExpect, shownSkr: huge }, 'over_amount');
+  const hugeBlink = BLINK_MAX_SKR_UNITS + 1;
+  refused(skrTx(built.blink, tokenIx({ amount: hugeBlink })), { ...skrBlinkExpect, shownSkr: hugeBlink }, 'over_amount');
+  // An open's SKR handed out as a Blink.
+  refused(skrTx(built.blink, tokenIx({ amount: OPEN_SKR })), { ...skrBlinkExpect, shownSkr: OPEN_SKR }, 'over_amount');
+});
+
+test('in SKR mode a priority fee is allowed only while small', () => {
+  const modest = tamper(skrBlink, {
+    mutate: (ixs) => [ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 10 }), ...ixs],
+  });
+  assert.equal(checkEyeTransaction(modest, skrBlinkExpect).priorityFee, 2);
+  const pricey = tamper(skrBlink, {
+    mutate: (ixs) => [ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1_000_000 }), ...ixs],
+  });
+  refused(pricey, skrBlinkExpect, 'over_amount');
+  assert.ok(SKR_MODE_MAX_PRIORITY_LAMPORTS < BLINK_MAX_LAMPORTS);
+});
+
+test('in SKR mode the rest of the check holds as before', () => {
+  refused(tamper(skrOpen, { feePayer: stranger }), skrOpenExpect, 'fee_payer');
+  refused(skrOpen, { ...skrOpenExpect, collection: LAB_COLLECTION }, 'collection');
+  refused(skrBlink, { ...skrBlinkExpect, asset: stranger.toBase58() }, 'asset');
+  refused(skrBlink, { ...skrOpenExpect, shownSkr: BLINK_SKR }, 'shape');
 });
