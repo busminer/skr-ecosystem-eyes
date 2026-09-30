@@ -86,36 +86,36 @@
 
 <div class="wrap">
 
-  <p class="eyebrow">Пульт проекта · обновлён 29 сентября 2026, ночь</p>
+  <p class="eyebrow">Пульт проекта · обновлён 30 сентября 2026</p>
   <h1>SKR Eyes: Глаз</h1>
 
   <div class="topline">
-    <p class="oneline">Один живой NFT-глаз на кошелёк. Открывается пальцем на Seeker, моргает раз в 8 часов, по серии дней идёт к центру Радужки.</p>
-    <div class="clock"><p class="n">9</p><p class="c">дней до подачи 8 окт</p></div>
+    <p class="oneline">Один живой NFT-глаз на кошелёк. Открывается пальцем на Seeker за SKR, моргает раз в 8 часов, по серии дней идёт к центру Радужки.</p>
+    <div class="clock"><p class="n">8</p><p class="c">дней до подачи 8 окт</p></div>
   </div>
 
   <section>
     <div class="sechead"><span class="num">СЕЙЧАС</span><h2>Твой шаг</h2></div>
     <div class="q">
-      <span class="tag">утром</span>
-      <h2>Посмотреть сборку после аудита</h2>
-      <p>На основном Seeker начисто стоит <strong>2.0.0 (9)</strong> со всеми ночными правками. Релиз и минт ждут, пока тебе всё понравится.</p>
+      <span class="tag">взять телефон</span>
+      <h2>Оценить premium RC на Seeker</h2>
+      <p>На телефоне начисто стоит <strong>SKR Eyes LAB 2.0.0 (10)</strong> — и ни разу не запускалась: первый запуск твой, от заставки до вопроса про уведомления. Всё, что ты просил днём, внутри.</p>
       <ol>
-        <li>Пройти онбординг и сказать, что именно «обрывается в конце» — у меня не повторилось.</li>
-        <li>Прочитать новые Privacy и Terms (черновик готов) и сказать «да» — тогда выложу.</li>
-        <li>Сжечь в кошельке пять лабораторных «EYE #0001» (это можешь только ты).</li>
-        <li>Потом минт своего EYE #0001 и публикация — её делаешь ты.</li>
+        <li><strong>Звук.</strong> Арфы больше нет — «дыхание портала»: пад из растянутого хора и тёплое стекло на каждом шаге. Слушай онбординг и минт-шаги.</li>
+        <li><strong>Мир.</strong> Вкладка Eyes открывается сразу в Радужку: глаза-фонарики (маленькие Seeker'ы со светящимся глазом-экраном и золотой кнопкой пальца), дрейф, туманность, волна от каждого Blink, созвездие недавних, серийники на зуме.</li>
+        <li><strong>Минт.</strong> EYE #0001 в тестовой коллекции уже у kosa.skr с 29.09. Чтобы пройти минт заново — скажи «стереть лабу», сотру по DEPLOY.md; или второй кошелёк.</li>
+        <li>Вердикты по звуку и миру — и я делаю следующую итерацию или прод-сборку.</li>
       </ol>
     </div>
   </section>
 
   <section>
-    <div class="sechead"><span class="num">ЦЕНЫ</span><h2>Сколько SOL и куда</h2></div>
+    <div class="sechead"><span class="num">ЦЕНЫ</span><h2>Сколько и в чём (решение 29.09: только SKR)</h2></div>
     <div class="why">
-      <div><p class="n">≈0,0084 SOL</p><p>открыть глаз, $1 в SOL, номера #1–1000. С #1001 цена $2 в SOL.</p></div>
-      <div><p class="n">≈0,00042 SOL</p><p>один Blink, $0,05 в SOL. Раз в 8 часов; один в день держит серию.</p></div>
-      <div><p class="n">≈0,0022 SOL</p><p>залог за хранение. Никому не платится, лежит внутри глаза. Плюс 0,0015 SOL — сбор Metaplex, его забирает Metaplex.</p></div>
-      <div><p class="n">kosa.skr</p><p>владелец коллекции, роялти 5% с каждой сделки. В приложении только SOL.</p></div>
+      <div><p class="n">100 SKR</p><p>открыть глаз, номера #1–1000. С #1001 — 150 SKR. Всё создателю, на kosa.skr.</p></div>
+      <div><p class="n">1 SKR</p><p>один Blink, раз в 8 часов; один в день держит серию.</p></div>
+      <div><p class="n">≈0,00385 SOL</p><p>из SOL только сеть: залог хранения 0,00235 (лежит внутри глаза, никому не платится), 0,0015 — сбор Metaplex.</p></div>
+      <div><p class="n">DEth9…</p><p>тестовая коллекция «SKR Eyes test» в лабе уже берёт SKR. Прод переключаем перед релизом (EYE_PAY=skr).</p></div>
     </div>
   </section>
 
@@ -132,19 +132,17 @@
   <section>
     <div class="sechead"><span class="num">СТРОЙКА</span><h2>Что готово и что дальше</h2></div>
     <div class="build">
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Аудит безопасности</h3><p>Отдельный чат прочитал приложение, сервер, коллекцию и VPS. Деньги не украсть, оплату не обойти; слабые места — ниже, большая часть закрыта ночью.</p></div><span class="badge">готово</span></div>
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Проверка транзакции в приложении</h3><p>Перед подписью приложение само читает транзакцию: платишь ты, SOL только на kosa.skr, не больше показанного, никаких чужих программ.</p></div><span class="badge">готово</span></div>
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Сервер после аудита</h3><p>Платный Helius, зависшие минты досчитываются сами, флуд не рвёт серии, строгая проверка телефона, лаборатория выключена.</p></div><span class="badge">готово</span></div>
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Сторож коллекции</h3><p>Раз в 5 минут с твоего ПК сверяет владельца, делегата, роялти и заморозку каждого глаза.</p></div><span class="badge">готово</span></div>
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Старые тестовые глаза</h3><p>Двойник коллекции и два старых EYE #0001 переименованы в «test (void)» — копиями твоего №1 не станут.</p></div><span class="badge">готово</span></div>
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Онбординг</h3><p>Страница 2 — настоящий Seeker из пресс-кита Solana Mobile. Звуки — мягкая арфа. Без «цены» и «стоит».</p></div><span class="badge">готово</span></div>
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Переводы на десять языков</h3><p>539 строк, все языки.</p></div><span class="badge">готово</span></div>
-      <div class="task work"><span class="pip"></span><div class="t"><h3>Твой проход</h3><p>Посмотреть сборку, сказать что «обрывается», минт EYE #0001.</p></div><span class="badge">ждёт тебя</span></div>
-      <div class="task work"><span class="pip"></span><div class="t"><h3>Privacy и Terms под 2.0</h3><p>Черновик готов. Старые страницы говорят, что приложение ничего не подписывает — это уже неправда.</p></div><span class="badge">ждёт тебя</span></div>
-      <div class="task"><span class="pip"></span><div class="t"><h3>Публикация в dApp Store</h3><p>После твоего прохода и новых Privacy/Terms. Публикуешь ты сам.</p></div><span class="badge">потом</span></div>
-      <div class="task"><span class="pip"></span><div class="t"><h3>Первая неделя</h3><p>Лимит в Cloudflare (нужно право токену), тревоги в Telegram, VPN с сервера, SSH по аппаратным ключам, бэкап вне сервера.</p></div><span class="badge">потом</span></div>
+      <div class="task done"><span class="pip"></span><div class="t"><h3>Мир на Радужке</h3><p>Вкладка открывается в поле, заголовок стоит на горизонте. Фонарики-Seeker'ы, дрейф, туманность, параллакс-пыль, волна Blink, созвездие недавних, серийники на зуме. Свежий минт появляется в мире сразу.</p></div><span class="badge">сегодня</span></div>
+      <div class="task done"><span class="pip"></span><div class="t"><h3>Звук «дыхание портала»</h3><p>Пад из растянутого хора + тёплое стекло; пентатоника по страницам, свелл под веки. Из тех же записей Mixkit, что ты не отверг. Ничего ниже 160 Гц.</p></div><span class="badge">сегодня</span></div>
+      <div class="task done"><span class="pip"></span><div class="t"><h3>Проход руками по живому Seeker</h3><p>Свежий пользователь, существующий, самолёт, back, холодный старт 641 мс, logcat чист. Найдено и починено: пин пальца не на той стороне, «0h» резался, зрачок уезжал на карточки, подписи хранилища дрались, back выкидывал из приложения. 39 скринов + видео онбординга.</p></div><span class="badge">сегодня</span></div>
+      <div class="task done"><span class="pip"></span><div class="t"><h3>Аудит безопасности и правки</h3><p>Проверка транзакции перед подписью, сервер после аудита, сторож коллекции, двойники обезврежены.</p></div><span class="badge">готово</span></div>
+      <div class="task done"><span class="pip"></span><div class="t"><h3>Оплата в SKR в лаборатории</h3><p>Минт 100 SKR, Blink 1 SKR на «SKR Eyes test»; приложение отказывается подписывать SOL создателю.</p></div><span class="badge">готово</span></div>
+      <div class="task done"><span class="pip"></span><div class="t"><h3>Онбординг-ритуал, 7 страниц</h3><p>Настоящий Seeker из пресс-кита, честные имена: StrongBox, Seed Vault, Genesis Token, цепочка Google. Без «цены» и «стоит».</p></div><span class="badge">готово</span></div>
+      <div class="task work"><span class="pip"></span><div class="t"><h3>Твой проход RC</h3><p>Звук, мир, онбординг, минт. Сборка 2.0.0 (10) чистая на телефоне, не запускалась.</p></div><span class="badge">ждёт тебя</span></div>
+      <div class="task work"><span class="pip"></span><div class="t"><h3>Privacy и Terms под 2.0</h3><p>Черновик готов, но говорит «только SOL» — перепишу под SKR после твоего «нравится».</p></div><span class="badge">ждёт тебя</span></div>
+      <div class="task"><span class="pip"></span><div class="t"><h3>Прод на SKR + переводы</h3><p>EYE_PAY=skr и казна SKR на проде; один проход переводов (SKR-строки + сироты уведомлений); версионный URL картинки против кэша Cloudflare.</p></div><span class="badge">перед релизом</span></div>
+      <div class="task"><span class="pip"></span><div class="t"><h3>Публикация в dApp Store</h3><p>Боевая подпись, apksigner, чистая установка, каждый экран глазами. Публикуешь ты сам.</p></div><span class="badge">потом</span></div>
       <div class="task"><span class="pip"></span><div class="t"><h3>Свой замок-контракт</h3><p>Для коллекции, 2–4 дня. Закрывает и обход заморозки.</p></div><span class="badge">потом</span></div>
-      <div class="task"><span class="pip"></span><div class="t"><h3>Eye Score</h3><p>Очки глаза на карточке дня.</p></div><span class="badge">потом</span></div>
     </div>
   </section>
 
@@ -153,7 +151,7 @@
     <div class="no">
       <span>слова earn, farm, airdrop</span>
       <span>«price», «cost», «buy» про Глаз</span>
-      <span>нарисованные телефоны и кнопки</span>
+      <span>логотипы Solana Mobile</span>
       <span>стейкинг в приложении</span>
       <span>преминт</span>
       <span>обещания про токен в приложении</span>
@@ -164,19 +162,17 @@
   <section>
     <div class="sechead"><span class="num">РЕШЕНО</span><h2>Что уже решено</h2></div>
     <div class="log">
+      <div><p class="d">30 сен</p><p class="x">Мир — первым на вкладке, глаза — маленькие Seeker'ы-фонарики, звук — «дыхание» вместо арфы (твои слова за день; финальное «нравится» — за тобой)</p></div>
+      <div><p class="d">29 сен</p><p class="x">Оплата <em>только в SKR</em>: минт 100 SKR (после #1000 — 150), Blink 1 SKR; SOL остаётся лишь на залог и сеть</p></div>
+      <div><p class="d">29 сен</p><p class="x">Уведомления про стейкинг вырезаны наглухо; остались только напоминания Глаза</p></div>
       <div><p class="d">28 сен</p><p class="x">Про Глаз не пишем «цена» и «стоит»; на первой странице денег нет вообще</p></div>
-      <div><p class="d">28 сен</p><p class="x">Только оригинальные элементы Solana Mobile: телефон и кнопки из их пресс-кита</p></div>
+      <div><p class="d">28 сен</p><p class="x">Только оригинальные элементы Solana Mobile: телефон из их пресс-кита</p></div>
       <div><p class="d">28 сен</p><p class="x">Сначала аудит и правки, потом минт и релиз — когда тебе всё понравится на телефоне</p></div>
-      <div><p class="d">28 сен</p><p class="x">Коллекция «SKR Eyes» настоящая, владелец <em>kosa.skr</em>, сервер только делегат — минтит и пишет Blink</p></div>
-      <div><p class="d">28 сен</p><p class="x">Глаз замораживается при минте: не продать, не передать, не выставить. Снимает заморозку только твой кошелёк</p></div>
-      <div><p class="d">28 сен</p><p class="x">Цены в SOL: минт $1 (#1–1000, дальше $2), Blink $0,05 раз в 8 часов</p></div>
-      <div><p class="d">28 сен</p><p class="x">Палец обязателен, подпись кошелька привязывает телефон, анти-абьюз усилен на сервере</p></div>
-      <div><p class="d">28 сен</p><p class="x">Сборка 2.0.0 (9) собрана, подписана и стоит на твоём Seeker</p></div>
+      <div><p class="d">28 сен</p><p class="x">Коллекция «SKR Eyes» настоящая, владелец <em>kosa.skr</em>, сервер только делегат</p></div>
+      <div><p class="d">28 сен</p><p class="x">Глаз замораживается при минте: не продать, не передать. Снимает только твой кошелёк</p></div>
       <div><p class="d">27 сен</p><p class="x">Текст для X: номер глаза, <em>Solana Mobile</em> словами, $SKR, @AlexKosa1</p></div>
       <div><p class="d">27 сен</p><p class="x">Онбординг — ритуал: показывать, а не рассказывать. Переводы в конце, после обкатки</p></div>
-      <div><p class="d">27 сен</p><p class="x">Blink <em>$0,25 раз в 8 часов</em>, серия считается днями</p></div>
       <div><p class="d">27 сен</p><p class="x">Радужка вместо кругов по пулам; вкладка Eyes последняя, старт на Vault</p></div>
-      <div><p class="d">27 сен</p><p class="x">Делегат в Core не замок: альбом на твой кошелёк на релизе, замок-программа после</p></div>
       <div><p class="d">27 сен</p><p class="x">Палец с первого дня, свой аттестор внутри сервера</p></div>
       <div><p class="d">27 сен</p><p class="x">Один релиз со всем сразу, преминта нет, в магазин публикуешь <em>ты</em></p></div>
       <div><p class="d">22 сен</p><p class="x">Стейкинг в приложение не возвращается</p></div>
