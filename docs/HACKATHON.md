@@ -9,9 +9,14 @@
 | Подача | **8 октября 2026** |
 | Результаты | 10 ноября 2026 |
 | Призовой фонд | $135 000 |
-| Гранд-призы | 10 × $10 000 |
-| Поощрительные | 5 × $5 000 |
-| Бонус SKR | $10 000 за лучшую работу с SKR |
+| Места | 1-е $30k · 2-е $25k · 3-е $20k · 4-е $15k · 5-е $10k · 6–10 по $5k (USDC) |
+| Бонус SKR | $10 000 в SKR за «creative and meaningful SKR integration» |
+| Бонус ORE | удвоение выигрыша одному топ-победителю с осмысленной интеграцией ORE (только Discord, 21.09) |
+| Каждому победителю | Featured в dApp Store, ко-маркетинг, Seeker, звонок с toly |
+
+
+Лестница сверена с блогом Solana Mobile 08.09.2026 (clock-in-the-solana-mobile-hackathon).
+Прежняя запись «10 × $10k + 5 × $5k» была от MONOLITH.
 
 Судьи: Anatoly Yakovenko, Mert Mumtaz (Helius), Chase Barker (Solana Foundation),
 Akshay Rajan и Beeman (Solana Mobile), Voynich и A2nkF (EthelSec).
