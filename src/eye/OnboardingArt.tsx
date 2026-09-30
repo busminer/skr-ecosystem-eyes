@@ -277,7 +277,9 @@ function calloutsFor(finger: boolean, big: boolean): Callout[] {
   const token: Callout = { key: 'token', title: t('Genesis Token'), line: big ? t('One per Seeker. Your wallet’s proof.') : t('Minted once per Seeker on Solana. Your wallet’s proof.'), pin: [0.66, 0.861] };
   if (!finger) return [vault, token];
   return [
-    { key: 'finger', title: t('Fingerprint'), line: big ? t('In the side button. Your key signs only after it.') : t('Built into the side button. Your StrongBox key signs only after it.'), pin: [0, 0.475] },
+    // The pin sits on the side button, which the press-kit render shows on
+    // its right edge (the button cluster at 33-44% of its height).
+    { key: 'finger', title: t('Fingerprint'), line: big ? t('In the side button. Your key signs only after it.') : t('Built into the side button. Your StrongBox key signs only after it.'), pin: [1, 0.41] },
     vault,
     token,
   ];
@@ -310,7 +312,7 @@ export function SeekerParts({ active, reduced, width, height: room, finger, note
   const items = useMemo(() => calloutsFor(finger, big), [finger, big]);
   const height = clamp(room, 220, 350);
   const phoneW = Math.round(height * SEEKER_ASPECT);
-  // Room on the left for the side button's pin, which sits on the edge.
+  // Room on either edge for a pin that sits on the phone's side.
   const pad = PIN / 2 + 2;
   const [lit, setLit] = useState(reduced ? items.length : -1);
   const k0 = useSharedValue(reduced ? 1 : 0);
@@ -340,7 +342,7 @@ export function SeekerParts({ active, reduced, width, height: room, finger, note
 
   return (
     <View style={{ width, minHeight: height, flexDirection: 'row', gap: spacing.sm }}>
-      <Animated.View style={[{ width: phoneW + pad, height }, rise]}>
+      <Animated.View style={[{ width: phoneW + pad * 2, height }, rise]}>
         <Image source={SEEKER_BACK} style={{ position: 'absolute', left: pad, top: 0, width: phoneW, height }} resizeMode="contain" accessibilityLabel={t('Solana Mobile Seeker, back')} />
         {items.map((item, i) => {
           const k = ks[i];
@@ -504,7 +506,9 @@ export function BlinkDial({ active, reduced, width, height, slots, hours }: { ac
   }, [active, reduced, per, slots, turn]);
   const hand = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value}deg` }] }));
   const half = size / 2;
-  const r = half - 14;
+  // The hour labels sit at r + 22; the dial gives them that room, so the
+  // one at twelve o'clock is not cut by the canvas.
+  const r = half - 30;
   const gap = 7;
   const tickEvery = 24 / Math.max(1, slots);
   const trail = Array.from({ length: 6 }, (_, i) => i);
@@ -551,8 +555,8 @@ export function BlinkDial({ active, reduced, width, height, slots, hours }: { ac
                 </RadialGradient>
               </Defs>
               {trail.map((i) => <Path key={i} d={arc(half, half, r, -4 - (i + 1) * 5, -4 - i * 5)} fill="none" stroke="#C6F6FF" strokeWidth={6} strokeLinecap="butt" opacity={0.55 * (1 - i / 6)} />)}
-              <Circle cx={half} cy={14} r={14} fill="url(#hand-glow)" />
-              <Circle cx={half} cy={14} r={4.5} fill="#F2FDFF" />
+              <Circle cx={half} cy={half - r} r={14} fill="url(#hand-glow)" />
+              <Circle cx={half} cy={half - r} r={4.5} fill="#F2FDFF" />
             </Svg>
           </Animated.View>
         )}

@@ -731,7 +731,9 @@ const styles = StyleSheet.create({
   fact: { color: colors.muted, fontFamily: font.medium, ...type.small, fontVariant: ['tabular-nums'] },
   // The field bleeds to both edges of the page, as the radar does.
   sceneBlock: { gap: spacing.sm, marginHorizontal: -GUTTER },
-  sceneWrap: { backgroundColor: colors.bg },
+  // The field clips its own pupil: panned to the edge, the Eye slides out
+  // of the field the way its small eyes do, and never over the page.
+  sceneWrap: { backgroundColor: colors.bg, overflow: 'hidden' },
   pupilWrap: { position: 'absolute' },
   sceneHint: { color: colors.faint, fontFamily: font.regular, ...type.micro, textAlign: 'center', paddingHorizontal: GUTTER + spacing.sm },
   section: { gap: spacing.sm },
