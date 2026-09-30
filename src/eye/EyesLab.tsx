@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { FadeInDown, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
-import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '../i18n';
 import { integer } from '../format';
@@ -13,11 +12,10 @@ import { colors, font, radius, spacing, type } from '../theme';
 import { Button, Eyebrow, Meter } from '../lab/kit';
 import { EyeApiError, fetchEyeHealth, fetchEyeNetwork, sendGaze, type EyeHealth, type EyeNetwork, type EyeStatus, type NetworkEye } from './api';
 import { EYE_BASE_URL, EYE_FINGER_ENABLED } from './config';
+import { Ascent } from './Ascent';
 import { EyePanel } from './EyePanel';
 import { EyeOnboarding } from './EyeOnboarding';
-import { PortalEye } from './PortalEye';
 import { WitnessWalkthrough, getWitnessState } from './WitnessWalkthrough';
-import { IrisScene, type IrisHandle, type IrisView } from './IrisScene';
 import { openEyeStream } from './stream';
 import { localHourOf, pulseInPhoneTime } from './time';
 
@@ -92,18 +90,6 @@ const hh = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
 const serialName = (serial: number) => `EYE #${String(serial).padStart(4, '0')}`;
 const serialTag = (serial: number) => `#${String(serial).padStart(4, '0')}`;
 const days = (streak: number) => (streak === 1 ? t('1 day') : t('{count} days', { count: integer(streak) }));
-
-// The pupil: the Eye itself, the NFT's portal, over the centre of the Iris.
-// It blinks when anybody on the network blinks, and on its own every few
-// seconds so the tab is never a still picture.
-function PupilEye({ size, blink }: { size: number; blink: number }) {
-  const [idle, setIdle] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => { if (AppState.currentState === 'active') setIdle((count) => count + 1); }, 6_500);
-    return () => clearInterval(timer);
-  }, []);
-  return <PortalEye size={size} open blink={blink + idle} />;
-}
 
 // A few short facts in a row. They wrap when the font is large, so no fact
 // is ever cut and none runs into its neighbour.
@@ -225,10 +211,10 @@ export function EyesLab() {
   // title; the scene lights the rings itself.
   const [liveBlinks, setLiveBlinks] = useState(0);
   const [picked, setPicked] = useState<NetworkEye | null>(null);
-  // Every blink heard, yours included: the pupil blinks with it.
-  const [pupilBlink, setPupilBlink] = useState(0);
-  const scene = useRef<IrisHandle>(null);
-  // The list and where the Iris sits in it, for the card's nudge to look at
+  // Every blink heard on the stream makes its Eye pulse where it stands on
+  // the Ascent: serial -> a counter that grows with each of their Blinks.
+  const [pulses, setPulses] = useState<Record<number, number>>({});
+  // The list and where the world sits in it, for the card's nudge to look at
   // somebody's Eye: one press and the field is on screen.
   const list = useRef<ScrollView>(null);
   const sceneTop = useRef(0);
@@ -249,17 +235,6 @@ export function EyesLab() {
     return () => { live = false; };
   }, []);
 
-  // The field's view, as the scene reports it: the Eye at the centre moves
-  // and grows with it, on the UI thread, without a render of the tab.
-  const zoom = useSharedValue(1);
-  const panX = useSharedValue(0);
-  const panY = useSharedValue(0);
-  const onView = useCallback((view: IrisView) => {
-    zoom.value = view.zoom;
-    panX.value = view.panX;
-    panY.value = view.panY;
-  }, [zoom, panX, panY]);
-  const pupilStyle = useAnimatedStyle(() => ({ transform: [{ translateX: panX.value }, { translateY: panY.value }, { scale: zoom.value }] }));
   const scrollToIris = useCallback(() => {
     void Haptics.selectionAsync();
     list.current?.scrollTo({ y: Math.max(0, sceneTop.current - spacing.md), animated: true });
@@ -326,8 +301,7 @@ export function EyesLab() {
       if (close) return;
       close = openEyeStream((message) => {
         if (message.event === 'blink') {
-          scene.current?.push({ type: 'blink', items: [message.data] });
-          setPupilBlink((count) => count + 1);
+          setPulses((current) => ({ ...current, [message.data.serial]: (current[message.data.serial] ?? 0) + 1 }));
           if (!blinked.current.has(message.data.serial)) {
             blinked.current.add(message.data.serial);
             setLiveBlinks((count) => count + 1);
@@ -347,32 +321,10 @@ export function EyesLab() {
     return () => { subscription.remove(); shut(); if (reread.current) clearTimeout(reread.current); };
   }, [read]);
 
-  // The picture, handed to the scene whenever a read changes it.
-  useEffect(() => {
-    if (!network) {
-      scene.current?.push({ type: 'network', eyes: [], ringCounts: null, me: null, callout: null, empty: true });
-      return;
-    }
-    const me = network.me;
-    scene.current?.push({
-      type: 'network',
-      eyes: network.eyes.map((eye) => ({ s: eye.serial, r: eye.ring, b: eye.blinkedToday ? 1 : 0, pf: eye.perfect ? 1 : 0 })),
-      ringCounts: network.ringCounts ?? null,
-      me: me ? { serial: me.serial, ring: me.ring } : null,
-      callout: me ? { title: t('you'), sub: `${serialName(me.serial)}, ${days(me.streak)}` } : null,
-      empty: network.eyes.length === 0,
-    });
-  }, [network]);
-
   const pick = useCallback((eye: NetworkEye) => {
     void Haptics.selectionAsync();
     setPicked(eye);
   }, []);
-
-  const onTap = useCallback((serial: number) => {
-    const eye = network?.eyes.find((item) => item.serial === serial);
-    if (eye) pick(eye);
-  }, [network, pick]);
 
   // A name in a list: the Eye behind it, if the server listed it.
   const eyeOf = useCallback((serial: number) => network?.eyes.find((item) => item.serial === serial) ?? null, [network]);
@@ -456,22 +408,18 @@ export function EyesLab() {
     resolve?.(ok);
   }, []);
 
-  // Your own Blink went through: your Eye flashes like any other blink
-  // arriving, and the count under the title moves with it.
+  // Your own Blink went through: your Eye pulses on its step like any other
+  // blink arriving, and the count under the title moves with it.
   const onBlinked = useCallback(() => {
     const me = network?.me;
-    setPupilBlink((count) => count + 1);
     if (!me) return;
-    scene.current?.push({ type: 'blink', items: [{ serial: me.serial, ring: me.ring }] });
+    setPulses((current) => ({ ...current, [me.serial]: (current[me.serial] ?? 0) + 1 }));
     if (!blinked.current.has(me.serial)) {
       blinked.current.add(me.serial);
       setLiveBlinks((count) => count + 1);
     }
   }, [network]);
 
-  const size = Math.min(width, MAX_W);
-  // The portal's glowing ring sits just inside the innermost ring.
-  const pupil = Math.round(size * 0.39);
   const watching = network?.totals.watching ?? network?.totals.eyes ?? status?.network?.watching ?? status?.network?.eyes ?? null;
   const nextSerial = network ? network.totals.eyes + 1 : status ? status.network.eyes + 1 : null;
   const blinkedToday = network ? network.totals.blinkedToday + liveBlinks : null;
@@ -516,45 +464,31 @@ export function EyesLab() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void read(true)} tintColor={colors.accent} colors={[colors.accent]} progressBackgroundColor={colors.panel} />}
       >
-        {/* The world first (Alex, 30.09): the tab opens onto the Iris, its
-            headline standing on the field's own horizon, and everything
-            about you comes after it. */}
-        <View style={styles.sceneBlock} onLayout={(event) => { sceneTop.current = event.nativeEvent.layout.y; }}>
-          <View style={[styles.sceneWrap, { height: size }]}>
-            <IrisScene ref={scene} size={size} onTap={onTap} onView={onView} />
-            <Animated.View pointerEvents="none" style={[styles.pupilWrap, { top: (size - pupil) / 2, left: (size - pupil) / 2 }, pupilStyle]}>
-              <PupilEye size={pupil} blink={pupilBlink} />
-            </Animated.View>
-            <View pointerEvents="none" style={styles.worldHead}>
-              <Svg width="100%" height={120} style={styles.worldScrim}>
-                <Defs>
-                  <SvgLinearGradient id="world-scrim" x1="0" y1="0" x2="0" y2="1">
-                    <Stop offset="0" stopColor="#04070B" stopOpacity="0" />
-                    <Stop offset="1" stopColor="#04070B" stopOpacity="0.82" />
-                  </SvgLinearGradient>
-                </Defs>
-                <Rect x={0} y={0} width="100%" height={120} fill="url(#world-scrim)" />
-              </Svg>
-              <Eyebrow>{t('The Iris')}</Eyebrow>
-              <Text style={styles.title}>
-                {watching == null
-                  ? t('The Iris is waking up')
-                  : watching === 0 ? t('The Iris is waiting for its first Eye')
-                    : watching === 1 ? t('1 Eye is watching') : t('{count} Eyes are watching', { count: integer(watching) })}
-              </Text>
-              {network && blinkedToday != null ? (
-                <Facts
-                  // A zero is never shown: at launch it reads as an empty room.
-                  items={[
-                    blinkedToday > 0 ? t('{count} blinked today', { count: integer(blinkedToday) }) : null,
-                    network.totals.perfect > 0 ? (network.totals.perfect === 1 ? t('1 Perfect Eye') : t('{count} Perfect Eyes', { count: integer(network.totals.perfect) })) : null,
-                    network.totals.newToday > 0 ? t('{count} new today', { count: integer(network.totals.newToday) }) : null,
-                  ].filter((item): item is string => item != null)}
-                />
-              ) : null}
-            </View>
+        {/* The world first: since 01.10 it is the Ascent — the stair of nine
+            steps every Eye stands on, gold at the summit (Alex: make it a
+            place to poke around in, where being overtaken is visible). */}
+        <View style={styles.worldBlock} onLayout={(event) => { sceneTop.current = event.nativeEvent.layout.y; }}>
+          <View style={styles.head}>
+            <Eyebrow>{t('The Iris')}</Eyebrow>
+            <Text style={styles.title}>
+              {watching == null
+                ? t('The Iris is waking up')
+                : watching === 0 ? t('The Iris is waiting for its first Eye')
+                  : watching === 1 ? t('1 Eye is watching') : t('{count} Eyes are watching', { count: integer(watching) })}
+            </Text>
+            {network && blinkedToday != null ? (
+              <Facts
+                // A zero is never shown: at launch it reads as an empty room.
+                items={[
+                  blinkedToday > 0 ? t('{count} blinked today', { count: integer(blinkedToday) }) : null,
+                  network.totals.perfect > 0 ? (network.totals.perfect === 1 ? t('1 Perfect Eye') : t('{count} Perfect Eyes', { count: integer(network.totals.perfect) })) : null,
+                  network.totals.newToday > 0 ? t('{count} new today', { count: integer(network.totals.newToday) }) : null,
+                ].filter((item): item is string => item != null)}
+              />
+            ) : null}
           </View>
-          <Text style={styles.sceneHint}>{t('Rings are streaks, the longest at the centre. Pinch to zoom, drag to look around, tap an Eye to see it.')}</Text>
+          <Ascent network={network} meSerial={network?.me?.serial ?? null} pulses={pulses} onPick={pick} />
+          <Text style={styles.sceneHint}>{t('A Blink a day climbs one step. Tap an Eye to see it.')}</Text>
         </View>
 
         <EyePanel
@@ -765,20 +699,13 @@ const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: MAX_W, alignSelf: 'center', paddingHorizontal: GUTTER, paddingBottom: spacing.xxl, gap: spacing.lg },
   pressed: { opacity: 0.7 },
   head: { gap: spacing.xs },
-  title: { color: colors.text, fontFamily: font.bold, fontSize: 24, lineHeight: 29, letterSpacing: -0.7, fontVariant: ['tabular-nums'], textShadowColor: 'rgba(0, 0, 0, 0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  // The headline standing on the world's horizon, over its own dusk.
-  worldHead: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingBottom: spacing.sm, gap: 3, justifyContent: 'flex-end' },
-  worldScrim: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  title: { color: colors.text, fontFamily: font.bold, fontSize: 24, lineHeight: 29, letterSpacing: -0.7, fontVariant: ['tabular-nums'] },
   facts: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.lg, rowGap: 2 },
   factsCenter: { justifyContent: 'center' },
   fact: { color: colors.muted, fontFamily: font.medium, ...type.small, fontVariant: ['tabular-nums'] },
-  // The field bleeds to both edges of the page, as the radar does.
-  sceneBlock: { gap: spacing.sm, marginHorizontal: -GUTTER },
-  // The field clips its own pupil: panned to the edge, the Eye slides out
-  // of the field the way its small eyes do, and never over the page.
-  sceneWrap: { backgroundColor: colors.bg, overflow: 'hidden' },
-  pupilWrap: { position: 'absolute' },
-  sceneHint: { color: colors.faint, fontFamily: font.regular, ...type.micro, textAlign: 'center', paddingHorizontal: GUTTER + spacing.sm },
+  // The world at the top of the tab: headline, the Ascent, one hint.
+  worldBlock: { gap: spacing.sm, paddingTop: spacing.sm },
+  sceneHint: { color: colors.faint, fontFamily: font.regular, ...type.micro, textAlign: 'center', paddingHorizontal: spacing.sm },
   section: { gap: spacing.sm },
   sectionLine: { color: colors.muted, fontFamily: font.regular, ...type.small, fontVariant: ['tabular-nums'] },
   // The Eyes as small cards in a row that scrolls sideways: the picture, the
