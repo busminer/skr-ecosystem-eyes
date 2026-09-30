@@ -153,7 +153,8 @@ function EyeSheet({ eye, gazes, wallet, mine, width, height, fontScale, onClose,
             center
             items={[
               days(eye.streak),
-              t('ring {ring} of {rings}', { ring: eye.ring + 1, rings: RINGS }),
+              // The world is a stair now: the card speaks its step, not a ring.
+              eye.ring === 0 ? t('on the gold step') : t('on the {label}-day step', { label: RAIL[eye.ring] ?? '' }),
               eye.blinkedToday ? t('Blinked today') : t('Not yet today'),
             ]}
           />
