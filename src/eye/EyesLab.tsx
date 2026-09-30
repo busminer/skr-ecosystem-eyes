@@ -11,8 +11,9 @@ import { rememberConnectedWallet, useConnectedWallet } from '../wallet';
 import { colors, font, radius, spacing, type } from '../theme';
 import { Button, Eyebrow, Meter } from '../lab/kit';
 import { EyeApiError, fetchEyeHealth, fetchEyeNetwork, sendGaze, type EyeHealth, type EyeNetwork, type EyeStatus, type NetworkEye } from './api';
-import { EYE_BASE_URL, EYE_FINGER_ENABLED } from './config';
-import { Ascent } from './Ascent';
+import { EYE_BASE_URL, EYE_FINGER_ENABLED, IS_LAB_BUILD } from './config';
+import { World } from './world/World';
+import { PREVIEW_SIZES, previewNetwork } from './world/preview';
 import { EyePanel } from './EyePanel';
 import { EyeOnboarding } from './EyeOnboarding';
 import { WitnessWalkthrough, getWitnessState } from './WitnessWalkthrough';
@@ -193,6 +194,9 @@ export function EyesLab() {
   // title has a number even while the Iris itself is still waking up.
   const [status, setStatus] = useState<EyeStatus | null>(null);
   const [network, setNetwork] = useState<EyeNetwork | null>(null);
+  // LAB BUILDS ONLY: look at the world with hundreds of invented people (the
+  // tab says so while it is on). Never offered in the store build.
+  const [previewN, setPreviewN] = useState<number | null>(null);
   // The prices for someone with no wallet yet, from the service's health
   // call, read once when the tab opens.
   const [health, setHealth] = useState<EyeHealth | null>(null);
@@ -421,9 +425,24 @@ export function EyesLab() {
     }
   }, [network]);
 
-  const watching = network?.totals.watching ?? network?.totals.eyes ?? status?.network?.watching ?? status?.network?.eyes ?? null;
+  // What the world and the headline show: the real network, or in a lab
+  // preview the real Eyes among invented ones.
+  const view = useMemo(() => (IS_LAB_BUILD && previewN != null && network ? previewNetwork(network, previewN) : network), [network, previewN]);
+  // LAB preview only: a Blink arrives every few seconds so the world can be
+  // watched alive (the stream itself carries real ones in a real network).
+  useEffect(() => {
+    if (!IS_LAB_BUILD || previewN == null || !view) return undefined;
+    const awake = view.eyes.filter((eye) => eye.blinkedToday);
+    if (awake.length === 0) return undefined;
+    const timer = setInterval(() => {
+      const eye = awake[Math.floor(Math.random() * awake.length)];
+      if (eye) setPulses((current) => ({ ...current, [eye.serial]: (current[eye.serial] ?? 0) + 1 }));
+    }, 3_500);
+    return () => clearInterval(timer);
+  }, [previewN, view]);
+  const watching = view?.totals.watching ?? view?.totals.eyes ?? status?.network?.watching ?? status?.network?.eyes ?? null;
   const nextSerial = network ? network.totals.eyes + 1 : status ? status.network.eyes + 1 : null;
-  const blinkedToday = network ? network.totals.blinkedToday + liveBlinks : null;
+  const blinkedToday = view ? view.totals.blinkedToday + (previewN != null ? 0 : liveBlinks) : null;
   const received = network?.gazes.received ?? [];
   const circles = network?.circles ?? [];
   const peak = circles.reduce((most, circle) => Math.max(most, circle.blinked), 0);
@@ -465,9 +484,10 @@ export function EyesLab() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void read(true)} tintColor={colors.accent} colors={[colors.accent]} progressBackgroundColor={colors.panel} />}
       >
-        {/* The world first: since 01.10 it is the Ascent — the stair of nine
-            steps every Eye stands on, gold at the summit (Alex: make it a
-            place to poke around in, where being overtaken is visible). */}
+        {/* The world first. Up to thirty Eyes it is the Ascent, the stair of
+            nine steps with big named eyes; from thirty-one the Iris, the
+            whole network as one eye made of eyes, with Around you and Find
+            (src/eye/world/World.tsx). */}
         <View style={styles.worldBlock} onLayout={(event) => { sceneTop.current = event.nativeEvent.layout.y; }}>
           <View style={styles.head}>
             <Eyebrow>{t('The Iris')}</Eyebrow>
@@ -477,19 +497,27 @@ export function EyesLab() {
                 : watching === 0 ? t('The Iris is waiting for its first Eye')
                   : watching === 1 ? t('1 Eye is watching') : t('{count} Eyes are watching', { count: integer(watching) })}
             </Text>
-            {network && blinkedToday != null ? (
+            {view && blinkedToday != null ? (
               <Facts
                 // A zero is never shown: at launch it reads as an empty room.
                 items={[
                   blinkedToday > 0 ? t('{count} blinked today', { count: integer(blinkedToday) }) : null,
-                  network.totals.perfect > 0 ? (network.totals.perfect === 1 ? t('1 Perfect Eye') : t('{count} Perfect Eyes', { count: integer(network.totals.perfect) })) : null,
-                  network.totals.newToday > 0 ? t('{count} new today', { count: integer(network.totals.newToday) }) : null,
+                  view.totals.perfect > 0 ? (view.totals.perfect === 1 ? t('1 Perfect Eye') : t('{count} Perfect Eyes', { count: integer(view.totals.perfect) })) : null,
+                  view.totals.newToday > 0 ? t('{count} new today', { count: integer(view.totals.newToday) }) : null,
                 ].filter((item): item is string => item != null)}
               />
             ) : null}
+            {IS_LAB_BUILD ? (
+              <Pressable
+                onPress={() => setPreviewN((current) => { const at = current == null ? -1 : PREVIEW_SIZES.indexOf(current as typeof PREVIEW_SIZES[number]); return at + 1 >= PREVIEW_SIZES.length ? null : PREVIEW_SIZES[at + 1] ?? null; })}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.previewPill, pressed && styles.pressed]}
+              >
+                <Text style={styles.previewText}>{previewN == null ? 'LAB · preview a big network' : `LAB · preview ${previewN} Eyes, invented names — tap for the next size`}</Text>
+              </Pressable>
+            ) : null}
           </View>
-          <Ascent network={network} meSerial={network?.me?.serial ?? null} pulses={pulses} onPick={pick} />
-          <Text style={styles.sceneHint}>{t('A Blink a day climbs one step. Tap an Eye to see it.')}</Text>
+          <World network={view} meSerial={view?.me?.serial ?? null} pulses={pulses} onPick={pick} />
         </View>
 
         <EyePanel
@@ -706,7 +734,8 @@ const styles = StyleSheet.create({
   fact: { color: colors.muted, fontFamily: font.medium, ...type.small, fontVariant: ['tabular-nums'] },
   // The world at the top of the tab: headline, the Ascent, one hint.
   worldBlock: { gap: spacing.sm, paddingTop: spacing.sm },
-  sceneHint: { color: colors.faint, fontFamily: font.regular, ...type.micro, textAlign: 'center', paddingHorizontal: spacing.sm },
+  previewPill: { alignSelf: 'flex-start', marginTop: spacing.xs, borderWidth: 1, borderColor: colors.pending, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 4 },
+  previewText: { color: colors.pending, fontFamily: font.medium, fontSize: 11, lineHeight: 15 },
   section: { gap: spacing.sm },
   sectionLine: { color: colors.muted, fontFamily: font.regular, ...type.small, fontVariant: ['tabular-nums'] },
   // The Eyes as small cards in a row that scrolls sideways: the picture, the

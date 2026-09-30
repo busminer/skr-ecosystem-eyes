@@ -278,17 +278,17 @@ export function EyePanel({ wallet, meName = null, onStatus, onBlinked, onConnect
     const who = meName ?? null;
     if (kind === 'open') {
       setNote(who
-        ? t('{name} вЂ” {eye} is yours. You are one of {count} who keep watch.', { name: who, eye: result.eye.name, count: result.eye.serial.toLocaleString('en-US') })
+        ? t('{name} — {eye} is yours. You are one of {count} who keep watch.', { name: who, eye: result.eye.name, count: result.eye.serial.toLocaleString('en-US') })
         : t('{name} is open. You are one of {count} who keep watch.', { name: result.eye.name, count: result.eye.serial.toLocaleString('en-US') }));
     } else {
       const kept = who
         ? t('{name}, day {count} is kept.', { name: who, count: result.eye.streak })
         : t('Day {count} is kept.', { count: result.eye.streak });
       const rest = moreToday > 1
-        ? t('You can blink {count} more times today вЂ” a reminder will come right on time.', { count: moreToday })
+        ? t('You can blink {count} more times today — a reminder will come right on time.', { count: moreToday })
         : moreToday === 1
-          ? t('You can blink once more today вЂ” a reminder will come right on time.')
-          : t('Your next Blink opens at {time} вЂ” a reminder will come right on time.', { time: nextTime });
+          ? t('You can blink once more today — a reminder will come right on time.')
+          : t('Your next Blink opens at {time} — a reminder will come right on time.', { time: nextTime });
       setNote(`${kept} ${rest}`);
     }
     setMoment(kind);
@@ -329,7 +329,7 @@ export function EyePanel({ wallet, meName = null, onStatus, onBlinked, onConnect
         {tabPrices ? <Offer lines={offerLines(tabPrices, nextSerial, eyesNow)} /> : null}
         {onConnect ? (
           <View style={styles.button}>
-            <Button label={connecting ? t('ConnectingвЂ¦') : t('Connect wallet')} onPress={onConnect} disabled={connecting} />
+            <Button label={connecting ? t('Connecting…') : t('Connect wallet')} onPress={onConnect} disabled={connecting} />
           </View>
         ) : null}
         {onHowItWorks ? <Button label={t('See what happens first')} onPress={onHowItWorks} ghost /> : null}
@@ -350,7 +350,7 @@ export function EyePanel({ wallet, meName = null, onStatus, onBlinked, onConnect
             <Text style={styles.lead}>{t('Eye service unreachable')}</Text>
             <View style={styles.actions}><Button label={t('Try again')} onPress={() => void read()} disabled={reading} quiet /></View>
           </>
-        ) : <Text style={styles.lead}>{t('Reading your EyeвЂ¦')}</Text>}
+        ) : <Text style={styles.lead}>{t('Reading your Eye…')}</Text>}
       </Panel>
     );
   }
@@ -390,7 +390,7 @@ export function EyePanel({ wallet, meName = null, onStatus, onBlinked, onConnect
         <Offer lines={offerLines(prices, nextSerial, eyesNow)} />
         {gates.staked ? null : <Text style={styles.hint}>{t('For SKR stakers')}</Text>}
         <View style={styles.button}>
-          <Button label={move === 'open' || gate ? t('OpeningвЂ¦') : t('Open my Eye')} onPress={() => void act('open')} disabled={!gates.staked || move != null || gate} />
+          <Button label={move === 'open' || gate ? t('Opening…') : t('Open my Eye')} onPress={() => void act('open')} disabled={!gates.staked || move != null || gate} />
         </View>
         {onHowItWorks ? <Button label={t('See what happens first')} onPress={onHowItWorks} ghost /> : null}
         {feedback}
@@ -456,13 +456,13 @@ export function EyePanel({ wallet, meName = null, onStatus, onBlinked, onConnect
       </View>
       {canBlink ? (
         <View style={styles.button}>
-          <Button label={move === 'blink' ? t('BlinkingвЂ¦') : t('Blink')} onPress={() => void act('blink')} disabled={move != null} tone={colors.metal} />
+          <Button label={move === 'blink' ? t('Blinking…') : t('Blink')} onPress={() => void act('blink')} disabled={move != null} tone={colors.metal} />
         </View>
       ) : null}
       {feedback}
       {sharedLine ? <Text style={styles.shared}>{sharedLine}</Text> : null}
       <View style={shareLoud ? styles.shareLoud : null}>
-        <Button label={sharing ? t('Opening the share sheetвЂ¦') : t('Share my Eye on X')} onPress={() => void share()} disabled={sharing} ghost={!shareLoud} />
+        <Button label={sharing ? t('Opening the share sheet…') : t('Share my Eye on X')} onPress={() => void share()} disabled={sharing} ghost={!shareLoud} />
       </View>
       {nudgeLook ? <Button label={t('Look at someone\'s Eye on the Iris')} onPress={onLook} quiet /> : null}
       <Text style={styles.micro}>{priceLine}</Text>
