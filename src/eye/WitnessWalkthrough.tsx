@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { lang, t } from '../i18n';
 import { useReducedMotion } from '../useReducedMotion';
 import { Button, Panel, Pill } from '../lab/kit';
@@ -347,6 +347,14 @@ export function WitnessWalkthrough({ wallet, onVerified, onCancel }: { wallet: s
     dropGate();
     onCancel();
   }, [dropGate, onCancel]);
+
+  // The phone's own back leaves the walk-through the way Not now does,
+  // never the app: a running enrollment is dropped, nothing is lost, and
+  // the attestor's answers keep on the phone what they already proved.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => { cancel(); return true; });
+    return () => sub.remove();
+  }, [cancel]);
 
   const statusOf = (step: number): StepModel['status'] => {
     if (failedAt === step) return stopped ? 'stopped' : 'failed';

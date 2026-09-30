@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { t } from '../i18n';
@@ -299,6 +299,21 @@ export function EyeOnboarding({
     setPage(target);
     tick();
   };
+
+  // The phone's own back walks the pages back, and closes the walk-through
+  // from the first one. It never drops the person out of the app.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (page > 0) {
+        const target = page - 1;
+        pager.current?.scrollTo({ x: target * width, animated: !reduced });
+        setPage(target);
+        tick();
+      } else onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [page, width, reduced, onClose]);
 
   const onScrolled = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const next = Math.round(event.nativeEvent.contentOffset.x / Math.max(1, width));
