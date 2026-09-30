@@ -3,6 +3,7 @@ import { AppState, Image, Modal, Pressable, RefreshControl, ScrollView, StyleShe
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '../i18n';
 import { integer } from '../format';
@@ -382,6 +383,18 @@ export function EyesLab() {
 
   const onStatus = useCallback((next: EyeStatus) => setStatus(next), []);
 
+  // A freshly minted Eye appears in the world at once (Alex, 30.09): the
+  // moment the status carries an Eye the network list does not know yet,
+  // the network is re-read, once per serial, instead of waiting a minute.
+  const appeared = useRef<number | null>(null);
+  useEffect(() => {
+    const mine = status?.eye?.serial ?? null;
+    if (mine == null || !network || network.me?.serial === mine) return;
+    if (appeared.current === mine) return;
+    appeared.current = mine;
+    void read();
+  }, [status?.eye?.serial, network, read]);
+
   // The walk-through of the Eye comes up by itself once: the first time the
   // tab is opened by someone with no wallet yet, or with a wallet that has no
   // Eye. Someone who already has one never sees it unasked.
@@ -489,6 +502,47 @@ export function EyesLab() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void read(true)} tintColor={colors.accent} colors={[colors.accent]} progressBackgroundColor={colors.panel} />}
       >
+        {/* The world first (Alex, 30.09): the tab opens onto the Iris, its
+            headline standing on the field's own horizon, and everything
+            about you comes after it. */}
+        <View style={styles.sceneBlock} onLayout={(event) => { sceneTop.current = event.nativeEvent.layout.y; }}>
+          <View style={[styles.sceneWrap, { height: size }]}>
+            <IrisScene ref={scene} size={size} onTap={onTap} onView={onView} />
+            <Animated.View pointerEvents="none" style={[styles.pupilWrap, { top: (size - pupil) / 2, left: (size - pupil) / 2 }, pupilStyle]}>
+              <PupilEye size={pupil} blink={pupilBlink} />
+            </Animated.View>
+            <View pointerEvents="none" style={styles.worldHead}>
+              <Svg width="100%" height={120} style={styles.worldScrim}>
+                <Defs>
+                  <SvgLinearGradient id="world-scrim" x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor="#04070B" stopOpacity="0" />
+                    <Stop offset="1" stopColor="#04070B" stopOpacity="0.82" />
+                  </SvgLinearGradient>
+                </Defs>
+                <Rect x={0} y={0} width="100%" height={120} fill="url(#world-scrim)" />
+              </Svg>
+              <Eyebrow>{t('The Iris')}</Eyebrow>
+              <Text style={styles.title}>
+                {watching == null
+                  ? t('The Iris is waking up')
+                  : watching === 0 ? t('The Iris is waiting for its first Eye')
+                    : watching === 1 ? t('1 Eye is watching') : t('{count} Eyes are watching', { count: integer(watching) })}
+              </Text>
+              {network && blinkedToday != null ? (
+                <Facts
+                  // A zero is never shown: at launch it reads as an empty room.
+                  items={[
+                    blinkedToday > 0 ? t('{count} blinked today', { count: integer(blinkedToday) }) : null,
+                    network.totals.perfect > 0 ? (network.totals.perfect === 1 ? t('1 Perfect Eye') : t('{count} Perfect Eyes', { count: integer(network.totals.perfect) })) : null,
+                    network.totals.newToday > 0 ? t('{count} new today', { count: integer(network.totals.newToday) }) : null,
+                  ].filter((item): item is string => item != null)}
+                />
+              ) : null}
+            </View>
+          </View>
+          <Text style={styles.sceneHint}>{t('Rings are streaks, the longest at the centre. Pinch to zoom, drag to look around, tap an Eye to see it.')}</Text>
+        </View>
+
         <EyePanel
           wallet={wallet}
           onStatus={onStatus}
@@ -507,36 +561,6 @@ export function EyesLab() {
           connecting={connecting}
           connectError={connectError}
         />
-
-        <View style={styles.head}>
-          <Eyebrow>{t('The Iris')}</Eyebrow>
-          <Text style={styles.title}>
-            {watching == null
-              ? t('The Iris is waking up')
-              : watching === 0 ? t('The Iris is waiting for its first Eye')
-                : watching === 1 ? t('1 Eye is watching') : t('{count} Eyes are watching', { count: integer(watching) })}
-          </Text>
-          {network && blinkedToday != null ? (
-            <Facts
-              // A zero is never shown: at launch it reads as an empty room.
-              items={[
-                blinkedToday > 0 ? t('{count} blinked today', { count: integer(blinkedToday) }) : null,
-                network.totals.perfect > 0 ? (network.totals.perfect === 1 ? t('1 Perfect Eye') : t('{count} Perfect Eyes', { count: integer(network.totals.perfect) })) : null,
-                network.totals.newToday > 0 ? t('{count} new today', { count: integer(network.totals.newToday) }) : null,
-              ].filter((item): item is string => item != null)}
-            />
-          ) : null}
-        </View>
-
-        <View style={styles.sceneBlock} onLayout={(event) => { sceneTop.current = event.nativeEvent.layout.y; }}>
-          <View style={[styles.sceneWrap, { height: size }]}>
-            <IrisScene ref={scene} size={size} onTap={onTap} onView={onView} />
-            <Animated.View pointerEvents="none" style={[styles.pupilWrap, { top: (size - pupil) / 2, left: (size - pupil) / 2 }, pupilStyle]}>
-              <PupilEye size={pupil} blink={pupilBlink} />
-            </Animated.View>
-          </View>
-          <Text style={styles.sceneHint}>{t('Rings are streaks, the longest at the centre. Pinch to zoom, drag to look around, tap an Eye to see it.')}</Text>
-        </View>
 
         {strip.length > 0 ? (
           <View style={styles.section}>
@@ -722,10 +746,13 @@ const styles = StyleSheet.create({
   walkthrough: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: colors.bg, zIndex: 30 },
   // The tab bar under this list carries the navigation bar's inset itself,
   // so the list only needs room to breathe at its end.
-  content: { width: '100%', maxWidth: MAX_W, alignSelf: 'center', paddingHorizontal: GUTTER, paddingTop: spacing.md, paddingBottom: spacing.xxl, gap: spacing.lg },
+  content: { width: '100%', maxWidth: MAX_W, alignSelf: 'center', paddingHorizontal: GUTTER, paddingBottom: spacing.xxl, gap: spacing.lg },
   pressed: { opacity: 0.7 },
   head: { gap: spacing.xs },
-  title: { color: colors.text, fontFamily: font.bold, fontSize: 26, lineHeight: 32, letterSpacing: -0.8, fontVariant: ['tabular-nums'] },
+  title: { color: colors.text, fontFamily: font.bold, fontSize: 24, lineHeight: 29, letterSpacing: -0.7, fontVariant: ['tabular-nums'], textShadowColor: 'rgba(0, 0, 0, 0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  // The headline standing on the world's horizon, over its own dusk.
+  worldHead: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingBottom: spacing.sm, gap: 3, justifyContent: 'flex-end' },
+  worldScrim: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   facts: { flexDirection: 'row', flexWrap: 'wrap', columnGap: spacing.lg, rowGap: 2 },
   factsCenter: { justifyContent: 'center' },
   fact: { color: colors.muted, fontFamily: font.medium, ...type.small, fontVariant: ['tabular-nums'] },

@@ -101,21 +101,27 @@ function eyeGlyph(c,p,r,open,perfect){
 // phones step back to plain eyes, past three hundred to dots, so the world
 // grows denser instead of noisier.
 function phoneGlyph(x,p,r,open,perfect){
-  var w=r*2.15, h=r*4.3, bx=p.x-w/2, by=p.y-h*0.45, rad=r*0.5;
-  var bg=x.createLinearGradient(bx,by,bx+w,by+h); bg.addColorStop(0,'#131C25'); bg.addColorStop(0.5,'#0B131B'); bg.addColorStop(1,'#080E14');
+  var w=r*2.3, h=r*4.0, bx=p.x-w/2, by=p.y-h/2, rad=r*0.55;
+  var tone=perfect?'201,169,106':open?'86,224,255':'110,140,165';
+  // A lantern in the night: the Eye fills the face of a little Seeker, its
+  // light spilling past the body, the edges catching it.
+  if(open){ var spill=x.createRadialGradient(p.x,p.y,r*0.4,p.x,p.y,r*2.4); spill.addColorStop(0,'rgba('+tone+',0.30)'); spill.addColorStop(0.6,'rgba('+tone+',0.10)'); spill.addColorStop(1,'rgba('+tone+',0)'); x.fillStyle=spill; x.fillRect(p.x-r*2.4,p.y-r*2.4,r*4.8,r*4.8); }
+  var bg=x.createLinearGradient(bx,by,bx,by+h); bg.addColorStop(0,'#121A23'); bg.addColorStop(0.55,'#0A1119'); bg.addColorStop(1,'#070C12');
   x.fillStyle=bg; x.beginPath(); x.roundRect(bx,by,w,h,rad); x.fill();
-  x.strokeStyle=open?'rgba(150,205,230,0.5)':'rgba(120,150,175,0.32)'; x.lineWidth=Math.max(0.8,r*0.1); x.stroke();
-  // The side button, where a Seeker keeps its finger.
-  x.strokeStyle=open?'rgba(170,220,240,0.75)':'rgba(130,160,185,0.5)'; x.lineWidth=Math.max(0.8,r*0.12);
-  x.beginPath(); x.moveTo(bx+w+r*0.05,by+h*0.34); x.lineTo(bx+w+r*0.05,by+h*0.46); x.stroke();
-  // The camera island, two small lenses up on the left.
-  x.fillStyle='rgba(6,10,15,0.95)'; x.beginPath(); x.roundRect(bx+w*0.12,by+h*0.05,w*0.3,h*0.16,r*0.22); x.fill();
-  x.strokeStyle='rgba(140,180,205,0.35)'; x.lineWidth=Math.max(0.6,r*0.06); x.stroke();
-  x.fillStyle='rgba(60,90,110,0.9)';
-  x.beginPath(); x.arc(bx+w*0.27,by+h*0.095,r*0.14,0,TAU); x.fill();
-  x.beginPath(); x.arc(bx+w*0.27,by+h*0.165,r*0.14,0,TAU); x.fill();
-  // The Eye, where the screen would be.
-  eyeGlyph(x,{x:p.x,y:by+h*0.62},r*0.82,open,perfect);
+  // The rim light: the body's edges lit by what the screen holds.
+  var rim=x.createLinearGradient(bx,by,bx,by+h);
+  rim.addColorStop(0,'rgba('+tone+','+(open?0.55:0.26)+')'); rim.addColorStop(0.5,'rgba('+tone+','+(open?0.16:0.10)+')'); rim.addColorStop(1,'rgba('+tone+','+(open?0.42:0.20)+')');
+  x.strokeStyle=rim; x.lineWidth=Math.max(0.9,r*0.11); x.beginPath(); x.roundRect(bx,by,w,h,rad); x.stroke();
+  // The screen, and the Eye that is the whole of it.
+  var inset=r*0.17; x.fillStyle='#04080D'; x.beginPath(); x.roundRect(bx+inset,by+inset,w-inset*2,h-inset*2,rad*0.7); x.fill();
+  eyeGlyph(x,{x:p.x,y:p.y},r*0.92,open,perfect);
+  // The side button, gold while the Eye is awake: the finger lives there.
+  x.strokeStyle=open?'rgba(201,169,106,0.95)':'rgba(130,160,185,0.45)'; x.lineWidth=Math.max(0.9,r*0.15); x.lineCap='round';
+  x.beginPath(); x.moveTo(bx+w+r*0.02,by+h*0.30); x.lineTo(bx+w+r*0.02,by+h*0.44); x.stroke(); x.lineCap='butt';
+  // One quiet lens up on the left, only when there is room for it to be one.
+  if(r>=8){ x.fillStyle='#0A121A'; x.beginPath(); x.arc(bx+w*0.24,by+h*0.115,r*0.15,0,TAU); x.fill();
+    x.strokeStyle='rgba(160,210,235,0.4)'; x.lineWidth=Math.max(0.5,r*0.05); x.stroke();
+    x.fillStyle='rgba(220,245,255,0.7)'; x.beginPath(); x.arc(bx+w*0.24-r*0.05,by+h*0.115-r*0.05,r*0.04,0,TAU); x.fill(); }
 }
 // The glyph as a sprite, one per size, state, kind and zoom step, so a frame
 // draws each Eye with one drawImage and a zoomed Eye is still sharp.
