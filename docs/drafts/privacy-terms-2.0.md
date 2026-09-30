@@ -1,9 +1,10 @@
 # Privacy and Terms for SKR Eyes 2.0 — draft
 
-Draft of 28.09.2026, written after the security audit (Р-2): the live pages at
-skr-eyes.alexkosa.dev/privacy and /terms (23.08.2026) say the app builds no
-transactions, never asks the wallet to sign and keeps nothing on the server.
-In 2.0 the app mints the Eye, blinks it, binds the phone with a wallet
+Draft of 28.09.2026, written after the security audit (Р-2), and brought up to
+the SKR payment on 01.10.2026 (Eye and Blink are paid in SKR only, D-034): the
+live pages at skr-eyes.alexkosa.dev/privacy and /terms (23.08.2026) say the app
+builds no transactions, never asks the wallet to sign and keeps nothing on the
+server. In 2.0 the app mints the Eye, blinks it, binds the phone with a wallet
 signature and the server keeps a ledger. Not published: Alex says yes first.
 Lines marked [check] need a fact confirmed before publishing.
 
@@ -39,7 +40,10 @@ about this policy or about your data go to [email].
 - The public address of the wallet you connected, the name the wallet reported
   for it, and the authorization token your wallet issued, so the app can
   reconnect quietly.
-- Your alert settings and the Blink reminders scheduled with Android.
+- Your .skr name, if your wallet has one, so the app can greet you by it and
+  your reminders can say it.
+- Your alert settings and the Blink reminders scheduled with Android. The
+  reminders are scheduled on the phone itself; nothing about them leaves it.
 - If you verify your Seeker for an Eye: a signing key created inside the
   phone's StrongBox secure element. It cannot leave the chip and only signs
   after your fingerprint.
@@ -49,7 +53,8 @@ about this policy or about your data go to [email].
 When you use the Eye, our server at skr.alexkosa.dev keeps:
 
 - Your wallet's public address and your Eye: its number, its asset address,
-  its streak, its Blinks and the transactions that paid for them.
+  its streak, its Blinks and the transactions that paid for them (SKR payments
+  and the network costs around them).
 - For the fingerprint check: the public half of the StrongBox key and the
   certificate chain Google's hardware attestation produced for it. That chain
   describes the device (brand and model, Android version and security patch
@@ -62,6 +67,17 @@ When you use the Eye, our server at skr.alexkosa.dev keeps:
 
 To show your staking position the app sends the public wallet address you
 chose; the server reads public Solana data for it and answers.
+
+### The world of Eyes
+
+Every Eye that has been minted appears in the world of Eyes inside the app,
+drawn as a small eye with its number, its streak, whether it blinked today and,
+if its wallet has a .skr name, that name. These are facts that are already
+public on Solana; the app adds nothing to them. Other people can look at your
+Eye, and you can look at theirs (five looks a day). A look tells the owner that
+somebody looked, and the server keeps who looked at whom for the counter and
+for the list of people who looked at you. Nobody can look at anything else
+about you.
 
 ### What is on the blockchain for good
 
@@ -129,12 +145,16 @@ of a Seeker mint one Eye per wallet and blink it once every 8 hours.
 - The Eye is a collectible NFT (Metaplex Core) minted to your wallet. It is
   frozen: it cannot be sold or transferred while it is frozen. Only the
   collection owner's wallet can thaw it.
-- Minting and each Blink are paid in SOL from your wallet to the maker of SKR
-  Eyes. Minting also puts a storage deposit into the Eye's own account on
-  Solana, where it stays, and pays Metaplex's create fee (0.0015 SOL today,
-  held in the same account and collectable by Metaplex); every transaction
-  pays a network fee set by your wallet. The amounts are shown before your wallet
-  asks you to approve. Payments are final and are not refunded.
+- Minting and each Blink are paid in SKR, from your wallet to the maker of SKR
+  Eyes. The price of an Eye and the price of a Blink are set by the service and
+  shown in SKR in the app before your wallet asks you to approve; the first
+  1,000 Eyes have one price and later Eyes another, and a price can change for
+  Eyes not yet minted. Minting also puts a storage deposit, in SOL, into the
+  Eye's own account on Solana, where it stays, and pays Metaplex's create fee
+  (0.0015 SOL today, held in the same account and collectable by Metaplex);
+  every transaction pays a network fee in SOL set by your wallet. You therefore
+  need some SOL in the wallet as well as SKR. Payments are final and are not
+  refunded.
 - The streak counts days in a row with at least one Blink (UTC days). A missed
   day starts it over. We may restore a day lost because of a failure on our
   side.
@@ -145,8 +165,10 @@ of a Seeker mint one Eye per wallet and blink it once every 8 hours.
 
 SKR Eyes never holds or moves your funds. Every transaction is shown by your
 wallet and signed by you. The app checks every transaction before asking you
-to sign it: you pay the fee yourself, SOL goes only to the maker's address
-shown in the app, and no other token is touched.
+to sign it: you pay the network fee yourself, SKR goes only to the maker's SKR
+account written in the app (the wallet BmJaEmaEURBDpj91GUTvJcpKy2MAu8ZtRFRPaMpEuuax,
+kosa.skr, and its SKR account CmTWwMrSusqhxrABLMnMfTKnZHosoHWczRbnsj5cLGX4), no
+SOL is paid to the maker, and no other token is touched.
 
 ### Not financial advice
 
