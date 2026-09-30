@@ -184,7 +184,9 @@ function drawCallout(x,p,cc,avoid){ var title=M.callout.title||'', sub=M.callout
   var bx=p.x-bw/2+(p.x>=cc.x?18:-18), by=above?p.y-16-bh:p.y+16;
   var ux=p.x-cc.x, uy=p.y-cc.y, ul=Math.hypot(ux,uy)||1; ux/=ul; uy/=ul;
   for(var k=0;k<8&&boxHits(bx,by,bw,bh,cc,avoid);k++){ bx+=ux*12; by+=uy*12; }
-  bx=Math.max(6,Math.min(W-bw-6,bx)); by=Math.max(6,Math.min(H-bh-6,by));
+  // The headline stands on the field's own horizon now, so the plate keeps
+  // out of the bottom strip where it lives.
+  bx=Math.max(6,Math.min(W-bw-6,bx)); by=Math.max(6,Math.min(H-bh-132,by));
   var lx=Math.max(bx,Math.min(bx+bw,p.x)), ly=Math.max(by,Math.min(by+bh,p.y));
   x.strokeStyle='rgba(201,169,106,0.7)'; x.lineWidth=1; x.beginPath(); x.moveTo(p.x,p.y); x.lineTo(lx,ly); x.stroke();
   x.fillStyle='rgba(4,7,11,0.86)'; x.beginPath(); x.roundRect(bx,by,bw,bh,6); x.fill(); x.strokeStyle='rgba(201,169,106,0.35)'; x.lineWidth=1; x.stroke();
