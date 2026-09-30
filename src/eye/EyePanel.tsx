@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
-import { t } from '../i18n';
+import { lang, t } from '../i18n';
 import { integer } from '../format';
 import { Button, Eyebrow, Panel } from '../lab/kit';
 import { colors, font, spacing, type } from '../theme';
@@ -54,7 +54,7 @@ export function offerLines(prices: EyePrices, nextSerial: number | null, eyesNow
   // The live count when the network has been read, the server's word otherwise.
   const left = tier ? (eyesNow != null ? Math.max(0, tier.serial - eyesNow) : leftAtPrice(prices, nextSerial)) : null;
   const cost = [
-    t('{skr} SKR to the maker of SKR Eyes. From your SOL: a storage deposit of about {rent} SOL that stays inside your Eye on Solana, a {fee} SOL fee to Metaplex, the NFT standard it is built on, and a tiny network fee to Solana validators, set by your wallet.', { skr: price, rent: sol(depositOf(prices)), fee: sol(CORE_CREATE_FEE) }),
+    t('From your SOL only the network: a storage deposit of about {rent} SOL that stays inside your Eye on Solana, a {fee} SOL fee to Metaplex, the NFT standard it is built on, and a tiny network fee set by your wallet.', { rent: sol(depositOf(prices)), fee: sol(CORE_CREATE_FEE) }),
     t('{skr} SKR and about {sol} SOL in all.', { skr: price, sol: sol(rentOf(prices)) }),
   ].join(' ');
   if (!tier || left === 0 || after == null) {
@@ -104,7 +104,7 @@ function Offer({ lines }: { lines: string[] }) {
 // itself keeps the picture small, so the Iris is on screen too. `looked` is
 // how many people looked at your Eye today, `lookNudge` whether to suggest
 // looking at somebody's, and `onLook` takes the person to the Iris.
-export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen, onHowItWorks, onOpenCard, onLook, openRequest = 0, nextSerial = null, eyesNow = null, prices: tabPrices = null, looked = 0, lookNudge = false, connecting = false, connectError = null }: { wallet: string | null; onStatus?: (status: EyeStatus) => void; onBlinked?: () => void; onConnect?: () => void; onBeforeOpen?: () => Promise<boolean>; onHowItWorks?: () => void; onOpenCard?: () => void; onLook?: () => void; openRequest?: number; nextSerial?: number | null; eyesNow?: number | null; prices?: EyePrices | null; looked?: number; lookNudge?: boolean; connecting?: boolean; connectError?: string | null }) {
+export function EyePanel({ wallet, meName = null, onStatus, onBlinked, onConnect, onBeforeOpen, onHowItWorks, onOpenCard, onLook, openRequest = 0, nextSerial = null, eyesNow = null, prices: tabPrices = null, looked = 0, lookNudge = false, connecting = false, connectError = null }: { wallet: string | null; meName?: string | null; onStatus?: (status: EyeStatus) => void; onBlinked?: () => void; onConnect?: () => void; onBeforeOpen?: () => Promise<boolean>; onHowItWorks?: () => void; onOpenCard?: () => void; onLook?: () => void; openRequest?: number; nextSerial?: number | null; eyesNow?: number | null; prices?: EyePrices | null; looked?: number; lookNudge?: boolean; connecting?: boolean; connectError?: string | null }) {
   const [status, setStatus] = useState<EyeStatus | null>(null);
   const [reading, setReading] = useState(false);
   const [unreachable, setUnreachable] = useState(false);
@@ -265,14 +265,37 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
     setMotion(kind === 'open' ? 'opening' : 'blink');
     // The first Eye is when reminders start to matter: ask once if they are off.
     if (kind === 'open') void askForEyeRemindersOnce();
-    setNote(kind === 'open'
-      ? t('{name} is open. You are one of {count} who keep watch.', { name: result.eye.name, count: result.eye.serial.toLocaleString('en-US') })
-      : t('Day {count} is kept.', { count: result.eye.streak }));
+    // The moment belongs to the person, not to the ledger (Alex, 30.09): the
+    // app speaks to them by their own name, says what the day now holds, and
+    // promises the reminder so nobody has to watch a clock.
+    const known = latestStatus.current;
+    const cooldownMs = (known?.blink?.cooldownSeconds ?? known?.prices.blinkCooldownSeconds ?? 28_800) * 1_000;
+    const nextMs = Date.now() + cooldownMs;
+    const dayEndMs = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() + 1);
+    const moreToday = cooldownMs > 0 && nextMs < dayEndMs ? 1 + Math.floor((dayEndMs - nextMs) / cooldownMs) : 0;
+    let nextTime: string;
+    try { nextTime = new Date(nextMs).toLocaleTimeString(lang(), { hour: '2-digit', minute: '2-digit' }); } catch { nextTime = new Date(nextMs).toISOString().slice(11, 16); }
+    const who = meName ?? null;
+    if (kind === 'open') {
+      setNote(who
+        ? t('{name} вЂ” {eye} is yours. You are one of {count} who keep watch.', { name: who, eye: result.eye.name, count: result.eye.serial.toLocaleString('en-US') })
+        : t('{name} is open. You are one of {count} who keep watch.', { name: result.eye.name, count: result.eye.serial.toLocaleString('en-US') }));
+    } else {
+      const kept = who
+        ? t('{name}, day {count} is kept.', { name: who, count: result.eye.streak })
+        : t('Day {count} is kept.', { count: result.eye.streak });
+      const rest = moreToday > 1
+        ? t('You can blink {count} more times today вЂ” a reminder will come right on time.', { count: moreToday })
+        : moreToday === 1
+          ? t('You can blink once more today вЂ” a reminder will come right on time.')
+          : t('Your next Blink opens at {time} вЂ” a reminder will come right on time.', { time: nextTime });
+      setNote(`${kept} ${rest}`);
+    }
     setMoment(kind);
     setShared(false);
     if (kind === 'blink') onBlinked?.();
     void read(true);
-  }, [read, onBlinked]);
+  }, [read, onBlinked, meName]);
 
   // The Eye's picture and a caption, out to X (or wherever the person picks).
   // Once the share sheet has closed the card says so, and keeps saying so
@@ -306,10 +329,10 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
         {tabPrices ? <Offer lines={offerLines(tabPrices, nextSerial, eyesNow)} /> : null}
         {onConnect ? (
           <View style={styles.button}>
-            <Button label={connecting ? t('Connecting…') : t('Connect wallet')} onPress={onConnect} disabled={connecting} />
+            <Button label={connecting ? t('ConnectingвЂ¦') : t('Connect wallet')} onPress={onConnect} disabled={connecting} />
           </View>
         ) : null}
-        {onHowItWorks ? <Button label={t('How it works')} onPress={onHowItWorks} quiet /> : null}
+        {onHowItWorks ? <Button label={t('See what happens first')} onPress={onHowItWorks} ghost /> : null}
         {connectError ? <Text style={styles.error}>{connectError}</Text> : null}
       </Panel>
     );
@@ -327,7 +350,7 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
             <Text style={styles.lead}>{t('Eye service unreachable')}</Text>
             <View style={styles.actions}><Button label={t('Try again')} onPress={() => void read()} disabled={reading} quiet /></View>
           </>
-        ) : <Text style={styles.lead}>{t('Reading your Eye…')}</Text>}
+        ) : <Text style={styles.lead}>{t('Reading your EyeвЂ¦')}</Text>}
       </Panel>
     );
   }
@@ -367,9 +390,9 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
         <Offer lines={offerLines(prices, nextSerial, eyesNow)} />
         {gates.staked ? null : <Text style={styles.hint}>{t('For SKR stakers')}</Text>}
         <View style={styles.button}>
-          <Button label={move === 'open' || gate ? t('Opening…') : t('Open my Eye')} onPress={() => void act('open')} disabled={!gates.staked || move != null || gate} />
+          <Button label={move === 'open' || gate ? t('OpeningвЂ¦') : t('Open my Eye')} onPress={() => void act('open')} disabled={!gates.staked || move != null || gate} />
         </View>
-        {onHowItWorks ? <Button label={t('How it works')} onPress={onHowItWorks} quiet /> : null}
+        {onHowItWorks ? <Button label={t('See what happens first')} onPress={onHowItWorks} ghost /> : null}
         {feedback}
         {sheet}
       </Panel>
@@ -397,11 +420,14 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
         ? t('Shared. Your next Blink opens in {time}.', { time })
         : t('Shared.');
   const blinkUnits = blinkSkrOf(prices);
+  // The everyday card keeps the number and drops the ledger (Alex, 30.09):
+  // who receives what lives on the mint breakdown and in the transaction
+  // check, not under a person's streak.
   const priceLine = blinkUnits == null
     ? null
     : paced
-      ? t('{skr} SKR per Blink to the maker of SKR Eyes, every {hours} hours.', { skr: skr(blinkUnits), hours })
-      : t('{skr} SKR per Blink to the maker of SKR Eyes.', { skr: skr(blinkUnits) });
+      ? t('{skr} SKR per Blink, every {hours} hours', { skr: skr(blinkUnits), hours })
+      : t('{skr} SKR per Blink.', { skr: skr(blinkUnits) });
   // One nudge, never two: the share right after a move, or a look at
   // somebody's Eye on any other visit while the person has not looked today.
   const shareLoud = moment !== 'any';
@@ -430,13 +456,13 @@ export function EyePanel({ wallet, onStatus, onBlinked, onConnect, onBeforeOpen,
       </View>
       {canBlink ? (
         <View style={styles.button}>
-          <Button label={move === 'blink' ? t('Blinking…') : t('Blink')} onPress={() => void act('blink')} disabled={move != null} tone={colors.metal} />
+          <Button label={move === 'blink' ? t('BlinkingвЂ¦') : t('Blink')} onPress={() => void act('blink')} disabled={move != null} tone={colors.metal} />
         </View>
       ) : null}
       {feedback}
       {sharedLine ? <Text style={styles.shared}>{sharedLine}</Text> : null}
       <View style={shareLoud ? styles.shareLoud : null}>
-        <Button label={sharing ? t('Opening the share sheet…') : t('Share my Eye on X')} onPress={() => void share()} disabled={sharing} ghost={!shareLoud} />
+        <Button label={sharing ? t('Opening the share sheetвЂ¦') : t('Share my Eye on X')} onPress={() => void share()} disabled={sharing} ghost={!shareLoud} />
       </View>
       {nudgeLook ? <Button label={t('Look at someone\'s Eye on the Iris')} onPress={onLook} quiet /> : null}
       <Text style={styles.micro}>{priceLine}</Text>

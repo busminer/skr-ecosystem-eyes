@@ -71,8 +71,11 @@ async function cancelStored(): Promise<void> {
 }
 
 // What the phone should hold for this status; pure, so it can be reasoned
-// about without a phone.
-export function remindersFor(status: EyeStatus, now = Date.now()): Array<{ at: number; title: string; body: string }> {
+// about without a phone. `name` is the wallet's own name on the Iris
+// (kosa.skr), and the reminders speak it (Alex, 30.09: the app talks to a
+// member of its own community, not to a user): warm, by name, never a
+// threat about what would be lost (audit R-6 still stands).
+export function remindersFor(status: EyeStatus, name: string | null = null, now = Date.now()): Array<{ at: number; title: string; body: string }> {
   const eye = status.eye;
   const blink = status.blink;
   if (!eye || !blink) return [];
@@ -81,6 +84,7 @@ export function remindersFor(status: EyeStatus, now = Date.now()): Array<{ at: n
 
   const streak = Math.max(0, eye.streak ?? 0);
   const blinks = Math.max(0, eye.blinks ?? 0);
+  const who = name ?? t('legend');
   // Which one of several lines: turns with every Blink, so the phone does not
   // say the same sentence twice in a row.
   const pick = <T,>(lines: T[]): T => lines[(blinks + streak) % lines.length] as T;
@@ -98,16 +102,16 @@ export function remindersFor(status: EyeStatus, now = Date.now()): Array<{ at: n
     if (!newDay) {
       line = null;
     } else if (day === 30) {
-      line = { title: t('Day 30'), body: t('One Blink today and your Eye turns gold.') };
+      line = { title: t('Gold day, {name}', { name: who }), body: t('One Blink and your Eye turns gold. Days like this make legends.') };
     } else if (day === 7) {
-      line = { title: t('Day 7'), body: t('Blink today and your Eye moves to a new ring.') };
+      line = { title: t('Day 7, {name}', { name: who }), body: t('Blink today and your Eye moves to a new ring.') };
     } else if (day === 2) {
-      line = { title: t('Day 2'), body: t('Blink once today to keep your streak.') };
+      line = { title: t('{name}, day 2 is calling', { name: who }), body: t('One Blink keeps your brand-new streak alive.') };
     } else {
       const lines = [
-        { title: t('{name} can blink', { name: eye.name }), body: t('It has been 8 hours. Day {count} is open.', { count: day }) },
-        { title: t('Your Blink is ready'), body: t('One tap and day {count} is counted.', { count: day }) },
-        { title: t('Time to blink'), body: t('{streak} days in a row. Keep it going.', { streak }) },
+        { title: t('Hey {name} — time to blink', { name: who }), body: t('Day {count} is open. Your Eye is waiting on you.', { count: day }) },
+        { title: t('{name}, your Eye is ready', { name: who }), body: t('8 hours passed. One touch keeps day {count}.', { count: day }) },
+        { title: t('The Iris misses you, {name}', { name: who }), body: t('Blink and day {count} is yours.', { count: day }) },
       ];
       if (toRing > 0 && toRing <= 2) lines.push({ title: toRing === 1 ? t('1 day to the next ring') : t('{count} days to the next ring', { count: toRing }), body: t('Blink today to get closer to the centre.') });
       if (toGold > 0 && toGold <= 7) lines.push({ title: toGold === 1 ? t('1 day to gold') : t('{count} days to gold', { count: toGold }), body: t('Day 30 turns your Eye gold.') });
@@ -124,10 +128,10 @@ export function remindersFor(status: EyeStatus, now = Date.now()): Array<{ at: n
     const at = Math.max(warnAt, blinkPossibleBy);
     const line = streak > 1
       ? pick([
-        { title: t('Your Eye has not blinked today'), body: t('{count} days in a row so far.', { count: streak }) },
-        { title: t('Today is still open'), body: t('Your streak is at {count} days.', { count: streak }) },
+        { title: t('{name}, today is still open', { name: who }), body: t('{count} days in a row so far.', { count: streak }) },
+        { title: t('Your Eye has not blinked today'), body: t('Your streak is at {count} days. A quiet Blink keeps it breathing.', { count: streak }) },
       ])
-      : { title: t('You have not blinked today'), body: t('One tap keeps your Eye going.') };
+      : { title: t('{name}, your Eye waits', { name: who }), body: t('One tap keeps your Eye going.') };
     plans.push({ at, ...line });
   }
   return plans.sort((a, b) => a.at - b.at);
@@ -142,8 +146,20 @@ export async function syncEyeReminders(status: EyeStatus | null): Promise<void> 
     const permission = await Notifications.getPermissionsAsync();
     if (!permission.granted) return;
     await ensureChannel();
+    // The Iris's name for this wallet, kept by the Eyes tab: the reminder
+    // speaks to kosa.skr, not to a wallet address.
+    let name: string | null = null;
+    try {
+      const raw = await AsyncStorage.getItem('skr-eyes:me-name:v1');
+      if (raw) {
+        const parsed = JSON.parse(raw) as { wallet?: string; name?: string | null };
+        if (parsed?.wallet === status.wallet && typeof parsed.name === 'string' && parsed.name) name = parsed.name;
+      }
+    } catch {
+      // A missing name greets a legend instead.
+    }
     const ids: string[] = [];
-    for (const plan of remindersFor(status)) {
+    for (const plan of remindersFor(status, name)) {
       ids.push(await Notifications.scheduleNotificationAsync({
         content: { title: plan.title, body: plan.body, sound: 'default', data: { eye: true } },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(plan.at), channelId: CHANNEL_ID },

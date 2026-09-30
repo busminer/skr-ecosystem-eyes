@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode
 import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
-import { t } from '../i18n';
+import { lang, t } from '../i18n';
 import { integer, shortAddress } from '../format';
 import { useReducedMotion } from '../useReducedMotion';
 import { Button } from '../lab/kit';
@@ -12,6 +12,7 @@ import { EYE_FINGER_ENABLED } from './config';
 import { isBig } from './fit';
 import { CORE_CREATE_FEE, blinkSkrOf, cooldownHours, depositOf, leftAtPrice, openSkrAfterOf, openSkrOf, rentOf, skr, sol } from './money';
 import { eyeCaption } from './shareEye';
+import { epochMs } from './time';
 import { Glyph, Overline, type GlyphName } from './glyphs';
 import { Awakening, BlinkDial, Breath, CardShare, IrisClimb, NightSky, OpeningRoad, SeekerParts, cue, note, schedule, tick } from './OnboardingArt';
 import { PortalEye } from './PortalEye';
@@ -109,6 +110,13 @@ const ART_FLOOR = 150;
 const FADE = 64;
 
 const pad = (serial: number) => `EYE #${String(serial).padStart(4, '0')}`;
+
+// A server moment as the phone's own clock, for the owner's page.
+const clockTime = (value: string | number | null | undefined): string => {
+  const ms = epochMs(value ?? null);
+  if (ms == null) return '';
+  try { return new Date(ms).toLocaleTimeString(lang(), { hour: '2-digit', minute: '2-digit' }); } catch { return new Date(ms).toISOString().slice(11, 16); }
+};
 
 type Box = { width: number; height: number };
 
@@ -249,7 +257,10 @@ export function EyeOnboarding({
   onClose,
   watching = null,
   blinkedToday = null,
+  meName = null,
 }: {
+  // The wallet's own name on the Iris (kosa.skr), for the owner's page.
+  meName?: string | null;
   // How many Eyes are open and how many blinked today, as the Iris says.
   watching?: number | null;
   blinkedToday?: number | null;
@@ -558,12 +569,26 @@ export function EyeOnboarding({
             ) : null}
           </View>
 
-          {open != null && total != null ? (
+          {hasEye && status?.eye ? (
+            // The owner's page carries no price list (Alex, 30.09: the moment
+            // is theirs, not the ledger's): their Eye, their day, when the
+            // next Blink opens, and the promise that the phone will say so.
+            <View style={[styles.card, big && styles.cardTight]}>
+              {big ? null : <Overline tone={colors.metal}>{meName ?? status.eye.name}</Overline>}
+              <Row label={t('Streak')} value={status.eye.streak === 1 ? t('1 day') : t('{count} days', { count: status.eye.streak })} strong />
+              <Row label={t('Blinks')} value={integer(status.eye.blinks)} />
+              {status.blink?.nextAt ? (
+                <Row label={t('Next Blink')} value={clockTime(status.blink.nextAt)} />
+              ) : null}
+              <View style={styles.rule} />
+              <Text style={styles.rowNote}>{t('A reminder will come right on time. Your Eye keeps watch with you.')}</Text>
+            </View>
+          ) : open != null && total != null ? (
             <View style={[styles.card, big && styles.cardTight]}>
               {big ? null : <Overline tone={colors.faint}>{t('To mint your Eye')}</Overline>}
               <Row label={t('Once, from your wallet')} value={t('{skr} SKR + about {sol} SOL', { skr: skr(open), sol: sol(total) })} strong />
               {big ? null : <Text style={styles.rowNote}>{t('It is made of these parts:')}</Text>}
-              <Row label={t('Mint')} value={`${skr(open)} SKR`} note={t('to the maker of SKR Eyes')} />
+              <Row label={t('Mint')} value={`${skr(open)} SKR`} />
               <Row label={t('Storage deposit')} value={t('about {sol} SOL', { sol: sol(depositOf(prices)) })} note={t('stays inside your Eye on Solana, nobody receives it')} />
               <Row label={t('Metaplex fee')} value={`${sol(CORE_CREATE_FEE)} SOL`} note={t('to Metaplex, the NFT standard your Eye is built on')} />
               <Row label={t('Network fee')} value={t('tiny')} note={t('to Solana validators, set by your wallet')} />
@@ -571,7 +596,7 @@ export function EyeOnboarding({
               {tier && !big ? <Overline tone={colors.faint}>{t('Early Eyes')}</Overline> : null}
               {tier && after != null ? <Ladder tier={tier} open={open} after={after} left={left} /> : null}
               <View style={styles.rule} />
-              {blinkSkr ? <Text style={styles.rowNote}>{t('After the mint, each Blink is {skr} SKR to the maker of SKR Eyes, once every {hours} hours. Your first Blink comes with the mint.', { skr: blinkSkr, hours })}</Text> : null}
+              {blinkSkr ? <Text style={styles.rowNote}>{t('After the mint, each Blink is {skr} SKR, once every {hours} hours. Your first Blink comes with the mint.', { skr: blinkSkr, hours })}</Text> : null}
             </View>
           ) : (
             <View style={styles.card}><ActivityIndicator size="small" color={colors.faint} /></View>

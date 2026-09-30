@@ -20,6 +20,7 @@ import { walletReady } from './src/wallet';
 import { useEventCues } from './src/lab/cues';
 import { colors, font, radius, spacing, type } from './src/theme';
 import type { Freshness, FreshnessDetail } from './src/types';
+import { AppSky } from './src/lab/AppSky';
 import { FlowLab } from './src/lab/FlowLab';
 import { LiveMark, Mark, TabIcon } from './src/lab/kit';
 import { Splash } from './src/lab/Splash';
@@ -100,28 +101,33 @@ function Age({ stamp }: { stamp: number | null | undefined }) {
 // labels — the app looked like a single page with no way out of it. The bar now
 // asks the phone how much room it is actually leaving and takes the larger of
 // the two answers.
+// The dock floats on the night instead of walling off the bottom of every
+// screen (30.09): a rounded glass bar a step in from the edges, the live tab
+// in its pool of accent light. Content slides away beneath it.
 function TabBar({ tab, onSelect }: { tab: Tab; onSelect: (next: Tab) => void }) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.nav, { paddingBottom: Math.max(spacing.md, insets.bottom + spacing.xs) }]}>
-      {tabs.map((item) => {
-        const active = item.key === tab;
-        return (
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
-            key={item.key}
-            onPress={() => onSelect(item.key)}
-            style={({ pressed }) => [styles.navItem, pressed && styles.navPressed]}
-          >
-            <View style={[styles.navGlow, active && styles.navGlowActive]}>
-              <TabIcon name={item.key} tone={active ? colors.accent : colors.faint} />
-            </View>
-            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.navLabel, active && styles.navLabelActive]}>{t(item.label)}</Text>
-          </Pressable>
-        );
-      })}
+    <View pointerEvents="box-none" style={[styles.navWrap, { paddingBottom: Math.max(spacing.sm, insets.bottom) }]}>
+      <View style={styles.nav}>
+        {tabs.map((item) => {
+          const active = item.key === tab;
+          return (
+            <Pressable
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+              key={item.key}
+              onPress={() => onSelect(item.key)}
+              style={({ pressed }) => [styles.navItem, pressed && styles.navPressed]}
+            >
+              <View style={[styles.navGlow, active && styles.navGlowActive]}>
+                <TabIcon name={item.key} tone={active ? colors.accent : colors.faint} />
+              </View>
+              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.navLabel, active && styles.navLabelActive]}>{t(item.label)}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -229,6 +235,7 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <AppSky />
         <View style={[styles.topBar, tab === 'pulse' && { zIndex: 3, backgroundColor: vaultAtTop ? 'transparent' : colors.bg }]}>
           <LiveMark size={22} open={freshness ? freshnessOpen[freshness] : 1} />
           <Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.wordmark}>SKR EYES</Text>
@@ -277,7 +284,9 @@ const styles = StyleSheet.create({
   statusText: { fontFamily: font.semibold, ...type.eyebrow },
   statusAge: { color: colors.faint, fontFamily: font.mono, fontSize: 10.5, letterSpacing: 0.2 },
   body: { flex: 1 },
-  nav: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#0E1821', backgroundColor: colors.bg, paddingTop: spacing.sm },
+  // The floating dock and the strip of night it stands in.
+  navWrap: { paddingHorizontal: spacing.md, paddingTop: spacing.xs },
+  nav: { flexDirection: 'row', borderRadius: 26, borderWidth: 1, borderColor: 'rgba(28, 44, 58, 0.9)', backgroundColor: 'rgba(7, 12, 18, 0.94)', paddingVertical: spacing.sm, paddingHorizontal: spacing.xs, shadowColor: '#000', shadowOpacity: 0.55, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 14 },
   navItem: { flex: 1, alignItems: 'center', gap: 5, paddingVertical: spacing.xs },
   navPressed: { opacity: 0.7 },
   // The pool of light under the live tab. It is 46 wide against a tab that is

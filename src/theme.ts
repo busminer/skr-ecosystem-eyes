@@ -16,11 +16,18 @@ import type { TextStyle } from 'react-native';
 // that reads as depth. It costs one View per panel and no frames per second.
 export const colors = {
   bg: '#04070B',
-  panel: '#0A1017',
+  // 30.09 — glass over the night. Every tab now stands on one shared night
+  // backdrop (src/lab/AppSky.tsx): a quiet gradient, a few stars, a breath
+  // of aurora. The panels let a hint of it through, so a screen reads as
+  // surfaces floating in that night instead of boxes on black. Sheets and
+  // dialogs use `panelSolid`: a surface over busy content must not let it
+  // bleed through the words.
+  panel: 'rgba(13, 21, 29, 0.88)',
+  panelSolid: '#0A1017',
   panelHi: '#0E1721',
   // Recessed: a row that sits *inside* a panel, darker than the panel and
   // darker than the screen. Gives a second level without a second border.
-  inset: '#070C12',
+  inset: 'rgba(6, 11, 17, 0.82)',
   line: '#15212C',
   lineStrong: '#22323F',
   // The lit edge. Never a fill, never text — only the one-pixel highlight

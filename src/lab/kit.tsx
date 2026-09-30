@@ -1,6 +1,6 @@
 import { useEffect, useState, type PropsWithChildren, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, ClipPath, Defs, G, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { colors, font, radius, spacing, type } from '../theme';
 
@@ -279,6 +279,11 @@ export function Pill({ label, tone = colors.positive, filled = false }: { label:
 // became a bordered rectangle. Quiet drops the box entirely and leaves a word
 // with a touch target, which is what those three always were.
 export function Button({ label, onPress, tone = colors.accent, ghost = false, quiet = false, disabled = false, fill = false, hero = false }: { label: string; onPress?: () => void; tone?: string; ghost?: boolean; quiet?: boolean; disabled?: boolean; fill?: boolean; hero?: boolean }) {
+  // The screen's one main action wears a little light of its own (30.09):
+  // the accent sliding into the mint it shares the state colours with. Only
+  // the hero in the default accent gets it; a toned hero (the gold Blink)
+  // keeps its flat colour, which is its point.
+  const gradient = hero && !ghost && !quiet && tone === colors.accent;
   return (
     <Pressable
       accessibilityRole="button"
@@ -293,6 +298,17 @@ export function Button({ label, onPress, tone = colors.accent, ghost = false, qu
         pressed && styles.buttonPressed,
       ]}
     >
+      {gradient ? (
+        <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
+          <Defs>
+            <LinearGradient id="kit-hero" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0" stopColor="#56E0FF" />
+              <Stop offset="1" stopColor="#66EFD2" />
+            </LinearGradient>
+          </Defs>
+          <Rect x={0} y={0} width="100%" height="100%" fill="url(#kit-hero)" />
+        </Svg>
+      ) : null}
       {/* A button that grows a second line grows taller, and a label that
           changes with state then bounces the whole column under it. One line,
           shrunk a hair when it must. */}
@@ -345,7 +361,7 @@ const styles = StyleSheet.create({
   // radius.button, not radius.card. They used to share 14 and a filled button
   // was indistinguishable from a small panel; now 12 against 16 keeps a button
   // reading as something you press.
-  button: { minHeight: 50, borderRadius: radius.button, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  button: { minHeight: 50, borderRadius: radius.button, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, overflow: 'hidden' },
   buttonFill: { flexGrow: 1, flexShrink: 1, flexBasis: 128 },
   // The screen's one main action: taller, and it throws its own light. On
   // Android the coloured shadow rides on elevation and stays subtle.

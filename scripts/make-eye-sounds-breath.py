@@ -157,21 +157,36 @@ cloth = lowpass(cloth, 3000)
 hum = fade(cloth[:int(3.4 * SR)], 0.9, 1.4)
 write('hum.wav', hum)
 
-# --- tone1..tone7: the breath-bells ----------------------------------------
-# A pentatonic line, low and warm; the glass strike sits two octaves up,
-# where a phone speaker is honest.
-GRAIN = cloth[int(0.4 * SR):int(0.4 * SR) + int(1.3 * SR)]
+# --- tone1..tone7: the little ring -----------------------------------------
+# Fifth pick, 30.09 (Alex: the breathing grains smeared into «тю-тю» on a
+# quick swipe; he asked for «телефончик коротко позвонил»). A page now turns
+# on one short two-note ring, «ди-линь»: a warm bell strike and its answer a
+# major third up, sixty milliseconds later, gone in half a second — quick
+# swipes stay clean. The line still climbs the same pentatonic.
+GRAIN = cloth[int(0.4 * SR):int(0.4 * SR) + int(1.3 * SR)]  # kept for heart/chime below
 BASE = 233.08  # B flat 3: the bless sits comfortably here after the shift
+BELL = 392.0   # G4: where a ring sits sweetly in the Seeker's speaker
 STEPS = (0, 2, 4, 7, 9, 12, 14)
+
+
+def bell(f0: float, seconds: float = 0.55) -> np.ndarray:
+    t = np.linspace(0, seconds, int(seconds * SR), endpoint=False)
+    tone = np.zeros_like(t)
+    for ratio, amp, life in ((1.0, 1.0, 1.0), (2.0, 0.42, 0.55), (2.96, 0.16, 0.34)):
+        for detune in (0.9992, 1.0008):
+            tone += amp * np.sin(2 * np.pi * f0 * ratio * detune * t) * np.exp(-t / (0.115 * life))
+    tone[:int(0.004 * SR)] *= np.linspace(0, 1, int(0.004 * SR))
+    peak = np.max(np.abs(tone)) or 1.0
+    return tone / peak
+
+
 for i, semis in enumerate(STEPS, start=1):
-    grain = pitch(GRAIN, semis - 2)[:int(1.1 * SR)]
-    grain *= envelope(len(grain), 0.045, 0.5)
-    note = np.zeros(int(1.15 * SR))
-    place(note, grain, 0.0, 1.0)
-    strike = glass(BASE * 2 ** (semis / 12) * 2)
-    place(note, strike, 0.004, 0.42)
-    note = lowpass(note, 3900)
-    write(f'tone{i}.wav', note, rms_db=-13.5)
+    f0 = BELL * 2 ** (semis / 12)
+    note = np.zeros(int(0.6 * SR))
+    place(note, bell(f0), 0.0, 1.0)
+    place(note, bell(f0 * 1.26, seconds=0.45), 0.058, 0.74)
+    note = lowpass(note, 4600)
+    write(f'tone{i}.wav', note, rms_db=-14.0)
 
 # --- heart: the swell before the lids --------------------------------------
 rise_len = int(1.35 * SR)
@@ -196,3 +211,13 @@ place(chime, bloom, 0.0, 0.9)
 place(chime, glass(BASE * 4, seconds=0.4, tau=0.07), 0.0, 0.6)
 chime = lowpass(chime, 4200)
 write('chime.wav', chime)
+
+# --- pip: one station of the road lights -----------------------------------
+# Page three walks nine stations; each gets one clean pip (Alex, 30.09:
+# «пик-пик», every step heard, nothing left silent), and the last keeps the
+# heartbeat and the wake it always had.
+pt = np.linspace(0, 0.1, int(0.1 * SR), endpoint=False)
+pip = (np.sin(2 * np.pi * 1244.5 * pt) + 0.3 * np.sin(2 * np.pi * 2489 * pt)) * np.exp(-pt / 0.028)
+pip[:int(0.005 * SR)] *= np.linspace(0, 1, int(0.005 * SR))
+pip = lowpass(pip, 5200)
+write('pip.wav', pip, rms_db=-16.0)

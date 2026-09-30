@@ -532,7 +532,7 @@ export function TopLab() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
+  screen: { flex: 1, backgroundColor: 'transparent' },
   // Room for the floating Me chip over the last rows, nothing more. The old
   // 140 was a guess made for a full-width bar that no longer exists.
   content: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: 96 },

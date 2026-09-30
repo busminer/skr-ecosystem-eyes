@@ -383,6 +383,20 @@ export function EyesLab() {
 
   const onStatus = useCallback((next: EyeStatus) => setStatus(next), []);
 
+  // The wallet's own name on the Iris (kosa.skr), the way the server writes
+  // it. The panel and the walk-through greet with it, and it is kept on the
+  // phone so the reminders can speak it too (src/eye/reminders.ts).
+  const meName = useMemo(() => {
+    const serial = network?.me?.serial;
+    if (serial == null) return null;
+    const row = network?.eyes.find((eye) => eye.serial === serial);
+    return row?.name && !/^EYE #/i.test(row.name) ? row.name : null;
+  }, [network]);
+  useEffect(() => {
+    if (!wallet) return;
+    void AsyncStorage.setItem('skr-eyes:me-name:v1', JSON.stringify({ wallet, name: meName })).catch(() => undefined);
+  }, [wallet, meName]);
+
   // A freshly minted Eye appears in the world at once (Alex, 30.09): the
   // moment the status carries an Eye the network list does not know yet,
   // the network is re-read, once per serial, instead of waiting a minute.
@@ -545,6 +559,7 @@ export function EyesLab() {
 
         <EyePanel
           wallet={wallet}
+          meName={meName}
           onStatus={onStatus}
           onBlinked={onBlinked}
           onConnect={() => void connect()}
@@ -703,6 +718,7 @@ export function EyesLab() {
         <View style={styles.walkthrough}>
           <EyeOnboarding
             wallet={wallet}
+            meName={meName}
             status={status}
             nextSerial={nextSerial}
             verified={phoneVerified}
@@ -741,7 +757,7 @@ export function EyesLab() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
+  screen: { flex: 1, backgroundColor: 'transparent' },
   // Over the whole tab, under nothing: the walk-through has the screen to itself.
   walkthrough: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: colors.bg, zIndex: 30 },
   // The tab bar under this list carries the navigation bar's inset itself,
@@ -801,7 +817,7 @@ const styles = StyleSheet.create({
   circles: { gap: spacing.md },
   circle: { gap: spacing.sm },
   backdrop: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(2, 4, 7, 0.72)' },
-  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.panel, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, borderWidth: 1, borderColor: '#111B24', paddingHorizontal: GUTTER, paddingTop: spacing.sm },
+  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.panelSolid, borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, borderWidth: 1, borderColor: '#111B24', paddingHorizontal: GUTTER, paddingTop: spacing.sm },
   sheetGrip: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: colors.lineStrong, marginBottom: spacing.sm },
   sheetBody: { gap: spacing.sm },
   sheetHead: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },

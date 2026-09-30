@@ -265,7 +265,7 @@ export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onT
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
+  screen: { flex: 1, backgroundColor: 'transparent' },
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 130, gap: spacing.lg },
   embedded: { gap: spacing.lg },
   panel: { padding: spacing.md },

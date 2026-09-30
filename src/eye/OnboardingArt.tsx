@@ -422,7 +422,9 @@ export function OpeningRoad({ active, reduced, width, height, finger }: { active
         steps.push([clock, () => {
           setAt(i + 1);
           if (last) { setLidsOpen(true); if (first) { thud(); cue('wake', 0.35); } else tap(); }
-          else if (first && i >= verify.length) cue('chime', 0.26);
+          // Every station lands on its own pip the first time round (Alex,
+          // 30.09: each step heard, none left silent); the repeats tick.
+          else if (first) { cue('pip', 0.3); tick(); }
           else tick();
         }]);
         clock += BEAT_MS;

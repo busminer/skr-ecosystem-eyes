@@ -42,6 +42,8 @@ const sources = {
   hum: require('../assets/sound/hum.wav'),
   chime: require('../assets/sound/chime.wav'),
   heart: require('../assets/sound/heart.wav'),
+  // One station of the road lights: a clean pip, nine of them up page three.
+  pip: require('../assets/sound/pip.wav'),
   tone1: require('../assets/sound/tone1.wav'),
   tone2: require('../assets/sound/tone2.wav'),
   tone3: require('../assets/sound/tone3.wav'),
@@ -85,7 +87,8 @@ export function cueHaptic(cue: Cue): void {
     case 'chime': impact(Haptics.ImpactFeedbackStyle.Light); break;
     // The swell grows for a second; the touch grows with it.
     case 'heart': impact(Haptics.ImpactFeedbackStyle.Soft); impact(Haptics.ImpactFeedbackStyle.Light, 480); impact(Haptics.ImpactFeedbackStyle.Medium, 920); break;
-    // A page note: the page turn already ticks.
+    // A page note: the page turn already ticks. A pip rides the station's own tick.
+    case 'pip': break;
     case 'tone1': case 'tone2': case 'tone3': case 'tone4': case 'tone5': case 'tone6': case 'tone7': break;
   }
 }
