@@ -39,3 +39,15 @@ Same night, second pass: the harp was «немножко звонкий» (a lit
 lower (tones -5, -3, -2, 0, 2, 3, 5 semitones; hum -5; chime -2; heart unshifted so its peak
 still lands on the lids), a 4th-order low-pass at 2.4 kHz (2.8 kHz for the chime), a slower
 fade-in to soften the pluck, and a soft dark room tail. Same script, same two recordings.
+
+Fourth pick, 30.09.2026: Alex called the harp plucks boring. The same «Choir harp bless»
+(657) stays the raw material — the one recording he had not rejected — but it is no longer
+played as plucks: `scripts/make-eye-sounds-breath.py` time-stretches its spectrum into a
+breathing pad (paulstretch: windowed FFT, magnitudes kept, phases scattered) and lays one
+synthesised warm-glass strike on top of each moment, so a note begins where the finger can
+feel it. tone1-7 climb a pentatonic line (0 2 4 7 9 12 14 semitones), loudness-matched;
+hum is 3.4 s of the stretched choir fading in and out; heart is the same cloth pulled into
+a rise that peaks at 1.35 s with a warm 165→220 Hz sine growing under it; chime is one
+glass strike inside a short choir bloom. Nothing meaningful under 160 Hz — the Seeker's
+speaker rattles there. The bless as the third pick shipped it is kept as `src-bless.wav`
+(not bundled: nothing require()s it), so the script can run again.
