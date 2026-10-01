@@ -7,7 +7,7 @@ import { Ascent } from '../Ascent';
 import { AroundYou } from './AroundYou';
 import { FindEye } from './FindEye';
 import { MassWorld } from './MassWorld';
-import { IRIS_H, aroundYou, irisLayout, planLabels, toWorldEyes, type IrisWorld } from './geometry';
+import { aroundYou, irisLayout, toWorldEyes, type IrisWorld } from './geometry';
 
 // The world of the Eyes tab. Up to thirty Eyes it is the Ascent: big round
 // glowing eyes on a stair, each with its .skr name under it, the thing that
@@ -46,36 +46,39 @@ function IrisBlock({ network, meSerial, pulses, onPick }: { network: EyeNetwork;
     const now = new Map(eyes.map((eye) => [eye.serial, eye]));
     return { ...base, items: base.items.map((it) => ({ ...it, eye: now.get(it.eye.serial) ?? it.eye })) };
   }, [base, eyes]);
-  const plan = useMemo(() => planLabels(world.items, eyes, { h: IRIS_H }), [world, eyes]);
   const around = useMemo(() => aroundYou(eyes, world.counts), [eyes, world.counts]);
   const bySerial = useMemo(() => new Map(network.eyes.map((eye) => [eye.serial, eye])), [network.eyes]);
   const arcs = useMemo(() => network.gazes.received.map((look) => look.serial), [network.gazes.received]);
 
-  // An Eye rung on the picture: while a chip is pressed, or for a moment after
-  // Find picked somebody.
+  // An Eye rung on the picture: while a chip is pressed, and for a few seconds after somebody was
+  // picked from a list. Picking from a list also flies the world to them (the camera brings them
+  // up close), then opens their card; closing the card leaves you looking at them.
   const [highlight, setHighlight] = useState<number | null>(null);
+  const [fly, setFly] = useState<{ serial: number; nonce: number } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   const hold = useCallback((serial: number | null) => { if (timer.current) clearTimeout(timer.current); setHighlight(serial); }, []);
   const pick = useCallback((serial: number) => { const eye = bySerial.get(serial); if (eye) onPick(eye); }, [bySerial, onPick]);
-  const found = useCallback((serial: number) => {
+  const focus = useCallback((serial: number) => {
     setHighlight(serial);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setHighlight(null), 5_000);
+    timer.current = setTimeout(() => setHighlight(null), 6_000);
+    setFly((current) => ({ serial, nonce: (current?.nonce ?? 0) + 1 }));
     pick(serial);
   }, [pick]);
 
   return (
     <View style={styles.block}>
-      <MassWorld world={world} plan={plan} pulses={pulses} arcs={arcs} highlight={highlight} onPick={pick} />
-      <Text style={styles.hint}>{t('Every Blink carries you a step closer to the pupil. Touch and hold to read names.')}</Text>
-      {around ? <AroundYou around={around} onPick={pick} onHold={hold} /> : null}
-      <FindEye eyes={eyes} onPick={found} />
+      <MassWorld world={world} eyes={eyes} pulses={pulses} arcs={arcs} highlight={highlight} fly={fly} onPick={pick} />
+      <Text style={styles.hint}>{t('Every Blink carries you a step closer to the pupil.')}</Text>
+      <Text style={styles.hint}>{t('Pinch to zoom, drag to look around, twist to turn. Touch and hold to read names.')}</Text>
+      {around ? <AroundYou around={around} onPick={focus} onHold={hold} /> : null}
+      <FindEye eyes={eyes} onPick={focus} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   block: { gap: spacing.sm },
-  hint: { color: colors.faint, fontFamily: font.regular, ...type.micro, textAlign: 'center', paddingHorizontal: spacing.sm },
+  hint: { color: colors.faint, fontFamily: font.regular, ...type.micro, textAlign: 'center', paddingHorizontal: spacing.sm, marginTop: -4 },
 });

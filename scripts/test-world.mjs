@@ -7,7 +7,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { IRIS_H, DESIGN_W, STEP_DAYS, aroundYou, closest, irisLayout, loupeNames, nearest, planLabels, stepOf, toWorldEyes, eyeBatches } from '../src/eye/world/geometry.ts';
-
 // Steps, from the stair's own screen: 30+ … 1.
 const COUNTS = { 1: [0, 0, 0, 0, 0, 0, 0, 0, 1], 12: [0, 0, 0, 0, 1, 2, 2, 3, 4], 40: [0, 0, 1, 2, 4, 6, 8, 10, 9], 120: [0, 1, 2, 5, 9, 16, 24, 30, 33], 507: [1, 3, 8, 16, 29, 47, 72, 121, 210], 1000: [2, 6, 16, 32, 57, 93, 142, 239, 413] };
 const FLOORS = [30, 21, 14, 10, 7, 5, 3, 2, 1];

@@ -68,15 +68,15 @@ export function offerLines(prices: EyePrices, nextSerial: number | null, eyesNow
   return [first, rest, cost];
 }
 
-// How far the next ring and gold are from this day of the streak.
+// How far the next step and gold are from this day of the streak.
 function milestones(day: number): string[] {
   const next = RING_DAYS.find((floor) => floor > day) ?? null;
-  if (next == null) return [t('On the gold ring')];
+  if (next == null) return [t('On the gold step')];
   const toGold = GOLD_DAY - day;
   const gold = toGold === 1 ? t('1 day to gold') : t('{count} days to gold', { count: toGold });
   if (next === GOLD_DAY) return [gold];
   const toNext = next - day;
-  return [toNext === 1 ? t('1 day to the next ring') : t('{count} days to the next ring', { count: toNext }), gold];
+  return [toNext === 1 ? t('1 day to the next step') : t('{count} days to the next step', { count: toNext }), gold];
 }
 
 function Offer({ lines }: { lines: string[] }) {

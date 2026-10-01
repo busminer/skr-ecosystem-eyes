@@ -13,6 +13,7 @@ import { Button, Eyebrow, Meter } from '../lab/kit';
 import { EyeApiError, fetchEyeHealth, fetchEyeNetwork, sendGaze, type EyeHealth, type EyeNetwork, type EyeStatus, type NetworkEye } from './api';
 import { EYE_BASE_URL, EYE_FINGER_ENABLED, IS_LAB_BUILD } from './config';
 import { World } from './world/World';
+import { LockableScroll } from './world/LockableScroll';
 import { PREVIEW_SIZES, previewNetwork } from './world/preview';
 import { EyePanel } from './EyePanel';
 import { EyeOnboarding } from './EyeOnboarding';
@@ -478,7 +479,7 @@ export function EyesLab() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView
+      <LockableScroll
         ref={list}
         style={styles.screen}
         contentContainerStyle={styles.content}
@@ -624,7 +625,7 @@ export function EyesLab() {
             </View>
             <Text style={styles.sectionLine}>
               {[
-                t('Days in a row, and how many Eyes stand on each ring. A Blink every day moves your Eye one ring closer to the centre.'),
+                t('Days in a row, and how many Eyes stand on each step. A Blink every day moves your Eye up one step.'),
                 network?.me && percentile != null ? t('You are ahead of {p}% of Eyes.', { p: integer(percentile) }) : null,
               ].filter(Boolean).join(' ')}
             </Text>
@@ -675,7 +676,7 @@ export function EyesLab() {
             ))}
           </View>
         ) : null}
-      </ScrollView>
+      </LockableScroll>
 
       {intro ? (
         <View style={styles.walkthrough}>

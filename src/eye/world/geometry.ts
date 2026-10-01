@@ -14,6 +14,10 @@
 
 export const DESIGN_W = 376;
 export const IRIS_H = 432;
+// The Iris's own middle and radius, in the world's coordinates.
+export const IRIS_CX = DESIGN_W / 2;
+export const IRIS_CY = 204;
+export const IRIS_R = 176;
 
 // The streak each step stands for, innermost first (the service's src/iris.mjs).
 export const STEP_DAYS = [30, 21, 14, 10, 7, 5, 3, 2, 1] as const;
@@ -222,7 +226,7 @@ export type IrisWorld = {
 };
 
 export function irisLayout(eyes: ReadonlyArray<WorldEye>): IrisWorld {
-  const cx = DESIGN_W / 2, cy = 204, R = 176, N = eyes.length;
+  const cx = IRIS_CX, cy = IRIS_CY, R = IRIS_R, N = eyes.length;
   const counts = new Array<number>(STEPS).fill(0);
   const byStep: WorldEye[][] = Array.from({ length: STEPS }, () => []);
   for (const eye of eyes) { const at = stepOf(eye.streak); byStep[at]!.push(eye); counts[at]! += 1; }

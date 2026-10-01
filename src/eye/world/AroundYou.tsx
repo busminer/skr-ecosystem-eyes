@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useCallback, useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { t } from '../../i18n';
@@ -45,9 +45,20 @@ export const AroundYou = memo(function AroundYou({ around, onPick, onHold }: {
   onHold: (serial: number | null) => void;
 }) {
   const { ahead, behind, me, aheadCount, behindCount, nextStep } = around;
+  // Your chip is the one that must never sit half out of the row: once the row
+  // and your chip have both been measured, the row is scrolled to centre it
+  // (at a large system font only three chips fit).
+  const scroller = useRef<ScrollView>(null);
+  const mine = useRef<{ x: number; w: number } | null>(null);
+  const port = useRef(0);
+  const settle = useCallback(() => {
+    if (!mine.current || !port.current) return;
+    scroller.current?.scrollTo({ x: Math.max(0, mine.current.x + mine.current.w / 2 - port.current / 2), animated: false });
+  }, []);
   const chip = (eye: WorldEye, arrow: string) => (
     <Pressable
       key={eye.serial}
+      onLayout={eye.me ? (event) => { mine.current = { x: event.nativeEvent.layout.x, w: event.nativeEvent.layout.width }; settle(); } : undefined}
       onPressIn={() => onHold(eye.serial)}
       onPressOut={() => onHold(null)}
       onPress={() => onPick(eye.serial)}
@@ -66,7 +77,7 @@ export const AroundYou = memo(function AroundYou({ around, onPick, onHold }: {
         <Eyebrow>{t('Around you')}</Eyebrow>
         <Text maxFontSizeMultiplier={1.3} style={styles.sum}>{t('{ahead} ahead · {behind} behind', { ahead: integer(aheadCount), behind: integer(behindCount) })}</Text>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+      <ScrollView ref={scroller} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} onLayout={(event) => { port.current = event.nativeEvent.layout.width; settle(); }}>
         {ahead.map((eye) => chip(eye, '▲'))}
         {chip(me, '')}
         {behind.map((eye) => chip(eye, '▼'))}

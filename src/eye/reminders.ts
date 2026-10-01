@@ -104,7 +104,7 @@ export function remindersFor(status: EyeStatus, name: string | null = null, now 
     } else if (day === 30) {
       line = { title: t('Gold day, {name}', { name: who }), body: t('One Blink and your Eye turns gold. Days like this make legends.') };
     } else if (day === 7) {
-      line = { title: t('Day 7, {name}', { name: who }), body: t('Blink today and your Eye moves to a new ring.') };
+      line = { title: t('Day 7, {name}', { name: who }), body: t('Blink today and your Eye climbs a step.') };
     } else if (day === 2) {
       line = { title: t('{name}, day 2 is calling', { name: who }), body: t('One Blink keeps your brand-new streak alive.') };
     } else {
@@ -113,7 +113,7 @@ export function remindersFor(status: EyeStatus, name: string | null = null, now 
         { title: t('{name}, your Eye is ready', { name: who }), body: t('8 hours passed. One touch keeps day {count}.', { count: day }) },
         { title: t('The Iris misses you, {name}', { name: who }), body: t('Blink and day {count} is yours.', { count: day }) },
       ];
-      if (toRing > 0 && toRing <= 2) lines.push({ title: toRing === 1 ? t('1 day to the next ring') : t('{count} days to the next ring', { count: toRing }), body: t('Blink today to get closer to the centre.') });
+      if (toRing > 0 && toRing <= 2) lines.push({ title: toRing === 1 ? t('1 day to the next step') : t('{count} days to the next step', { count: toRing }), body: t('Blink today to climb a step.') });
       if (toGold > 0 && toGold <= 7) lines.push({ title: toGold === 1 ? t('1 day to gold') : t('{count} days to gold', { count: toGold }), body: t('Day 30 turns your Eye gold.') });
       line = pick(lines);
     }
