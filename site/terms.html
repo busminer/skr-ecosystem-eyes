@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Terms — SKR Eyes</title>
-<meta name="description" content="The terms of using SKR Eyes: no custody, no advice, no warranty, and what the numbers mean.">
+<title>Terms of Use — SKR Eyes</title>
+<meta name="description" content="The terms of using SKR Eyes: what the Eye is, what it costs, what the app never does with your keys or money.">
 <link rel="icon" href="/img/mark.png">
 <link rel="stylesheet" href="/styles.css?v=51c1c78a">
 </head>
@@ -24,32 +24,38 @@
 <main class="doc">
   <p class="eyebrow">Legal</p>
   <h1>Terms of Use</h1>
-  <p class="lede">Short version: the app reads a public blockchain and helps you send your own transactions. It never holds your keys or your money, and it is not financial advice.</p>
-  <p class="stamp">Last updated 23 August 2026</p>
+  <p class="lede">Short version: the app reads a public blockchain and lets you open and keep one Eye, a collectible NFT. It never holds your keys or your money. The Eye is not an investment and no token is promised.</p>
+  <p class="stamp">Last updated 1 October 2026</p>
 
   <h2>What SKR Eyes is</h2>
-  <p>SKR Eyes is an independent analytics application for SKR staking on Solana. It reads publicly available on-chain data and presents your own staking position. It does not stake, unstake or withdraw, and it builds no transactions of any kind.</p>
+  <p>SKR Eyes is an independent application for SKR stakers on Solana Mobile Seeker. It shows staking data read from the blockchain, and it lets the holder of a Seeker open one Eye per wallet and blink it once every 8 hours. The app itself does not stake, unstake or withdraw anything.</p>
+
+  <h2>The Eye</h2>
+  <ul>
+    <li>An Eye can be opened by a wallet that holds a Seeker Genesis Token and has an active SKR stake. The server checks both from public blockchain data, and the phone proves once, with a fingerprint, that it is a Seeker.</li>
+    <li>The Eye is a collectible NFT (Metaplex Core) minted to your wallet. It is frozen: it cannot be sold or transferred while it is frozen, and only the collection owner's wallet can thaw it.</li>
+    <li>Opening an Eye and each Blink are paid in SKR, from your wallet to the maker of SKR Eyes. The amounts are set by the service and shown in SKR in the app before your wallet asks you to approve; the first 1,000 Eyes open for one amount and later Eyes for another, and the amounts can change for Eyes not yet opened. Opening an Eye also puts a storage deposit, in SOL, into the Eye's own account on Solana, where it stays, and pays Metaplex's create fee (0.0015 SOL today, held in the same account and collectable by Metaplex). Every transaction pays a network fee in SOL set by your wallet, so you need some SOL in the wallet as well as SKR. Payments are final and are not refunded.</li>
+    <li>The streak counts days in a row with at least one Blink (UTC days). A missed day starts it over. We may restore a day lost because of a failure on our side.</li>
+    <li>The Eye gives no rights, income or share of anything. No token, airdrop or reward is promised for holding an Eye or for a streak.</li>
+  </ul>
 
   <h2>No custody</h2>
-  <p>SKR Eyes never holds, moves or has access to your funds. It cannot read your seed phrase or private key. It never asks your wallet to sign anything: connecting a wallet only tells the app which address to show, and you can paste a public address instead.</p>
-
-  <h2>Your responsibility</h2>
-  <p>Whatever you do with your position, you do elsewhere; this app only shows you what happened. An unstaked amount waits out a cooldown defined by the on-chain program, currently 48 hours, before it can be withdrawn. Transactions on a blockchain are final and cannot be reversed by us or by anyone else.</p>
+  <p>SKR Eyes never holds or moves your funds. Every transaction is shown by your wallet and signed by you. The app checks every transaction before asking you to sign it: you pay the network fee yourself, SKR goes only to the maker's SKR account written in the app, no SOL is paid to the maker, and no other token is touched. The maker's wallet is <code>BmJaEmaEURBDpj91GUTvJcpKy2MAu8ZtRFRPaMpEuuax</code> (kosa.skr) and its SKR account is <code>CmTWwMrSusqhxrABLMnMfTKnZHosoHWczRbnsj5cLGX4</code>.</p>
 
   <h2>Not financial advice</h2>
-  <p>Nothing in the app or on this site is investment, financial, legal or tax advice. Numbers describe what happened on chain; they do not predict anything and do not recommend anything.</p>
+  <p>Nothing in the app or on this site is investment, financial, legal or tax advice. Numbers describe what happened on chain; they do not predict anything and do not recommend anything. The Eye is not an investment.</p>
 
   <h2>Accuracy and its limits</h2>
-  <p>The app is built so that every number carries its source and its state: values are labelled exact, estimated or unavailable, and data is labelled fresh, aging or stale. Historical coverage begins when our indexer began; the app says so rather than presenting a partial history as complete. Blockchain data can still be delayed, reorganised or temporarily unreachable.</p>
+  <p>Blockchain data can be delayed, reorganised or temporarily unreachable. Where the app cannot be sure of a number it says so instead of presenting a guess as exact.</p>
 
   <h2>Availability</h2>
-  <p>The service is provided as is, without warranty of any kind. It may be unavailable, interrupted or discontinued. To the maximum extent permitted by law, we are not liable for any loss arising from use of the app, including missed unlocks, failed or delayed transactions, or decisions taken on the basis of displayed data.</p>
+  <p>The service is provided as is, without warranty of any kind. It may be unavailable, interrupted or discontinued; an Eye already opened stays in your wallet on Solana either way. To the maximum extent permitted by law, we are not liable for any loss arising from use of the app, including a broken streak, failed or delayed transactions, or decisions taken on the basis of displayed data.</p>
 
   <h2>Acceptable use</h2>
-  <p>Do not use the app to break the law, to attack the service or its infrastructure, or to misrepresent it as an official product of anyone else.</p>
+  <p>Do not use the app to break the law, to attack the service or its infrastructure, to automate the fingerprint check or the Blink, or to misrepresent it as an official product of anyone else. We may refuse service to wallets or devices used to abuse it.</p>
 
   <h2>Source and licence</h2>
-  <p>The project's source is published under the MIT licence at <a href="https://github.com/busminer/skr-ecosystem-eyes">github.com/busminer/skr-ecosystem-eyes</a>. The MIT licence covers the code; product names, the mark and the artwork remain the author's.</p>
+  <p>Parts of the project's source are published under the MIT licence at <a href="https://github.com/busminer/skr-ecosystem-eyes">github.com/busminer/skr-ecosystem-eyes</a>. The MIT licence covers the code published there; product names, the mark and the artwork remain the author's.</p>
 
   <h2>Not affiliated</h2>
   <p>SKR Eyes is an independent product. It is not affiliated with, endorsed by or sponsored by Solana Foundation or Solana Mobile. Product names and trademarks belong to their respective owners.</p>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy Policy — SKR Eyes</title>
-<meta name="description" content="What SKR Eyes stores, what it never collects, and how to delete everything it keeps.">
+<meta name="description" content="What SKR Eyes stores, what its server keeps, what is written to the Solana blockchain for good, and how to delete what can be deleted.">
 <link rel="icon" href="/img/mark.png">
 <link rel="stylesheet" href="/styles.css?v=51c1c78a">
 </head>
@@ -24,8 +24,8 @@
 <main class="doc">
   <p class="eyebrow">Legal</p>
   <h1>Privacy Policy</h1>
-  <p class="lede">SKR Eyes has no accounts, no sign-up and no analytics. This page explains exactly what the app keeps, what leaves your phone, and how to erase it.</p>
-  <p class="stamp">Last updated 23 August 2026</p>
+  <p class="lede">SKR Eyes has no accounts, no sign-up, no advertising and no analytics. This page explains exactly what the app keeps on your phone, what our server keeps, what is written to the Solana blockchain for good, and how to erase what can be erased.</p>
+  <p class="stamp">Last updated 1 October 2026</p>
 
   <h2>Who is responsible</h2>
   <p>SKR Eyes is an independent product built and operated by Alex Kosa. Questions about this policy or about your data go to <a href="mailto:skr-eyes@alexkosa.dev">skr-eyes@alexkosa.dev</a>.</p>
@@ -35,33 +35,51 @@
     <li>No name, email, phone number or any other identity information.</li>
     <li>No account: there is nothing to register and nothing to log in to.</li>
     <li>No seed phrase and no private key. The app cannot read them; they stay inside Seed Vault on your phone.</li>
+    <li>No fingerprint. The fingerprint sensor only tells Android that your finger was there; the app and our server never receive a fingerprint or any image of it.</li>
     <li>No analytics, no advertising identifiers, no tracking pixels, no third-party SDKs that profile you.</li>
     <li>No contacts, photos, location or files.</li>
   </ul>
 
   <h2>What is stored on your phone</h2>
-  <p>All of this lives only on the device and never leaves it:</p>
+  <p>All of this lives only on the device:</p>
   <ul>
-    <li>The public address of the wallet you connected, and the name the wallet reported for it, so the app does not ask you to reconnect on every launch.</li>
-    <li>Your alert settings and any unlock reminders scheduled with the Android notification system.</li>
-    <li>The authorization token your wallet issued, so the app can reconnect quietly instead of asking for approval on every launch. <strong>Disconnect erases it.</strong></li>
+    <li>The public address of the wallet you connected, the name the wallet reported for it, and the authorization token your wallet issued, so the app can reconnect quietly instead of asking for approval on every launch. <strong>Disconnect erases the token.</strong></li>
+    <li>Your <code>.skr</code> name, if your wallet has one, so the app can greet you by it and your reminders can say it.</li>
+    <li>Your alert settings and the Blink reminders scheduled with the Android notification system. The reminders are scheduled on the phone itself; nothing about them leaves it.</li>
+    <li>If you verify your Seeker for an Eye: a signing key created inside the phone's StrongBox secure element. It cannot leave the chip and only signs after your fingerprint.</li>
   </ul>
 
-  <h2>How to delete it</h2>
-  <p>Open <strong>Me</strong> and tap <strong>Disconnect</strong>. That erases the stored address, the wallet name, the saved card and the wallet authorization token. Uninstalling the app removes everything else, including scheduled notifications. There is no server-side copy to request, because there is no account.</p>
+  <h2>What our server keeps</h2>
+  <p>When you use the Eye, our server at <code>skr.alexkosa.dev</code> keeps:</p>
+  <ul>
+    <li>Your wallet's public address and your Eye: its number, its asset address, its streak, its Blinks and the transactions that paid for them (SKR payments and the network fees around them).</li>
+    <li>For the fingerprint check: the public half of the StrongBox key and the certificate chain Google's hardware attestation produced for it. That chain describes the device (brand and model, Android version and security patch level, whether the boot is verified and the bootloader locked) and this app; it contains no fingerprint and no personal name.</li>
+    <li>The Eyes you looked at ("looks") and the app version that asked.</li>
+    <li>Operational logs, which include wallet addresses, for at most 30 days.</li>
+  </ul>
+  <p>To open an Eye the server checks, from public Solana data, that the wallet holds a Seeker Genesis Token and an active SKR stake. To show your staking position the app sends the public wallet address you chose; the server reads public Solana data for it and answers.</p>
 
-  <h2>What leaves your phone</h2>
-  <p>To show your position, the app sends the <em>public</em> wallet address you chose to our server at <code>skr.alexkosa.dev</code>, which reads publicly available Solana blockchain data for that address and answers. A public address is not secret: it is visible to anyone on the blockchain by design.</p>
-  <p>Nothing else leaves the phone. SKR Eyes builds no transactions and never asks your wallet to sign anything, so there is nothing of yours to send anywhere.</p>
+  <h2>The world of Eyes</h2>
+  <p>Every Eye that has been opened appears in the world of Eyes inside the app, drawn as a small eye with its number, its streak, whether it blinked today and, if its wallet has a <code>.skr</code> name, that name. These are facts that are already public on Solana; the app adds nothing to them. Other people can look at your Eye, and you can look at theirs, up to five looks a day. A look tells the owner that somebody looked, and the server keeps who looked at whom for the counter and for the list of people who looked at you. Nobody can look at anything else about you.</p>
 
-  <h2>Server logs</h2>
-  <p>Like any website, our server and the Cloudflare network in front of it process the IP address of a request in order to deliver a response. We do not build profiles from this, do not sell it, and do not connect it to wallet addresses. Requests are counted for rate limiting through a salted in-memory counter only; it is never written to disk.</p>
+  <h2>What is on the blockchain for good</h2>
+  <p>Your Eye is an NFT (a Metaplex Core asset) in your wallet on Solana. Its number, streak, Blinks and picture address are public on the blockchain and cannot be erased by us or by anyone. The picture shows your Eye's number and streak and may show other public facts about your wallet. Every payment is a public Solana transaction.</p>
+
+  <h2>How to delete what can be deleted</h2>
+  <ul>
+    <li><strong>On the phone:</strong> open <strong>Me</strong> and tap <strong>Disconnect</strong>. That erases the stored address, the wallet name and the wallet authorization token. Uninstalling the app removes everything else, including scheduled notifications.</li>
+    <li><strong>On the server:</strong> write to <a href="mailto:skr-eyes@alexkosa.dev">skr-eyes@alexkosa.dev</a> with a message signed by the wallet; we delete the fingerprint binding and the looks for that wallet. The ledger of Eyes and payments mirrors the public blockchain and is kept, because the blockchain keeps it anyway.</li>
+  </ul>
+
+  <h2>Server logs and Cloudflare</h2>
+  <p>Our server and the Cloudflare network in front of it process the IP address of each request to deliver the answer and to limit abuse. We do not sell it and do not build profiles from it. Requests are counted for rate limiting in memory only.</p>
 
   <h2>Third parties</h2>
   <ul>
     <li><strong>Cloudflare</strong> delivers this site and the app's API.</li>
-    <li><strong>A Solana RPC provider</strong> is used by our server to read the blockchain. The app never contacts it directly and never holds its credentials.</li>
-    <li><strong>Your wallet application</strong> answers the connection request, and, if you choose to leave a tip, opens on a Solana Pay link and builds, signs and sends that payment itself, under its own privacy policy.</li>
+    <li><strong>A Solana RPC provider</strong> is used by our server to read the blockchain and send transactions. The app never contacts it directly and never holds its credentials.</li>
+    <li><strong>Google's hardware attestation roots</strong> are used by our server to check the StrongBox key.</li>
+    <li><strong>Your wallet application</strong> (Seed Vault Wallet) shows and signs every transaction under its own privacy policy.</li>
   </ul>
 
   <h2>Children</h2>
