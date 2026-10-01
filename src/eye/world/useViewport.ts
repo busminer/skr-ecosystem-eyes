@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Easing, cancelAnimation, useSharedValue, withTiming } from 'react-native-reanimated';
 import { IDENTITY, wrapAngle, type Viewport } from './viewport';
 
@@ -12,8 +12,11 @@ import { IDENTITY, wrapAngle, type Viewport } from './viewport';
 
 export type ViewShared = ReturnType<typeof useViewportValues>;
 
+// One object for the four numbers, the same object on every render: whatever lists it as a
+// dependency must not be told that something changed when nothing did.
 function useViewportValues() {
-  return { s: useSharedValue(1), a: useSharedValue(0), x: useSharedValue(0), y: useSharedValue(0) };
+  const s = useSharedValue(1), a = useSharedValue(0), x = useSharedValue(0), y = useSharedValue(0);
+  return useMemo(() => ({ s, a, x, y }), [s, a, x, y]);
 }
 
 export function useViewport(onChange: () => void) {
@@ -66,5 +69,5 @@ export function useViewport(onChange: () => void) {
   // True while a flight (an animated move) has not yet arrived.
   const busy = useCallback(() => flying.current != null, []);
 
-  return { shared, view, angle, set, snap, busy };
+  return useMemo(() => ({ shared, view, angle, set, snap, busy }), [shared, set, snap, busy]);
 }

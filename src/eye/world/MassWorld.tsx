@@ -307,7 +307,8 @@ type Mode = 'idle' | 'press' | 'loupe' | 'pan' | 'pinch' | 'page';
 const sameView = (a: Viewport, b: Viewport) => Math.abs(a.s - b.s) < 1e-3 && Math.abs(a.x - b.x) < 0.05 && Math.abs(a.y - b.y) < 0.05 && Math.abs(Math.atan2(Math.sin(a.a - b.a), Math.cos(a.a - b.a))) < 1e-3;
 
 function useBaked(opacity: number): Baked {
-  return { s: useSharedValue(1), a: useSharedValue(0), x: useSharedValue(0), y: useSharedValue(0), o: useSharedValue(opacity) };
+  const s = useSharedValue(1), a = useSharedValue(0), x = useSharedValue(0), y = useSharedValue(0), o = useSharedValue(opacity);
+  return useMemo(() => ({ s, a, x, y, o }), [s, a, x, y, o]);
 }
 
 export const MassWorld = memo(function MassWorld({ world, eyes, pulses, arcs, highlight, fly, onPick }: {
@@ -407,18 +408,22 @@ export const MassWorld = memo(function MassWorld({ world, eyes, pulses, arcs, hi
   }, [layerValues, view, viewport]);
 
   // Whenever the viewport changes: lay the names out again, and, once it has rested, draw it anew.
+  // The timers call the drawing through a ref, and the effect below does not depend on it: the
+  // effect re-plans and re-draws, so if it ran whenever `bake` was a new function it would feed itself.
+  const bakeRef = useRef(bake);
+  bakeRef.current = bake;
   settleRef.current = () => {
     replan(200);
     if (bakeTimer.current) clearTimeout(bakeTimer.current);
-    bakeTimer.current = setTimeout(() => bake(), 180);
+    bakeTimer.current = setTimeout(() => bakeRef.current(), 180);
   };
   const firstItems = useRef(true);
   useEffect(() => {
     replan(0);
     if (firstItems.current) { firstItems.current = false; return; }
     if (bakeTimer.current) clearTimeout(bakeTimer.current);
-    bakeTimer.current = setTimeout(() => bake(), 60);
-  }, [items, eyes, replan, bake]);
+    bakeTimer.current = setTimeout(() => bakeRef.current(), 60);
+  }, [items, eyes, replan]);
   useEffect(() => () => { if (planTimer.current) clearTimeout(planTimer.current); if (bakeTimer.current) clearTimeout(bakeTimer.current); }, []);
 
   // ---- the loupe (at rest only) ----

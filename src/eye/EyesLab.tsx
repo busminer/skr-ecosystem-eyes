@@ -106,13 +106,15 @@ function Facts({ items, center = false }: { items: Array<string | null>; center?
 // One Eye, opened from the Iris or a card: the picture, the facts, and the
 // look. The sheet is a Modal over the whole screen, navigation bar included,
 // so it keeps its own bottom clear of it.
-function EyeSheet({ eye, gazes, wallet, mine, width, height, fontScale, onClose, onGazed }: { eye: NetworkEye; gazes: EyeNetwork['gazes'] | null; wallet: string | null; mine: boolean; width: number; height: number; fontScale: number; onClose: () => void; onGazed: (sentToday: number, limit: number) => void }) {
+function EyeSheet({ eye, gazes, wallet, mine, invented, width, height, fontScale, onClose, onGazed }: { eye: NetworkEye; gazes: EyeNetwork['gazes'] | null; wallet: string | null; mine: boolean; invented: boolean; width: number; height: number; fontScale: number; onClose: () => void; onGazed: (sentToday: number, limit: number) => void }) {
   const insets = useSafeAreaInsets();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const left = gazes ? Math.max(0, gazes.limit - gazes.sentToday) : 0;
-  const canGaze = Boolean(wallet) && !mine && left > 0;
+  // An Eye invented by the LAB preview is nobody: a look at it must never leave the phone, because
+  // the same number may belong to a real person by now.
+  const canGaze = Boolean(wallet) && !mine && !invented && left > 0;
   const image = Math.min(240, Math.round(width * (fontScale >= 1.3 ? 0.44 : 0.56)));
 
   const gaze = useCallback(async () => {
@@ -163,7 +165,7 @@ function EyeSheet({ eye, gazes, wallet, mine, width, height, fontScale, onClose,
           {mine ? null : (
             <View style={styles.sheetAction}>
               <Button
-                label={busy ? t('Looking…') : wallet && left === 0 ? t('No looks left today') : t('Look at this Eye')}
+                label={busy ? t('Looking…') : invented ? t('That Eye is not on the Iris') : wallet && left === 0 ? t('No looks left today') : t('Look at this Eye')}
                 onPress={() => void gaze()}
                 disabled={!canGaze || busy}
                 tone={colors.metal}
@@ -709,6 +711,7 @@ export function EyesLab() {
           gazes={network?.gazes ?? null}
           wallet={wallet}
           mine={network?.me?.serial === picked.serial}
+          invented={IS_LAB_BUILD && previewN != null && !network?.eyes.some((e) => e.serial === picked.serial && e.name === picked.name)}
           width={width}
           height={height}
           fontScale={fontScale}
