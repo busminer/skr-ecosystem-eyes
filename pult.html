@@ -80,13 +80,18 @@
   .log .x{font-size:15.5px}
   .log .x em{font-style:normal;color:var(--stamp)}
 
+  .phrase{margin:0;border:1px dashed var(--rule);background:var(--paper);padding:12px 14px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;line-height:1.6;color:var(--ink);overflow-wrap:anywhere}
+  .copy{justify-self:start;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--stamp);background:transparent;color:var(--stamp);padding:8px 14px;cursor:pointer}
+  .copy:hover{background:var(--stamp);color:var(--paper)}
+  .copy:focus-visible{outline:2px solid var(--eye);outline-offset:2px}
+
   footer{margin-top:52px;border-top:1px solid var(--rule);padding-top:14px}
   a{color:var(--stamp)}
 </style>
 
 <div class="wrap">
 
-  <p class="eyebrow">Пульт проекта · обновлён 1 октября 2026, ночь</p>
+  <p class="eyebrow">Пульт проекта · обновлён 1 октября 2026, 04:40</p>
   <h1>SKR Eyes: Глаз</h1>
 
   <div class="topline">
@@ -97,19 +102,41 @@
   <section>
     <div class="sechead"><span class="num">СЕЙЧАС</span><h2>Твой шаг</h2></div>
     <div class="q">
-      <span class="tag">новый чат: предрелиз</span>
-      <h2>Дальше — в чате «Предрелиз»</h2>
-      <p>Этот чат закрыт, всё сохранено (ветка <span class="mono">skr-eyes-mint-premium-rc</span>, беты rc1–rc4 в <span class="mono">builds\</span>, rc4 на телефоне). Твой вердикт «при 500 не нравится» — первое дело нового чата: моки запасных миров (небо глаз, гонка, маяки, стена) на 500 — и выбираешь глазами.</p>
+      <span class="tag">утром</span>
+      <h2>Новая сборка уже стоит на телефоне</h2>
+      <p>Это <strong>rc8</strong> (лаб), поставил поверх твоей сессии: EYE #0001, стрик 2, ничего не сбрасывалось. Напоминание по-прежнему на <strong>05:58:42</strong>, проверено после установки. Радужку теперь можно исследовать пальцами там, где она стоит.</p>
+      <ol>
+        <li><strong>Открой вкладку Eyes.</strong> Глаз пока один, поэтому мир выглядит лестницей. Нажми плашку «LAB · preview» несколько раз: появятся 40, 120, 507 и 1000 выдуманных людей, и мир станет Радужкой.</li>
+        <li><strong>Исследуй.</strong> Два пальца увеличивают и вращают, один передвигает, когда увеличено. Чем ближе, тем больше имён. Касание открывает карточку глаза. Кнопки «+», «−» и «домой» в углу, золотая стрелка на краю приведёт к твоему глазу.</li>
+        <li><strong>Блинкни по напоминанию</strong> (~05:58, придёт «Hey kosa.skr — time to blink») и скажи про ночь на вкладках, звоночки страниц и пики станций. Строка после блинка теперь без битых символов.</li>
+      </ol>
     </div>
     <div class="q" style="margin-top:14px">
-      <span class="tag">утром, ~05:58</span>
-      <h2>Второй Blink — и вердикты по ночи</h2>
-      <p>Ты вчера сминтил <strong>EYE #0001</strong> и блинкнул в 21:58. Ровно в <strong>05:58</strong> телефон скажет «Hey kosa.skr — time to blink» — аларм проверен на железе, он стоит от времени ТВОЕГО блинка. На телефоне уже <strong>rc2</strong> поверх твоей сессии, ничего не сбрасывалось.</p>
+      <span class="tag">одна фраза</span>
+      <h2>Выкатка на сервер и подписанная сборка ждут твоих слов</h2>
+      <p>Подписанная сборка собрана и проверена (отпечаток <span class="mono">d90bb194…</span> сошёлся), шаги для сервера и сайта расписаны. На боевом я ничего не менял: без твоей прямой фразы мне его трогать нельзя. Фраза одна, на всё сразу:</p>
+      <p class="phrase" id="phrase">Разрешаю: выкатить eye-mint на сервер (git push vps master, npm ci, перезапуск skr-eye-mint), поставить в /etc/skr-eye-mint.env EYE_PAY=skr и EYE_SKR_TREASURY=CmTWwMrSusqhxrABLMnMfTKnZHosoHWczRbnsj5cLGX4, поставить journald срок хранения 30 дней, выложить новые Privacy и Terms на сайт и поставить подписанную сборку на мой телефон.</p>
+      <button class="copy" id="copy-phrase" type="button">Скопировать фразу</button>
+      <p>После неё: боевой сервер берёт оплату в SKR, журнал хранится 30 дней, на сайте новые Privacy и Terms, подписанная сборка на телефоне. Откат записан в <span class="mono">docs/RELEASE-2.0-RUNBOOK.md</span>.</p>
+    </div>
+    <div class="q" style="margin-top:14px">
+      <span class="tag">решить</span>
+      <h2>Что зашить в NFT, пока не было первого боевого минта</h2>
+      <p>Ты спрашивал про памятки в глазе. Домен, дни в стейке и ранг на картинке уже есть. Что записано при открытии, потом не дописать, поэтому выбор нужен до выкатки.</p>
       <ol>
-        <li><strong>Блинкни по напоминанию</strong> — увидишь новый момент: «kosa.skr, day 3 is kept…» и сколько ещё можно сегодня.</li>
-        <li><strong>Ночь на всех вкладках</strong>: звёзды и аврора за стеклянными панелями, плавающий док. Скажи, легла ли.</li>
-        <li><strong>Звоночки</strong>: переходы страниц — короткий «ди-линь», на третьей странице каждая станция пикает. Так?</li>
-        <li>Про «SKR создателю» — вычищено отовсюду, кроме строки проверки транзакции перед кошельком (это защита, она читает байты).</li>
+        <li><strong>Родился в блоке.</strong> Номер блока Соланы, эпоха и время по UTC штампом на картинке; в цепочку номер уходит с первым Blink. Проверяется любым обозревателем. Моя ставка №1.</li>
+        <li><strong>Картинка из хеша блока.</strong> Оттенок сияния и рисунок радужки выводятся из самой транзакции открытия, так что каждый глаз единственный, и это можно проверить. Ставка №2.</li>
+        <li><strong>После Blink:</strong> печать присутствия (цепочка хешей подписей, приложение пересчитает и скажет «сходится»), лучший стрик и штампы 7/14/30/100 с блоком и датой. Ставка №3, она же история про SEEKIN.</li>
+        <li>Не кладу в цепочку данные устройства, суммы и ранги. Подробности и цена: <span class="mono">docs/drafts/nft-keepsakes-2.0.md</span>.</li>
+      </ol>
+    </div>
+    <div class="q" style="margin-top:14px">
+      <span class="tag">ещё три слова</span>
+      <h2>Мелочи, на которых я ждал тебя</h2>
+      <ol>
+        <li><strong>Порог Радужки.</strong> Сейчас лестница до 30 глаз и Радужка с 31-го. Оставляем так или Радужка всегда?</li>
+        <li><strong>«Да» на новые Privacy и Terms.</strong> Они уже под SKR, лежат готовые, на сайт не выкладывал (это входит в фразу выше).</li>
+        <li><strong>Автостейк собранного SKR (D-035):</strong> в 2.0 или следом? В этой сборке его нет, он меняет проверку транзакции и сервер.</li>
       </ol>
     </div>
   </section>
@@ -137,19 +164,19 @@
   <section>
     <div class="sechead"><span class="num">СТРОЙКА</span><h2>Что готово и что дальше</h2></div>
     <div class="build">
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Восхождение вместо радара (rc3)</h3><p>Лестница из девяти ступеней: каждый глаз — круглый светящийся глазик с .skr-именем, золотая вершина 30+, пустые ступени видны как дорога. Твой — с золотым кольцом и «you». Blink пульсирует глаз живьём. Телефончики убраны, WebView убран — ничего не уплывает. Запасные идеи мирка (небо глаз, гонка 30 дней, маяки, стена славы) записаны в хендовере.</p></div><span class="badge">ночь</span></div>
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Ответ на твой вечерний разбор (rc2)</h3><p>Одна ночь на всех вкладках (звёзды, аврора, стеклянные панели, плавающий док, градиент на главной кнопке). Обращение по kosa.skr после блинка и в напоминаниях. У владельца вместо прайса — карточка его глаза. «See what happens first» вместо бледного how it works. Переходы — звоночек, станции — пики. «SKR создателю» вычищен из витрин.</p></div><span class="badge">ночь</span></div>
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Твой минт и блинк прошли</h3><p>EYE #0001 у kosa.skr, стрик 2, кольцо 7. Напоминание встало ровно на блинк+8ч (05:58:42) — проверено в dumpsys alarm, точный будильник.</p></div><span class="badge">ночь</span></div>
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Мир на Радужке</h3><p>Вкладка открывается в поле, заголовок стоит на горизонте. Фонарики-Seeker'ы, дрейф, туманность, параллакс-пыль, волна Blink, созвездие недавних, серийники на зуме. Свежий минт появляется в мире сразу.</p></div><span class="badge">сегодня</span></div>
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Звук «дыхание портала»</h3><p>Пад из растянутого хора + тёплое стекло; пентатоника по страницам, свелл под веки. Из тех же записей Mixkit, что ты не отверг. Ничего ниже 160 Гц.</p></div><span class="badge">сегодня</span></div>
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Проход руками по живому Seeker</h3><p>Свежий пользователь, существующий, самолёт, back, холодный старт 641 мс, logcat чист. Найдено и починено: пин пальца не на той стороне, «0h» резался, зрачок уезжал на карточки, подписи хранилища дрались, back выкидывал из приложения. 39 скринов + видео онбординга.</p></div><span class="badge">сегодня</span></div>
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Аудит безопасности и правки</h3><p>Проверка транзакции перед подписью, сервер после аудита, сторож коллекции, двойники обезврежены.</p></div><span class="badge">готово</span></div>
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Оплата в SKR в лаборатории</h3><p>Минт 100 SKR, Blink 1 SKR на «SKR Eyes test»; приложение отказывается подписывать SOL создателю.</p></div><span class="badge">готово</span></div>
-      <div class="task done"><span class="pip"></span><div class="t"><h3>Онбординг-ритуал, 7 страниц</h3><p>Настоящий Seeker из пресс-кита, честные имена: StrongBox, Seed Vault, Genesis Token, цепочка Google. Без «цены» и «стоит».</p></div><span class="badge">готово</span></div>
-      <div class="task work"><span class="pip"></span><div class="t"><h3>Твой проход RC</h3><p>Звук, мир, онбординг, минт. Сборка 2.0.0 (10) чистая на телефоне, не запускалась.</p></div><span class="badge">ждёт тебя</span></div>
-      <div class="task work"><span class="pip"></span><div class="t"><h3>Privacy и Terms под 2.0</h3><p>Черновик готов, но говорит «только SOL» — перепишу под SKR после твоего «нравится».</p></div><span class="badge">ждёт тебя</span></div>
-      <div class="task"><span class="pip"></span><div class="t"><h3>Прод на SKR + переводы</h3><p>EYE_PAY=skr и казна SKR на проде; один проход переводов (SKR-строки + сироты уведомлений); версионный URL картинки против кэша Cloudflare.</p></div><span class="badge">перед релизом</span></div>
-      <div class="task"><span class="pip"></span><div class="t"><h3>Публикация в dApp Store</h3><p>Боевая подпись, apksigner, чистая установка, каждый экран глазами. Публикуешь ты сам.</p></div><span class="badge">потом</span></div>
+      <div class="task done"><span class="pip"></span><div class="t"><h3>Мир, который можно исследовать</h3><p>Два пальца: масштаб до 6× и поворот; один палец двигает, когда увеличено; чем ближе, тем больше имён; касание открывает глаз; кнопки и золотая стрелка к твоему глазу. На Seeker идёт плавно: из ста кадров рывком около двух, у первой версии было двадцать. Нашёл и убрал ошибку, из-за которой мир сам перерисовывался каждые полсекунды.</p></div><span class="badge">ночь</span></div>
+      <div class="task done"><span class="pip"></span><div class="t"><h3>Радужка для толпы, выбрана тобой</h3><p>От 31 глаза мир становится одним глазом из глаз: зрачок в центре, стойкие золотые, новички голубые по краю, у каждого .skr-имя. Лаб-превью на 40, 120, 507 и 1000 человек. Тебя видно всегда, «Вокруг тебя» говорит, кто впереди и позади, «Найти глаз» летит к человеку.</p></div><span class="badge">ночь</span></div>
+      <div class="task done"><span class="pip"></span><div class="t"><h3>Переводы на десять языков</h3><p>Один проход, мой и вручную: 541 строка, ни одной пропущенной и ни одной лишней.</p></div><span class="badge">ночь</span></div>
+      <div class="task done"><span class="pip"></span><div class="t"><h3>Подписанная сборка</h3><p><span class="mono">skr-eyes-2.0.0-rc8-release.apk</span>, 43,7 МБ, сторовый пакет 2.0.0 (10). Подпись твоим ключом проверена, отпечаток <span class="mono">d90bb194…</span> тот же, что в магазине. Скрипт сам удаляет сборку с чужим отпечатком.</p></div><span class="badge">ночь</span></div>
+      <div class="task done"><span class="pip"></span><div class="t"><h3>Восхождение (до 30 глаз)</h3><p>Лестница из девяти ступеней остаётся миром для небольшой сети: круглые глазики с .skr-именами, золотая вершина, твой с кольцом и «you», пульс на каждый Blink.</p></div><span class="badge">rc3</span></div>
+      <div class="task done"><span class="pip"></span><div class="t"><h3>Ответ на твой вечерний разбор (rc2)</h3><p>Одна ночь на всех вкладках, обращение по kosa.skr после блинка и в напоминаниях, у владельца карточка глаза вместо прайса, звоночки переходов и пики станций.</p></div><span class="badge">ночь</span></div>
+      <div class="task done"><span class="pip"></span><div class="t"><h3>Твой минт и блинк</h3><p>EYE #0001 у kosa.skr, стрик 2. Напоминание встало ровно на блинк плюс 8 часов (05:58:42), точный будильник пережил все установки.</p></div><span class="badge">ночь</span></div>
+      <div class="task done"><span class="pip"></span><div class="t"><h3>Аудит безопасности и оплата в SKR</h3><p>Проверка транзакции перед подписью, сервер после аудита, сторож коллекции. В лабе минт 100 SKR и Blink 1 SKR; приложение отказывается подписывать SOL создателю.</p></div><span class="badge">готово</span></div>
+      <div class="task done"><span class="pip"></span><div class="t"><h3>Онбординг-ритуал, звук «дыхание портала»</h3><p>Семь страниц с настоящим Seeker, честными именами и без слов про цену; звук из растянутого хора и тёплого стекла.</p></div><span class="badge">готово</span></div>
+      <div class="task work"><span class="pip"></span><div class="t"><h3>Твой проход по rc8</h3><p>Мир пальцами, блинк по напоминанию, ночь на вкладках, звоночки, пики станций.</p></div><span class="badge">ждёт тебя</span></div>
+      <div class="task work"><span class="pip"></span><div class="t"><h3>Сервер на SKR, сайт, установка подписанной</h3><p>Env с SKR, перезапуск, журнал на 30 дней, Privacy и Terms под SKR на сайт, подписанная сборка на телефон. Всё расписано по шагам, нужна твоя фраза выше.</p></div><span class="badge">ждёт фразы</span></div>
+      <div class="task work"><span class="pip"></span><div class="t"><h3>Памятки в NFT</h3><p>Что зашить при открытии и после Blink. До первого боевого минта, после выбора реализация 2–3 часа.</p></div><span class="badge">решить до минта</span></div>
+      <div class="task"><span class="pip"></span><div class="t"><h3>Публикация в dApp Store</h3><p>После выкатки: чистая установка подписанной и каждый экран глазами. Публикуешь ты сам.</p></div><span class="badge">потом</span></div>
       <div class="task"><span class="pip"></span><div class="t"><h3>Свой замок-контракт</h3><p>Для коллекции, 2–4 дня. Закрывает и обход заморозки.</p></div><span class="badge">потом</span></div>
     </div>
   </section>
@@ -170,6 +197,7 @@
   <section>
     <div class="sechead"><span class="num">РЕШЕНО</span><h2>Что уже решено</h2></div>
     <div class="log">
+      <div><p class="d">1 окт</p><p class="x">Мир при толпе — <em>Радужка</em> («мне нравится мирок»), и его можно исследовать пальцами там же, где он стоит. Восхождение остаётся для малой сети; порог в 31 глаз ждёт твоего слова</p></div>
       <div><p class="d">30 сен</p><p class="x">Мир — первым на вкладке, глаза — маленькие Seeker'ы-фонарики, звук — «дыхание» вместо арфы (твои слова за день; финальное «нравится» — за тобой)</p></div>
       <div><p class="d">29 сен</p><p class="x">Оплата <em>только в SKR</em>: минт 100 SKR (после #1000 — 150), Blink 1 SKR; SOL остаётся лишь на залог и сеть</p></div>
       <div><p class="d">29 сен</p><p class="x">Уведомления про стейкинг вырезаны наглухо; остались только напоминания Глаза</p></div>
@@ -192,3 +220,32 @@
   </footer>
 
 </div>
+
+<script>
+(function () {
+  var button = document.getElementById('copy-phrase');
+  var phrase = document.getElementById('phrase');
+  if (!button || !phrase) return;
+  var idle = button.textContent;
+  function say(text) {
+    button.textContent = text;
+    setTimeout(function () { button.textContent = idle; }, 2200);
+  }
+  function select() {
+    var range = document.createRange();
+    range.selectNodeContents(phrase);
+    var selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    say('Выделено, скопируй вручную');
+  }
+  button.addEventListener('click', function () {
+    var text = phrase.textContent.trim();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { say('Скопировано'); }, select);
+    } else {
+      select();
+    }
+  });
+})();
+</script>
