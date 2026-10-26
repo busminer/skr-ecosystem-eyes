@@ -76,11 +76,11 @@ export const BLINK_MAX_LAMPORTS = 2_000_000;
 // refused: a tenth, for a price that moved between the screen and the build.
 export const SHOWN_MARGIN = 0.1;
 // SKR, in its smallest units (6 decimals). A mint is 100 SKR for the first
-// thousand Eyes (the next tier is not set yet), a Blink 1 SKR. The SKR
+// thousand Eyes and 150 after, a Blink 5 SKR (Alex, 26.10.2026). The SKR
 // amount must be exactly what the screen showed, with no margin, and never
 // past these ceilings, twice today's amounts.
 export const OPEN_MAX_SKR_UNITS = 200_000_000;
-export const BLINK_MAX_SKR_UNITS = 2_000_000;
+export const BLINK_MAX_SKR_UNITS = 10_000_000;
 // In SKR mode no SOL goes to the maker; the only SOL the transaction itself
 // can ask for is a ComputeBudget priority fee, and never more than this.
 export const SKR_MODE_MAX_PRIORITY_LAMPORTS = 100_000;
