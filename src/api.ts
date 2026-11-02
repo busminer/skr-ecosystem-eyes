@@ -1,4 +1,5 @@
 import { lang, t } from './i18n';
+import { installId } from './install';
 import type { EcosystemState, TopFind, TopList, TopPage, WalletProfile } from './types';
 
 // Store builds are intentionally pinned to the reviewed HTTPS backend.
@@ -23,9 +24,11 @@ async function getJson<T>(path: string): Promise<T> {
   let response: Response;
   try {
     // The phone's language rides along as one header, so the server's request
-    // counter can say which languages people actually open the app in. Nothing
-    // else about the person travels with it.
-    response = await fetch(`${API_BASE_URL}${path}`, { headers: { accept: 'application/json', 'x-skr-lang': lang() }, signal: controller.signal });
+    // counter can say which languages people actually open the app in, and
+    // the installation's random name as another (src/install.ts), so it can
+    // count installations. Nothing else about the person travels with it.
+    const install = installId();
+    response = await fetch(`${API_BASE_URL}${path}`, { headers: { accept: 'application/json', 'x-skr-lang': lang(), ...(install ? { 'x-skr-install': install } : {}) }, signal: controller.signal });
   } finally {
     clearTimeout(deadline);
   }

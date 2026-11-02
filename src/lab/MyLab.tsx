@@ -11,6 +11,7 @@ import { connectReadOnlyWallet, forgetWalletAuthorization } from '../mwa';
 import { SESSION_KEY } from '../session';
 import { connectedWallet, forgetConnectedWallet, rememberConnectedWallet } from '../wallet';
 import { usePref } from '../prefs';
+import { syncCheckins } from '../checkins';
 import { Switch } from 'react-native';
 import { colors, font, radius, spacing, type } from '../theme';
 import type { TopMe, WalletProfile } from '../types';
@@ -240,7 +241,9 @@ export function MyLab() {
   // shown on the next launch.
   useEffect(() => {
     if (!live || live.days == null) return;
-    void AsyncStorage.setItem(CARD_KEY, JSON.stringify(live)).catch(() => undefined);
+    // The check-ins greet the person by the name on this card, so a card that
+    // changed hands or found its .skr name rewrites them.
+    void AsyncStorage.setItem(CARD_KEY, JSON.stringify(live)).catch(() => undefined).then(() => syncCheckins());
     setRemembered(live);
     // The facts are a fresh object each render; the values inside it are what
     // matter, so the write is keyed on those.
@@ -280,6 +283,8 @@ export function MyLab() {
     await AsyncStorage.removeItem(SESSION_KEY).catch(() => undefined);
     await AsyncStorage.removeItem(CARD_KEY).catch(() => undefined);
     setRemembered(null);
+    // No card, no name to greet by: the check-ins fall back to the vault's own lines.
+    void syncCheckins();
     // The wallet permission goes with the session: the next person to open
     // this phone must be asked, not silently handed the last wallet.
     await forgetWalletAuthorization();
@@ -409,12 +414,19 @@ export function MyLab() {
             </>) : null}
           </Panel>
 
-          <Button
-            label={sharing ? t('Drawing your card…') : t('Share your card')}
-            onPress={() => void shareCard()}
-            disabled={sharing || busy}
-            tone={colors.metal}
-          />
+          {/* Wrapped on purpose (1.5.0, seen on Alex's Seeker): on the new
+              renderer a Button placed straight after the privacy panel above
+              lost its label and drew as a blank gold bar. Anything standing
+              between the two cures it; a non-collapsable wrapper is the one
+              that adds no space. */}
+          <View collapsable={false}>
+            <Button
+              label={sharing ? t('Drawing your card…') : t('Share your card')}
+              onPress={() => void shareCard()}
+              disabled={sharing || busy}
+              tone={colors.metal}
+            />
+          </View>
 
           {/* One is a setting, one ends the session, one is housekeeping.
               They were three identical grey rectangles; now two quiet words
@@ -471,11 +483,10 @@ export function MyLab() {
       {busy ? <ActivityIndicator color={colors.accent} style={styles.spinner} /> : null}
       {error ? <Pressable onPress={() => setError(null)}><Text style={styles.error}>{error}</Text></Pressable> : null}
 
-      {/* Alerts, language, the opening and the tip jar: the settings that
-          were a tab of their own, now the tail of Me. Eyes took the first
-          place in the bar, and five tabs is what a 400-wide phone can name. */}
+      {/* Check-ins, sounds, the opening, language and the tip jar: the
+          settings that were a tab of their own, now the tail of Me. No heading
+          over them: the column is more than alerts, and each panel names itself. */}
       <Hairline />
-      <Eyebrow>{t('Alerts')}</Eyebrow>
       <AlertsLab embedded onTip={() => setTipping(true)} />
     </ScrollView>
     {tipping ? <TipSheet onClose={() => setTipping(false)} /> : null}

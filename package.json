@@ -13,6 +13,7 @@
     "check": "npm run typecheck",
     "i18n:check": "node scripts/i18n-check.mjs",
     "test:eye": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/test-eye-tx.mjs",
+    "test:checkins": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/test-checkins.mjs",
     "test:world": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/test-world.mjs scripts/test-world-explore.mjs"
   },
   "dependencies": {
@@ -56,7 +57,8 @@
   "expo": {
     "autolinking": {
       "exclude": [
-        "@shopify/react-native-skia"
+        "@shopify/react-native-skia",
+        "seeker-witness"
       ]
     }
   }

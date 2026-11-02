@@ -475,7 +475,7 @@ export function PulseLab({ frozen, topInset = 0, onAtTop }: { frozen: boolean; t
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: 'transparent' },
-  content: { paddingHorizontal: spacing.lg, paddingTop: 0, paddingBottom: 120, gap: spacing.lg },
+  content: { paddingHorizontal: spacing.lg, paddingTop: 0, paddingBottom: 130, gap: spacing.lg },
   sceneWrap: { backgroundColor: colors.bg, overflow: 'hidden' },
   top: { gap: spacing.sm },
   heroBlock: { gap: 4, paddingTop: spacing.xs },

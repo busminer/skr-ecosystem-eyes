@@ -65,7 +65,7 @@ function syncQueue(items){ var keys=items.map(function(q){return q.k;}).join(','
   var keep={}; var slots=Math.max(1,items.length); items.forEach(function(q,i){ keep[q.k]=1; var h=S.hang.find(function(x){return x.key===q.k;}); if(!h){ var n=Math.max(1,Math.min(6,Math.round(Math.log10(Math.max(1000,q.amount)/1e4))+2)); var raft=[]; for(var j=0;j<n;j++) raft.push({dx:rnd(-11,11),dy:rnd(-4,4),L:q.amount>=1e5?Math.floor(rnd(1,3)):1,rot:rnd(-0.2,0.2)}); var x=slots===1?W/2:34+(W-68)*(i/(slots-1)); S.hang.push({key:q.k,x:x,y:Y(0.45),vy:-14,hangY:(i%2===0?Y(0.17):Y(0.285)),t:0,hold:1e9,amt:q.amount,who:q.who,unlockAt:q.unlockAt,startAt:q.startAt,raft:raft,big:q.amount>=1e5,state:'rise',life:1,sw:Math.random()*6}); } });
   S.hang.forEach(function(h){ if(h.key&&!keep[h.key]&&h.state!=='fly'&&h.state!=='fall'){ h.state='fly'; h.vy=0; } }); }
 var acc=0;
-function step(dt){ S.t+=dt; S.idle+=dt; var calm=S.motion==='calm'||(S.motion==='live'&&S.idle>180); var density=calm?0.12:1;
+function step(dt){ S.t+=dt; S.idle+=dt; var calm=S.motion==='calm'||(S.motion==='live'&&S.idle>90); var density=calm?0.12:1;
   S.shock=Math.max(0,S.shock-dt); retarget();
   S.zoom.k+=(S.zoom.target-S.zoom.k)*Math.min(1,dt*3);
   if(S.story){ S.story.t+=dt; var sp=Math.min(1,S.story.t/6); S.storyK=0.05+0.95*(1-Math.pow(1-sp,3)); if(S.story.t>7){ S.story=null; S.storyK=1; } }
@@ -132,7 +132,7 @@ function draw(){ var c=ctx; var Z=S.zoom.k, K=S.storyK, LBL=Z<1.3;
   if(S.frozen){ c.fillStyle='rgba(200,225,240,.10)'; c.fillRect(0,0,W,H); c.fillStyle='#FFC46B'; c.font='600 10px sans-serif'; c.textAlign='left'; c.fillText('FROZEN · WAITING FOR A FINALIZED ANSWER',12,Y(0.09)+9); }
 }
 var last=performance.now(), a2=0;
-function loop(now){ var dt=Math.min(0.05,(now-last)/1000); last=now; a2+=dt; var calm=S.motion==='calm'||(S.motion==='live'&&S.idle>180); S.beatAt=S.beatAt||0; if(now-S.beatAt>3000){ S.beatAt=now; try{ if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({type:'beat'})); }catch(e){} } if(S.paused||S.motion==='off'){ if(a2>=1){ a2=0; try{ draw(); }catch(err){} } } else if(!S.paused&&S.motion!=='off'){ if(calm){ if(a2>=1/24){ var st=Math.min(a2,0.1); a2=0; if(now-S.tickAt>1000){ S.now=Math.floor(Date.now()/1000); S.tickAt=now; } try{ if(!S.frozen) step(st); draw(); }catch(err){} } } else { a2=0; if(now-S.tickAt>1000){ S.now=Math.floor(Date.now()/1000); S.tickAt=now; } try{ if(!S.frozen) step(dt); draw(); }catch(err){} } } requestAnimationFrame(loop); }
+function loop(now){ var dt=Math.min(0.05,(now-last)/1000); last=now; a2+=dt; var calm=S.motion==='calm'||(S.motion==='live'&&S.idle>90); S.beatAt=S.beatAt||0; if(now-S.beatAt>3000){ S.beatAt=now; try{ if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({type:'beat'})); }catch(e){} } if(S.paused||S.motion==='off'){ if(a2>=1){ a2=0; try{ draw(); }catch(err){} } } else if(!S.paused&&S.motion!=='off'){ if(calm){ if(a2>=1/24){ var st=Math.min(a2,0.1); a2=0; if(now-S.tickAt>1000){ S.now=Math.floor(Date.now()/1000); S.tickAt=now; } try{ if(!S.frozen) step(st); draw(); }catch(err){} } } else if(a2>=1/60){ var st2=Math.min(a2,0.05); a2=0; if(now-S.tickAt>1000){ S.now=Math.floor(Date.now()/1000); S.tickAt=now; } try{ if(!S.frozen) step(st2); draw(); }catch(err){} } } requestAnimationFrame(loop); }
 size(); draw(); requestAnimationFrame(loop);
 window.addEventListener('resize',size);
 document.addEventListener('touchstart',function(){ S.idle=0; },{passive:true});

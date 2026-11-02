@@ -533,9 +533,9 @@ export function TopLab() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: 'transparent' },
-  // Room for the floating Me chip over the last rows, nothing more. The old
-  // 140 was a guess made for a full-width bar that no longer exists.
-  content: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: 96 },
+  // Room under the floating dock on three-button navigation (about 127) plus
+  // the Me chip; Flow and Me reserve the same.
+  content: { paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: 130 },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.xs, paddingTop: spacing.xs },
   headCopy: { flex: 1, gap: 2 },
   title: { color: colors.text, fontFamily: font.black, fontSize: 24, letterSpacing: -0.8 },

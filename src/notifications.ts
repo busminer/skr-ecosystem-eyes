@@ -1,31 +1,32 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { isCheckin } from './checkins';
 
-// SKR Eyes sends no notification about staking, the vault or unlocks, ever
-// (Alex, 29.09.2026: he saw them arrive sixteen times on his phones). The
-// only notifications left are the Eye's own Blink reminders (src/eye/
-// reminders.ts, channel `eye-blink`, data `{ eye: true }`).
+// The only notifications SKR Eyes sends are the position check-ins
+// (src/checkins.ts, channel `skr-checkins`, data `{ checkin: true }`): up to
+// three invitations a day to look at your own position, set by the person,
+// scheduled on the phone itself.
 //
-// Older builds scheduled seven weekly "daily look" lines about the vault and
-// stakers (channel `skr-nudges`) and two unlock alerts per wallet (channel
-// `skr-unlocks`). Scheduled notifications outlive an app update, so every
-// launch sweeps them away: everything scheduled or shown that is not the
-// Eye's is cancelled, their bookkeeping is removed, and the two channels are
-// deleted so Android forgets them too.
+// Everything else is swept away on every launch. Older builds scheduled seven
+// weekly "daily look" lines about the vault and stakers (channel `skr-nudges`)
+// and two unlock alerts per wallet (channel `skr-unlocks`); Alex saw those
+// arrive sixteen times (29.09.2026). The 2.0 release candidates carried the
+// Eye's Blink reminders (channel `eye-blink`), and this build has no Eye.
+// Scheduled notifications outlive an app update, so each launch cancels
+// whatever is scheduled or shown that is not a check-in, removes their
+// bookkeeping, and deletes the channels so Android forgets them too.
 
-const OLD_CHANNELS = ['skr-unlocks', 'skr-nudges'];
-const OLD_KEYS = ['skr-eyes:nudge:id', 'skr-eyes:nudge:ids'];
+const OLD_CHANNELS = ['skr-unlocks', 'skr-nudges', 'eye-blink'];
+const OLD_KEYS = ['skr-eyes:nudge:id', 'skr-eyes:nudge:ids', 'skr-eyes:eye:reminder-ids'];
 const OLD_PREFIX = 'skr-eyes:unlock-alerts:';
 const ASKED_KEY = 'skr-eyes:notifications:asked';
 
-const isEye = (data: unknown) => Boolean(data && typeof data === 'object' && (data as { eye?: unknown }).eye === true);
-
-export async function purgeStakingNotifications(): Promise<void> {
+export async function purgeForeignNotifications(): Promise<void> {
   try {
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     await Promise.all(scheduled
-      .filter((request) => !isEye(request.content.data))
+      .filter((request) => !isCheckin(request.content.data))
       .map((request) => Notifications.cancelScheduledNotificationAsync(request.identifier).catch(() => undefined)));
   } catch {
     // Nothing to sweep, or the module is not there: nothing to do.
@@ -33,7 +34,7 @@ export async function purgeStakingNotifications(): Promise<void> {
   try {
     const shown = await Notifications.getPresentedNotificationsAsync();
     await Promise.all(shown
-      .filter((notification) => !isEye(notification.request.content.data))
+      .filter((notification) => !isCheckin(notification.request.content.data))
       .map((notification) => Notifications.dismissNotificationAsync(notification.request.identifier).catch(() => undefined)));
   } catch {
     // Same.
@@ -59,12 +60,13 @@ export async function configureNotifications() {
       shouldShowList: true,
     }),
   });
-  await purgeStakingNotifications();
+  await purgeForeignNotifications();
 }
 
-// Asked once, after the opening, so the Eye's Blink reminders can work
-// without a second dialog later. Android remembers the answer; a refusal is
-// respected and never asked about again by us.
+// Asked once, after the opening, so the check-ins can work without a second
+// dialog later. Android remembers the answer; a refusal is respected and
+// never asked about again by us (the setting on Me offers the system
+// settings instead).
 export async function askNotificationPermissionOnce(): Promise<boolean> {
   try {
     const asked = await AsyncStorage.getItem(ASKED_KEY);

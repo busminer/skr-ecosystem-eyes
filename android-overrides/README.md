@@ -24,3 +24,8 @@ over a fresh copy of `C:\skrx\android` (same relative paths):
   as well (done in this worktree). Debug builds keep plain HTTP for Metro through
   `src/debug/AndroidManifest.xml`, as before. The config plugin that wrote both,
   `plugins/withLoopbackCleartext.js`, is removed from `app.json` and the repo.
+
+## 02.11.2026: 1.5.0
+
+- `app/build.gradle`: versionName 1.5.0, versionCode 12 (the store has 1.3.0/8; rc9 of 2.0 was 11).
+  The Eye's 2.0 continues from here with a higher code.

@@ -220,6 +220,7 @@ export function RangeSwitch({ value, options, onChange, label }: { value: string
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
             key={option}
+            hitSlop={{ top: 8, bottom: 8 }}
             onPress={() => onChange(option)}
             style={({ pressed }) => [styles.switchItem, active && styles.switchItemActive, pressed && styles.switchPressed]}
           >
@@ -343,7 +344,8 @@ const styles = StyleSheet.create({
   tileNote: { color: colors.muted, fontFamily: font.regular, ...type.small, marginTop: spacing.xs },
   meter: { backgroundColor: colors.line, overflow: 'hidden', width: '100%' },
   switchRow: { flexDirection: 'row', gap: spacing.xs, backgroundColor: colors.bg, borderRadius: radius.pill, padding: 3, borderWidth: 1, borderColor: colors.line },
-  switchItem: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: radius.pill },
+  // A floor under one-character cells (1, 2, 3): a finger needs more than a digit's width.
+  switchItem: { minWidth: 36, alignItems: 'center', paddingHorizontal: 9, paddingVertical: 4, borderRadius: radius.pill },
   switchItemActive: { backgroundColor: colors.panelHi },
   switchPressed: { opacity: 0.7 },
   switchLabel: { color: colors.faint, fontFamily: font.monoBold, fontSize: 10, letterSpacing: 0.8 },

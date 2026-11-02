@@ -13,7 +13,8 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { fetchEcosystemState } from './src/api';
 import { langReady, t, useLang } from './src/i18n';
 import { askNotificationPermissionOnce, configureNotifications } from './src/notifications';
-import { useEyeReminderTaps } from './src/eye/reminders';
+import { checkinsReady, syncCheckins, useCheckinTaps } from './src/checkins';
+import { installReady } from './src/install';
 import { hydratePrefs, prefValue, prefsReady } from './src/prefs';
 import { prepareSound } from './src/sound';
 import { walletReady } from './src/wallet';
@@ -29,19 +30,22 @@ import { MyLab } from './src/lab/MyLab';
 import { TopLab } from './src/lab/TopLab';
 import { useTabRequests } from './src/nav';
 import { PulseLab } from './src/lab/PulseLab';
-import { EyesLab } from './src/eye/EyesLab';
 
 type Tab = 'pulse' | 'flow' | 'top' | 'me' | 'eyes';
 
 // The vault first, as it always was: the app opens on the number it is
-// named for. Eyes closes the bar, at the end, where a person goes on
-// purpose. Alerts gave up its place in the bar and lives at the tail of Me.
+// named for. Alerts gave up its place in the bar and lives at the tail of Me.
+//
+// The Eye (src/eye: the mint, the Blink, the Iris) is not in this build
+// (Alex, 02.11.2026: the update goes out without the NFT). It is not
+// imported from here, so none of it reaches the bundle; the tab, its
+// reminders and its tap handler come back with 2.0 by importing EyesLab and
+// src/eye/reminders again and adding `{ key: 'eyes', label: 'Eyes' }` below.
 const tabs: Array<{ key: Tab; label: string }> = [
   { key: 'pulse', label: 'Vault' },
   { key: 'flow', label: 'Flow' },
   { key: 'top', label: 'Top' },
   { key: 'me', label: 'Me' },
-  { key: 'eyes', label: 'Eyes' },
 ];
 
 const freshnessTone = { fresh: colors.positive, aging: colors.pending, stale: colors.pending, unavailable: colors.negative } as const;
@@ -150,17 +154,18 @@ export default function App() {
   const [walletLoaded, setWalletLoaded] = useState(false);
   // Nothing on screen may be drawn in the wrong language and then swapped, so
   // the saved choice is read before the first frame, beside the fonts.
-  useLang();
+  const language = useLang();
   // Sounds and buzzes for the vault's moves belong to the app, not to a tab.
   useEventCues();
   const appState = useRef(AppState.currentState);
   const reading = useRef(false);
   // The opening ends, the person sees the vault, and only then the phone asks
-  // about notifications, once: they are the Eye's Blink reminders and nothing
+  // about notifications, once: they are the position check-ins and nothing
   // else (src/notifications.ts; no staking notification exists any more).
+  // Whatever the answer, the check-ins are then brought in line with it.
   const finishOpening = useCallback(() => {
     setOpening(false);
-    void prefsReady.then(() => askNotificationPermissionOnce());
+    void prefsReady.then(() => askNotificationPermissionOnce()).then(() => syncCheckins());
   }, []);
   const [fontsLoaded] = useFonts({
     Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold, Geist_900Black,
@@ -168,10 +173,19 @@ export default function App() {
     Sora_400Regular, Sora_600SemiBold, Sora_700Bold,
   });
 
-  useEffect(() => { void hydratePrefs(); void configureNotifications(); void prepareSound(); }, []);
+  useEffect(() => { void hydratePrefs(); void configureNotifications(); void prepareSound(); void installReady; }, []);
   useEffect(() => { void langReady.then(() => setLangLoaded(true)); }, []);
   useEffect(() => { void prefsReady.then(() => setPrefsLoaded(true)); }, []);
   useEffect(() => { void walletReady.then(() => setWalletLoaded(true)); }, []);
+  // The check-ins are written in the app's language, so a change of language
+  // rewrites them. The first plan is made by finishOpening, after the one
+  // permission question; this answers only a language that actually changed.
+  const lastLanguage = useRef(language);
+  useEffect(() => {
+    if (lastLanguage.current === language) return;
+    lastLanguage.current = language;
+    void checkinsReady.then(() => syncCheckins());
+  }, [language]);
   // Nothing else hides the native splash, so the first painted frame does it.
   useEffect(() => { if (fontsLoaded) void SplashScreen.hideAsync().catch(() => undefined); }, [fontsLoaded]);
   useEffect(() => {
@@ -222,8 +236,8 @@ export default function App() {
   // One screen asking for another: Me for the Top tab on its own row, Top for
   // Me with the card.
   useTabRequests(useCallback((request) => setTab(request.tab), []));
-  // A tap on an Eye reminder lands on the Eyes tab.
-  useEyeReminderTaps();
+  // A tap on a check-in lands on Me, where the position is.
+  useCheckinTaps();
 
   if (!fontsLoaded || !langLoaded || !prefsLoaded || !walletLoaded) return <View style={styles.boot} />;
 
@@ -260,7 +274,6 @@ export default function App() {
           {tab === 'flow' ? <FlowLab active={tab === 'flow'} /> : null}
           {tab === 'top' ? <TopLab /> : null}
           {tab === 'me' ? <MyLab /> : null}
-          {tab === 'eyes' ? <EyesLab /> : null}
         </Animated.View>
 
         {/* Two openings. The turn is the one from 1.0, back because people
@@ -285,14 +298,15 @@ const styles = StyleSheet.create({
   statusAge: { color: colors.faint, fontFamily: font.mono, fontSize: 10.5, letterSpacing: 0.2 },
   body: { flex: 1 },
   // The floating dock and the strip of night it stands in.
-  navWrap: { paddingHorizontal: spacing.md, paddingTop: spacing.xs },
+  navWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs },
   nav: { flexDirection: 'row', borderRadius: 26, borderWidth: 1, borderColor: 'rgba(28, 44, 58, 0.9)', backgroundColor: 'rgba(7, 12, 18, 0.94)', paddingVertical: spacing.sm, paddingHorizontal: spacing.xs, shadowColor: '#000', shadowOpacity: 0.55, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 14 },
   navItem: { flex: 1, alignItems: 'center', gap: 5, paddingVertical: spacing.xs },
   navPressed: { opacity: 0.7 },
-  // The pool of light under the live tab. It is 46 wide against a tab that is
-  // about 72, so it never touches its neighbours, and it is the only place in
-  // the app where the accent appears without being asked for.
-  navGlow: { width: 46, height: 30, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  // The pool of light under the live tab. It is 56 wide against a tab that is
+  // about 92 (four tabs on a 411-wide Seeker), so it never touches its
+  // neighbours, and it is the only place in the app where the accent appears
+  // without being asked for.
+  navGlow: { width: 56, height: 30, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   navGlowActive: { backgroundColor: colors.accentWash },
   // Down from 13 to 11.5: the shape above it is now doing the naming, so the
   // word is a caption and stops fighting the icon for the eye.

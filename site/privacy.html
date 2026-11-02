@@ -24,8 +24,8 @@
 <main class="doc">
   <p class="eyebrow">Legal</p>
   <h1>Privacy Policy</h1>
-  <p class="lede">SKR Eyes has no accounts, no sign-up, no advertising and no analytics. This page explains exactly what the app keeps on your phone, what our server keeps, what is written to the Solana blockchain for good, and how to erase what can be erased.</p>
-  <p class="stamp">Last updated 1 October 2026</p>
+  <p class="lede">SKR Eyes has no accounts, no sign-up, no advertising and no third-party analytics. This page explains exactly what the app keeps on your phone, what our server keeps (including how installations are counted), what is written to the Solana blockchain for good, and how to erase what can be erased.</p>
+  <p class="stamp">Last updated 2 November 2026</p>
 
   <h2>Who is responsible</h2>
   <p>SKR Eyes is an independent product built and operated by Alex Kosa. Questions about this policy or about your data go to <a href="mailto:skr-eyes@alexkosa.dev">skr-eyes@alexkosa.dev</a>.</p>
@@ -36,7 +36,7 @@
     <li>No account: there is nothing to register and nothing to log in to.</li>
     <li>No seed phrase and no private key. The app cannot read them; they stay inside Seed Vault on your phone.</li>
     <li>No fingerprint. The fingerprint sensor only tells Android that your finger was there; the app and our server never receive a fingerprint or any image of it.</li>
-    <li>No analytics, no advertising identifiers, no tracking pixels, no third-party SDKs that profile you.</li>
+    <li>No advertising identifiers, no tracking pixels, no third-party SDKs that profile you. The only counter is our own, described under “How installations are counted” below.</li>
     <li>No contacts, photos, location or files.</li>
   </ul>
 
@@ -45,7 +45,8 @@
   <ul>
     <li>The public address of the wallet you connected, the name the wallet reported for it, and the authorization token your wallet issued, so the app can reconnect quietly instead of asking for approval on every launch. <strong>Disconnect erases the token.</strong></li>
     <li>Your <code>.skr</code> name, if your wallet has one, so the app can greet you by it and your reminders can say it.</li>
-    <li>Your alert settings and the Blink reminders scheduled with the Android notification system. The reminders are scheduled on the phone itself; nothing about them leaves it.</li>
+    <li>Your settings and the position check-ins (and, with an Eye, the Blink reminders) scheduled with the Android notification system. They are scheduled on the phone itself; nothing about them leaves it.</li>
+    <li>A random installation identifier the app makes once, on first launch (see “How installations are counted”).</li>
     <li>If you verify your Seeker for an Eye: a signing key created inside the phone's StrongBox secure element. It cannot leave the chip and only signs after your fingerprint.</li>
   </ul>
 
@@ -58,6 +59,10 @@
     <li>Operational logs, which include wallet addresses, for at most 30 days.</li>
   </ul>
   <p>To open an Eye the server checks, from public Solana data, that the wallet holds a Seeker Genesis Token and an active SKR stake. To show your staking position the app sends the public wallet address you chose; the server reads public Solana data for it and answers.</p>
+
+  <h2>How installations are counted</h2>
+  <p>On its first launch the app creates a random identifier (a UUID) and keeps it on the phone. It is dice, not a fingerprint: it is not derived from the device, the person or the wallet, and it is never stored next to a wallet address. The app sends it with each request to our server, together with the app's language, so the server can count how many installations opened the app on a given day and how many of them were new. The server keeps only a one-way hash of the identifier (salted with a secret that lives only in that database), per day, with the country Cloudflare reports for the request; the identifier itself is not stored. These daily counts are kept for as long as the app exists. Nothing is shared with any third party, and no advertising or analytics SDK is involved.</p>
+  <p>Uninstalling the app deletes the identifier, and a reinstall is counted as a new installation. If you want the hashes of your identifier removed from our server, write to <a href="mailto:skr-eyes@alexkosa.dev">skr-eyes@alexkosa.dev</a> with the identifier (the app does not show it; it is in the app's private storage, so in practice uninstalling is the way to end the count).</p>
 
   <h2>The world of Eyes</h2>
   <p>Every Eye that has been opened appears in the world of Eyes inside the app, drawn as a small eye with its number, its streak, whether it blinked today and, if its wallet has a <code>.skr</code> name, that name. These are facts that are already public on Solana; the app adds nothing to them. Other people can look at your Eye, and you can look at theirs, up to five looks a day. A look tells the owner that somebody looked, and the server keeps who looked at whom for the counter and for the list of people who looked at you. Nobody can look at anything else about you.</p>

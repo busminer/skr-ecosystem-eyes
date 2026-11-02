@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { AppState, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
 import { resolveAlertThresholds } from '../alertThresholds';
+import { sampleCheckin, syncCheckins, useCheckinsPerDay } from '../checkins';
+import { PER_DAY_OPTIONS, slotTimesLabel, type PerDay } from '../checkinPlan';
 import { fetchEcosystemState } from '../api';
-import { LANGS, LANG_LABEL, lang, setLang, t, useLang, type Lang } from '../i18n';
+import { LANGS, LANG_LABEL, setLang, t, useLang } from '../i18n';
 import { compact } from '../format';
 import { usePref } from '../prefs';
 import { colors, font, numeric, radius, spacing, type } from '../theme';
@@ -23,18 +25,26 @@ import { TipSheet } from './TipSheet';
 //
 // `open` is forced on when the control is dead: a switch you cannot move has
 // to say why without being asked.
-function Setting({ label, note, open, onPeek, control }: { label: string; note?: ReactNode; open?: boolean; onPeek?: () => void; control: ReactNode }) {
+//
+// `detail` is the instrument's own reading under the name ("09:00 · 19:30"),
+// not an explanation. `stack` puts the control under the name instead of
+// beside it: a four-way pill does not fit next to a label on a 360-wide
+// phone, and wraps in Russian or Turkish at a large system font on any phone.
+function Setting({ label, detail, note, open, onPeek, control, stack = false }: { label: string; detail?: string; note?: ReactNode; open?: boolean; onPeek?: () => void; control: ReactNode; stack?: boolean }) {
   return (
     <View>
-      <View style={styles.settingRow}>
+      <View style={[styles.settingRow, stack && styles.settingStack]}>
         <Pressable
           accessibilityRole={note ? 'button' : undefined}
           accessibilityState={note ? { expanded: open === true } : undefined}
           disabled={!note || !onPeek}
           onPress={onPeek}
-          style={({ pressed }) => [styles.settingName, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.settingName, stack && styles.settingNameStack, pressed && styles.pressed]}
         >
-          <Text style={styles.settingLabel}>{label}</Text>
+          <View style={styles.settingCopy}>
+            <Text style={styles.settingLabel}>{label}</Text>
+            {detail ? <Text style={styles.settingDetail}>{detail}</Text> : null}
+          </View>
           {note ? <Chevron open={open} /> : null}
         </Pressable>
         {control}
@@ -58,6 +68,9 @@ export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onT
   const [state, setState] = useState<EcosystemState | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [largeAlerts, setLargeAlerts] = usePref('alert:large', true);
+  // How many times a day the phone invites a look at the position.
+  const [perDay, setPerDay] = useCheckinsPerDay();
+  const [sample, setSample] = useState<string | null>(null);
   // The opening: the turn from 1.0, back by request, or the first stone from 1.1.
   const [splashTurn, setSplashTurn] = usePref('splash:turn', true);
   const [tipping, setTipping] = useState(false);
@@ -72,11 +85,19 @@ export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onT
   }, []);
 
   useEffect(() => {
-    Notifications.getPermissionsAsync().then((result) => {
-      setGranted(result.granted);
-      setCanAsk(result.canAskAgain !== false);
-    }).catch(() => setGranted(null));
+    const read = () => {
+      Notifications.getPermissionsAsync().then((result) => {
+        setGranted(result.granted);
+        setCanAsk(result.canAskAgain !== false);
+        // Allowed in the system settings while we were away: plan the week
+        // now, not on the next launch. The stamp makes a repeat call a no-op.
+        if (result.granted) void syncCheckins();
+      }).catch(() => setGranted(null));
+    };
+    read();
     fetchEcosystemState().then(setState).catch(() => undefined);
+    const subscription = AppState.addEventListener('change', (next) => { if (next === 'active') read(); });
+    return () => subscription.remove();
   }, []);
 
   // Android stops showing the dialog once it has been refused for good. Asking
@@ -87,6 +108,7 @@ export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onT
       const result = await Notifications.requestPermissionsAsync();
       setGranted(result.granted);
       setCanAsk(result.canAskAgain !== false);
+      if (result.granted) void syncCheckins();
       setStatus(result.granted
         ? t('This phone can now wake you.')
         : result.canAskAgain === false
@@ -97,6 +119,13 @@ export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onT
     }
   }, []);
 
+  const showSample = useCallback(async () => {
+    void Haptics.selectionAsync();
+    const sent = await sampleCheckin();
+    setSample(sent ? t('Coming in a few seconds.') : t('Android is holding notifications back for this app.'));
+    setTimeout(() => setSample(null), 8_000);
+  }, []);
+
   const openSettings = useCallback(() => {
     void Linking.openSettings().catch(() => setStatus(t('This phone would not open its settings screen.')));
   }, []);
@@ -105,25 +134,54 @@ export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onT
 
   const body = (
     <>
-      {/* The one panel on this screen allowed to raise its hand, and only
-          while the phone is refusing to wake anybody. Once it is allowed that
-          is a settled fact, and a settled fact goes quiet. */}
-      <Panel style={styles.panel} tone={granted === false ? colors.pending : undefined}>
-        <View style={styles.permissionHead}>
-          <View style={styles.permissionCopy}>
-            <Eyebrow tone={granted ? colors.positive : colors.pending}>{granted ? t('Notifications allowed') : t('Notifications off')}</Eyebrow>
-            <Text style={styles.permissionText}>
-              {granted ? t('Blink reminders are scheduled on the phone itself. Nothing about you leaves the device.') : t('Allow notifications and your Eye can tell you when its next Blink is ready.')}
-            </Text>
-          </View>
-        </View>
-        {!granted ? (
-          <View style={styles.permissionAction}>
-            {canAsk
-              ? <Button label={t('Allow notifications')} onPress={() => void ask()} />
-              : <Button label={t('Open settings')} onPress={openSettings} />}
-          </View>
+      {/* One panel for the whole topic: how often the phone invites a look at
+          the position, the hours it will do it, and, only while the phone is
+          refusing, the permission standing in the way. Once allowed, that is a
+          settled fact and lives folded in the note. The panel raises its hand
+          only when the person wants check-ins and the phone will not deliver
+          them. "Show me one" is a link, not a button beside a sentence: the two
+          were the same grey and nothing said which one to touch. */}
+      <Panel style={styles.panel} tone={granted === false && perDay > 0 ? colors.pending : undefined}>
+        <Setting
+          label={t('Position check-ins')}
+          detail={perDay > 0 ? slotTimesLabel(perDay) : undefined}
+          stack
+          open={peek === 'checkins'}
+          onPeek={() => toggle('checkins')}
+          note={perDay > 0
+            ? `${t('A short invitation to look at your position, at {times} in your own time zone. The words change through the week; none of them asks for a stake.', { times: slotTimesLabel(perDay) })} ${t('Check-ins are scheduled on the phone itself. Nothing about you leaves the device.')}`
+            : t('No invitations. The app stays quiet unless you open it.')}
+          control={(
+            <RangeSwitch
+              value={String(perDay)}
+              options={PER_DAY_OPTIONS.map(String)}
+              label={(option) => option === '0' ? t('Off') : option}
+              onChange={(next) => { void Haptics.selectionAsync(); setPerDay(Number(next) as PerDay); }}
+            />
+          )}
+        />
+        {granted === false ? (
+          <>
+            <Hairline />
+            <View style={styles.permission}>
+              <Eyebrow tone={colors.pending}>{t('Notifications off')}</Eyebrow>
+              <Text style={styles.noteText}>{t('Allow notifications and SKR Eyes can invite you to look at your position.')}</Text>
+              {canAsk
+                ? <Button label={t('Allow notifications')} onPress={() => void ask()} />
+                : <Button label={t('Open settings')} onPress={openSettings} />}
+            </View>
+          </>
         ) : null}
+        {granted && perDay > 0 ? (
+          <>
+            <Hairline />
+            <Pressable accessibilityRole="button" disabled={sample != null} onPress={() => void showSample()} style={({ pressed }) => [styles.sampleRow, pressed && styles.pressed]}>
+              <Text style={[styles.sampleLink, sample != null && styles.sampleSent]}>{sample ?? t('Show me one')}</Text>
+            </Pressable>
+          </>
+        ) : null}
+        {/* The answer to the permission button, under the button it answers. */}
+        {status ? <Text style={styles.status}>{status}</Text> : null}
       </Panel>
 
       {/* One switch, the sound of large moves while the app is open; nothing
@@ -225,12 +283,6 @@ export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onT
         ) : null}
       </Panel>
 
-      {/* The status line used to appear out of nowhere and shove everything
-          under it down the screen. The room for it is now always there. */}
-      <View style={styles.proof}>
-        <View style={styles.statusSlot}>{status ? <Text style={styles.status}>{status}</Text> : null}</View>
-      </View>
-
       {/* Quiet, at the bottom, after everything that matters: a way to say
           thank you in SKR. Not a fee, not a nag, and it says where the tip
           goes and what happens to it. */}
@@ -244,11 +296,24 @@ export function AlertsLab({ embedded = false, onTip }: { embedded?: boolean; onT
         </View>
       </Panel>
 
+      {/* The policy and the terms, reachable from inside the app (the store's
+          developer agreement asks for it), as two quiet links at the very
+          end: read once, if at all. */}
+      <View style={styles.legal}>
+        <Pressable accessibilityRole="link" onPress={() => void Linking.openURL('https://skr-eyes.alexkosa.dev/privacy').catch(() => undefined)} style={({ pressed }) => [styles.legalItem, pressed && styles.pressed]}>
+          <Text style={styles.legalText}>{t('Privacy policy')}</Text>
+        </Pressable>
+        <Text style={styles.legalDot}>·</Text>
+        <Pressable accessibilityRole="link" onPress={() => void Linking.openURL('https://skr-eyes.alexkosa.dev/terms').catch(() => undefined)} style={({ pressed }) => [styles.legalItem, pressed && styles.pressed]}>
+          <Text style={styles.legalText}>{t('Terms of use')}</Text>
+        </Pressable>
+      </View>
+
       <Evidence
         lines={[
           `threshold source  ${config.source}`,
-          'delivery          the phone wakes itself at the exact unlock time',
-          'privacy           no address sent for alerts, no push server',
+          `delivery          ${perDay > 0 ? `${perDay} a day · ${slotTimesLabel(perDay)} · set on the phone` : 'no check-ins'}`,
+          'privacy           no push server · no address sent for check-ins',
         ]}
       />
     </>
@@ -271,16 +336,23 @@ const styles = StyleSheet.create({
   panel: { padding: spacing.md },
   pressed: { opacity: 0.6 },
   tipRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  legal: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.sm },
+  legalItem: { minHeight: 40, justifyContent: 'center' },
+  legalText: { color: colors.muted, fontFamily: font.medium, ...type.small },
+  legalDot: { color: colors.dim, fontFamily: font.medium, ...type.small },
   tipCopy: { flex: 1, gap: 4 },
-  permissionHead: { flexDirection: 'row', gap: spacing.md },
-  permissionCopy: { flex: 1, gap: spacing.sm },
-  permissionText: { color: colors.muted, fontFamily: font.regular, ...type.body },
-  permissionAction: { marginTop: spacing.md },
+  permission: { gap: spacing.md, paddingTop: spacing.md },
+  sampleRow: { minHeight: 44, justifyContent: 'center', paddingTop: spacing.sm },
+  sampleLink: { color: colors.accent, fontFamily: font.semibold, fontSize: 13 },
+  sampleSent: { color: colors.positive, fontFamily: font.medium },
+  settingStack: { flexDirection: 'column', alignItems: 'flex-end', gap: spacing.sm },
+  settingNameStack: { alignSelf: 'stretch' },
+  settingCopy: { flexShrink: 1, gap: 2 },
+  settingDetail: { color: colors.faint, fontFamily: font.mono, ...type.micro, letterSpacing: 0.3, ...numeric },
   settingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, minHeight: 56 },
   settingName: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   settingLabel: { flexShrink: 1, color: colors.text, fontFamily: font.semibold, fontSize: 14 },
   note: { marginBottom: spacing.md },
-  noteStack: { gap: spacing.sm },
   noteText: { color: colors.muted, fontFamily: font.regular, ...type.small },
   thresholds: { marginTop: spacing.md, gap: 5 },
   thresholdRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 9 },
@@ -289,9 +361,7 @@ const styles = StyleSheet.create({
   thresholdValue: { minWidth: 54, textAlign: 'right', color: colors.text, fontFamily: font.monoSemibold, ...type.small, ...numeric },
   thresholdCritical: { minWidth: 54, textAlign: 'right', color: colors.pending, fontFamily: font.monoSemibold, ...type.small, ...numeric },
   thresholdNote: { color: colors.faint, fontFamily: font.regular, ...type.small, marginTop: spacing.md },
-  proof: { alignItems: 'flex-start', gap: spacing.xs },
-  statusSlot: { minHeight: 36, justifyContent: 'center', paddingHorizontal: spacing.sm },
-  status: { color: colors.positive, fontFamily: font.medium, ...type.small },
+  status: { color: colors.positive, fontFamily: font.medium, ...type.small, paddingTop: spacing.sm },
   langNow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   langNowText: { color: colors.accent, fontFamily: font.semibold, fontSize: 13 },
   langBlock: { gap: spacing.md, paddingBottom: spacing.sm },
