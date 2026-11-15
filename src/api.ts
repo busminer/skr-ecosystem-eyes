@@ -1,6 +1,7 @@
 import { lang, t } from './i18n';
 import { installId } from './install';
 import type { EcosystemState, TopFind, TopList, TopPage, WalletProfile } from './types';
+import type { ReleaseReceipt, StoreGuardians } from './guardians';
 
 // Store builds are intentionally pinned to the reviewed HTTPS backend.
 // This prevents build-time environment overrides from redirecting wallet lookups.
@@ -46,6 +47,11 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 export const fetchEcosystemState = () => getJson<EcosystemState>('/api/state');
+// The store's guardians (1.6.0): every release request and vote of the last
+// day, and this build's own receipt. A 404 on the receipt means the votes are
+// not on chain yet, not that something broke.
+export const fetchStoreGuardians = () => getJson<StoreGuardians>('/api/store-guardians');
+export const fetchReleaseReceipt = (versionCode: number) => getJson<ReleaseReceipt>(`/api/store-guardians/receipt/${versionCode}`);
 export const fetchWalletProfile = (wallet: string) => getJson<WalletProfile>(`/api/wallet/${encodeURIComponent(wallet)}`);
 
 // The leaderboard, one page at a time. The wallet rides along so the answer

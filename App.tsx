@@ -26,12 +26,13 @@ import { FlowLab } from './src/lab/FlowLab';
 import { LiveMark, Mark, TabIcon } from './src/lab/kit';
 import { Splash } from './src/lab/Splash';
 import { SplashTurn } from './src/lab/SplashTurn';
+import { GuardiansLab } from './src/lab/GuardiansLab';
 import { MyLab } from './src/lab/MyLab';
 import { TopLab } from './src/lab/TopLab';
 import { useTabRequests } from './src/nav';
 import { PulseLab } from './src/lab/PulseLab';
 
-type Tab = 'pulse' | 'flow' | 'top' | 'me' | 'eyes';
+type Tab = 'pulse' | 'flow' | 'top' | 'guardians' | 'me' | 'eyes';
 
 // The vault first, as it always was: the app opens on the number it is
 // named for. Alerts gave up its place in the bar and lives at the tail of Me.
@@ -45,6 +46,8 @@ const tabs: Array<{ key: Tab; label: string }> = [
   { key: 'pulse', label: 'Vault' },
   { key: 'flow', label: 'Flow' },
   { key: 'top', label: 'Top' },
+  // 1.6.0: the dApp Store's guardians and their votes (src/lab/GuardiansLab.tsx).
+  { key: 'guardians', label: 'Guardians' },
   { key: 'me', label: 'Me' },
 ];
 
@@ -67,6 +70,8 @@ const TAB_SOURCE: Record<Tab, keyof Pick<FreshnessDetail, 'metrics' | 'events' |
   // The board is rebuilt from the position scan, so its age is the scan's.
   top: 'queue',
   me: 'metrics',
+  // The guardians keep their own clock, on the screen itself.
+  guardians: 'overall',
   // The Iris has its own clock, in the pupil; the bar says nothing over it.
   eyes: 'overall',
 };
@@ -124,7 +129,9 @@ function TabBar({ tab, onSelect }: { tab: Tab; onSelect: (next: Tab) => void }) 
               onPress={() => onSelect(item.key)}
               style={({ pressed }) => [styles.navItem, pressed && styles.navPressed]}
             >
-              <View style={[styles.navGlow, active && styles.navGlowActive]}>
+              {/* Keyed by state: the new renderer kept the old shape when only
+                  the fill changed, and the moved highlight came out square. */}
+              <View key={active ? 'lit' : 'dark'} style={[styles.navGlow, active && styles.navGlowActive]}>
                 <TabIcon name={item.key} tone={active ? colors.accent : colors.faint} />
               </View>
               <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.navLabel, active && styles.navLabelActive]}>{t(item.label)}</Text>
@@ -273,6 +280,7 @@ export default function App() {
           {tab === 'pulse' ? <PulseLab frozen={freshness === 'stale' || freshness === 'unavailable'} topInset={TOP_BAR} onAtTop={setVaultAtTop} /> : null}
           {tab === 'flow' ? <FlowLab active={tab === 'flow'} /> : null}
           {tab === 'top' ? <TopLab /> : null}
+          {tab === 'guardians' ? <GuardiansLab active={tab === 'guardians'} /> : null}
           {tab === 'me' ? <MyLab /> : null}
         </Animated.View>
 
@@ -302,11 +310,11 @@ const styles = StyleSheet.create({
   nav: { flexDirection: 'row', borderRadius: 26, borderWidth: 1, borderColor: 'rgba(28, 44, 58, 0.9)', backgroundColor: 'rgba(7, 12, 18, 0.94)', paddingVertical: spacing.sm, paddingHorizontal: spacing.xs, shadowColor: '#000', shadowOpacity: 0.55, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 14 },
   navItem: { flex: 1, alignItems: 'center', gap: 5, paddingVertical: spacing.xs },
   navPressed: { opacity: 0.7 },
-  // The pool of light under the live tab. It is 56 wide against a tab that is
-  // about 92 (four tabs on a 411-wide Seeker), so it never touches its
-  // neighbours, and it is the only place in the app where the accent appears
+  // The pool of light under the live tab. It is 52 wide against a tab that is
+  // about 74 (five tabs on a 411-wide Seeker since 1.6.0), so it never touches
+  // its neighbours, and it is the only place in the app where the accent appears
   // without being asked for.
-  navGlow: { width: 56, height: 30, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  navGlow: { width: 52, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   navGlowActive: { backgroundColor: colors.accentWash },
   // Down from 13 to 11.5: the shape above it is now doing the naming, so the
   // word is a caption and stops fighting the icon for the eye.

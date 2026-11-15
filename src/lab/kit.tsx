@@ -77,7 +77,7 @@ export function LiveMark({ size = 22, tone = colors.accent, open = 1, every = 6_
 // Iris — and the
 // live one sits in a pool of accent light, which is the one place on any
 // screen where the accent is spent by default.
-export function TabIcon({ name, tone, size = 22 }: { name: 'eyes' | 'pulse' | 'flow' | 'top' | 'me'; tone: string; size?: number }) {
+export function TabIcon({ name, tone, size = 22 }: { name: 'eyes' | 'pulse' | 'flow' | 'top' | 'guardians' | 'me'; tone: string; size?: number }) {
   const stroke = { stroke: tone, strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -98,6 +98,13 @@ export function TabIcon({ name, tone, size = 22 }: { name: 'eyes' | 'pulse' | 'f
       {name === 'top' ? (
         <G>
           <Path d="M4 20.5V13M12 20.5V4.5M20 20.5V9.5" {...stroke} />
+        </G>
+      ) : null}
+      {/* A shield with the eye's pupil in it: the ones who watch the store. */}
+      {name === 'guardians' ? (
+        <G>
+          <Path d="M12 2.8 19.2 5.6v5.6c0 4.6-3 8.3-7.2 9.9-4.2-1.6-7.2-5.3-7.2-9.9V5.6L12 2.8Z" {...stroke} />
+          <Circle cx={12} cy={11.4} r={2.6} {...stroke} />
         </G>
       ) : null}
       {name === 'me' ? (

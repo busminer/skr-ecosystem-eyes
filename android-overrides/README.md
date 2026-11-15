@@ -29,3 +29,13 @@ over a fresh copy of `C:\skrx\android` (same relative paths):
 
 - `app/build.gradle`: versionName 1.5.0, versionCode 12 (the store has 1.3.0/8; rc9 of 2.0 was 11).
   The Eye's 2.0 continues from here with a higher code.
+
+## 15.11.2026: 1.6.0
+
+- `app/build.gradle`: versionName 1.6.0, versionCode 13.
+- `app/src/main/java/dev/alexkosa/skreyes/StaleNotificationSweep.kt` (new) and its `<receiver>` in
+  `app/src/main/AndroidManifest.xml`: on `MY_PACKAGE_REPLACED` and `BOOT_COMPLETED` it deletes every notification the
+  expo-notifications store still keeps that is not a position check-in (`data.checkin === true`), plus the old channels
+  `skr-unlocks`, `skr-nudges`, `eye-blink`. The library re-arms stored notifications on those same broadcasts, and the
+  app's own sweep (src/notifications.ts) only runs on a launch, so phones that updated without opening kept the 1.x
+  lines (D-042). Logs one line under the tag `SkrEyesSweep`.

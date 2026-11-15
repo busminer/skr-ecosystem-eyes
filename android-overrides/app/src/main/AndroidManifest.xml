@@ -49,5 +49,12 @@
         <data android:scheme="skr-eyes"/>
       </intent-filter>
     </activity>
+    <!-- Sweeps the old 1.x notifications after an update or a reboot, without a launch (StaleNotificationSweep.kt). -->
+    <receiver android:name=".StaleNotificationSweep" android:exported="false">
+      <intent-filter>
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+        <action android:name="android.intent.action.BOOT_COMPLETED"/>
+      </intent-filter>
+    </receiver>
   </application>
 </manifest>
