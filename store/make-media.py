@@ -169,18 +169,21 @@ def feature():
 
 
 SHOTS = [
-    ("new-top.png", "Find yourself among 46 000",
-     "Everybody who stakes, in order: by stake, by what their position earned, and by places moved since yesterday. Your own place sits at the top."),
-    ("new-radar.png", "The whole vault on one dial",
-     "Six rings, one per tier, the beam going round, your phone gold among them. Pinch, drag, tap anybody to read their name."),
-    ("new-vault.png", "The vault, alive",
+    # 1.6.0 (15.11.2026): the guardians lead; captured on Alex's Seeker from the rc4 build.
+    ("g16-guardians.png", "The guardians, live",
+     "Every release to the dApp Store and every guardian vote on it, read from the chain as it lands. A gold thread for each vote, with the seconds it took."),
+    ("g16-lapse.png", "A day in twenty seconds",
+     "Replay the last 24 hours: every release on the dial, every vote at its real pace. The rings are seconds from request to vote."),
+    ("g16-releases.png", "Seconds, release by release",
+     "The latest releases and how long each guardian took. Tap any of them for its transactions on Solscan."),
+    ("g16-vault.png", "The vault, alive",
      "Every stake falls in with its .skr name; every exit hangs and cools above the pile of what stays. Tap any move for its receipt."),
-    ("new-flow.png", "Every finalized move, live",
+    ("g16-top.png", "Find yourself among 45 000",
+     "Everybody who stakes, in order: by stake, by what each position received, and by places moved since yesterday. Your own place sits at the top."),
+    ("g16-flow.png", "Every finalized move, live",
      "Stakes, exits and withdrawals as they land, by kind and by size, the day's biggest pinned on top."),
-    ("new-me.png", "Your staker card",
-     "Days in stake, your place among people, what your position earned. Hide your name or your amount before you share it."),
-    ("new-alerts.png", "Alerts your phone sets itself",
-     "A sound and a short buzz for the large moves, or neither. Your unlock time is scheduled on the device, no address is sent for it, and the app speaks eleven languages."),
+    ("g16-me.png", "Your staker card",
+     "Days in stake, your place among people, your weight in the vault. Hide your name or your amount before you share it."),
 ]
 
 
