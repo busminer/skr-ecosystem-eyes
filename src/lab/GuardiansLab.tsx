@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { SvgUri } from 'react-native-svg';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
 import { API_BASE_URL } from '../api';
@@ -42,6 +43,12 @@ import { GUARDIAN_SCENE_HTML } from './guardianSceneHtml';
 // by the name its publisher registered on chain. Package names are not shown.
 
 const RELEASES_SHOWN = 8;
+// Replay on request only (Alex, 16.11.2026): the last hour, six hours, a day.
+const REPLAY_WINDOWS = [
+  { hours: 1, seconds: 3_600 },
+  { hours: 6, seconds: 21_600 },
+  { hours: 24, seconds: 86_400 },
+];
 const MONOGRAM_TONES = ['#3B5568', '#4B4A6B', '#3F5E55', '#5D4A3F'];
 
 function seconds(value: number | null | undefined): string {
@@ -101,7 +108,8 @@ function Scene({ data, height, active, onPick }: { data: StoreGuardians | null; 
   const ready = useRef(false);
   const activeRef = useRef(active);
   activeRef.current = active;
-  const [lapse, setLapse] = useState(false);
+  // The window being replayed, or null while the scene is live.
+  const [lapse, setLapse] = useState<number | null>(null);
   const push = useCallback((message: object) => {
     web.current?.injectJavaScript(`window.__push(${JSON.stringify(message)});true;`);
   }, []);
@@ -110,11 +118,16 @@ function Scene({ data, height, active, onPick }: { data: StoreGuardians | null; 
       type: 'config',
       logos: true,
       hud: true,
-      ambient: true,
+      // Live only (Alex, 16.11.2026): nothing old goes round again unless asked.
+      ambient: false,
       iconBase: API_BASE_URL,
       labels: {
         live: t('LIVE'),
         lapse: t('24 HOURS'),
+        lapse1h: t('LAST HOUR'),
+        lapse6h: t('6 HOURS'),
+        lapse24h: t('24 HOURS'),
+        lapseEmpty: t('nothing in this window'),
         passed: t('passed · 24h'),
         ago: t('{age} ago'),
         lastVote: t('last vote {age} ago'),
@@ -134,7 +147,7 @@ function Scene({ data, height, active, onPick }: { data: StoreGuardians | null; 
   const onMessage = useCallback((event: WebViewMessageEvent) => {
     try {
       const message = JSON.parse(event.nativeEvent.data) as {
-        type: string; kind?: string; key?: string; state?: string; approve?: boolean;
+        type: string; kind?: string; key?: string; state?: string; approve?: boolean; window?: number;
       };
       if (message.type === 'ready') {
         ready.current = true;
@@ -151,7 +164,7 @@ function Scene({ data, height, active, onPick }: { data: StoreGuardians | null; 
         else if (message.kind === 'rejected') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         else if (message.kind === 'vote') void Haptics.impactAsync(message.approve === false ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
       } else if (message.type === 'timelapse') {
-        setLapse(message.state === 'start');
+        setLapse(message.state === 'start' ? message.window ?? 86_400 : null);
       }
     } catch {
       // A message the scene did not mean to send is not worth a crash.
@@ -175,13 +188,32 @@ function Scene({ data, height, active, onPick }: { data: StoreGuardians | null; 
         onMessage={onMessage}
         style={styles.sceneWeb}
       />
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => { void Haptics.selectionAsync(); push({ type: 'timelapse', on: !lapse, seconds: 20 }); }}
-        style={({ pressed }) => [styles.lapseButton, lapse && styles.lapseButtonOn, pressed && styles.pressed]}
-      >
-        <Text style={[styles.lapseText, lapse && { color: colors.bg }]}>{lapse ? t('Stop') : t('Replay 24 hours')}</Text>
-      </Pressable>
+      <View style={styles.lapseBar}>
+        {lapse ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => { void Haptics.selectionAsync(); push({ type: 'timelapse', on: false }); }}
+            style={({ pressed }) => [styles.lapsePill, styles.lapsePillOn, pressed && styles.pressed]}
+          >
+            <Text style={[styles.lapseText, { color: colors.bg }]}>{t('Stop')}</Text>
+          </Pressable>
+        ) : (
+          <>
+            <Text style={styles.lapseLabel}>{t('Replay')}</Text>
+            {REPLAY_WINDOWS.map((window) => (
+              <Pressable
+                key={window.seconds}
+                accessibilityRole="button"
+                accessibilityLabel={`${t('Replay')} ${t('{hours} h', { hours: window.hours })}`}
+                onPress={() => { void Haptics.selectionAsync(); push({ type: 'timelapse', on: true, window: window.seconds }); }}
+                style={({ pressed }) => [styles.lapsePill, pressed && styles.pressed]}
+              >
+                <Text style={styles.lapseText}>{t('{hours} h', { hours: window.hours })}</Text>
+              </Pressable>
+            ))}
+          </>
+        )}
+      </View>
     </View>
   );
 }
@@ -209,6 +241,14 @@ function AppIcon({ release, size = 40 }: { release: StoreRelease; size?: number 
   const uri = broken ? null : iconUrl(release.icon);
   const name = releaseName(release);
   const frame = { width: size, height: size, borderRadius: size * 0.24 };
+  // An icon drawn from the release APK comes as SVG (its address ends .svg).
+  if (uri && uri.endsWith('.svg')) {
+    return (
+      <View style={[styles.icon, frame, styles.iconClip, release.ours && styles.iconOurs]}>
+        <SvgUri uri={uri} width={size} height={size} onError={() => setBroken(true)} />
+      </View>
+    );
+  }
   return uri ? (
     <Image source={{ uri }} onError={() => setBroken(true)} style={[styles.icon, frame, release.ours && styles.iconOurs]} />
   ) : (
@@ -449,8 +489,10 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.75 },
   scene: { width: '100%', overflow: 'hidden' },
   sceneWeb: { flex: 1, backgroundColor: 'transparent' },
-  lapseButton: { position: 'absolute', right: spacing.lg, bottom: spacing.md, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: 'rgba(7, 12, 18, 0.82)', paddingHorizontal: spacing.md, paddingVertical: 7 },
-  lapseButtonOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  lapseBar: { position: 'absolute', right: spacing.lg, bottom: spacing.md, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  lapseLabel: { color: colors.muted, fontFamily: font.medium, fontSize: 12, marginRight: 2 },
+  lapsePill: { borderRadius: radius.pill, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: 'rgba(7, 12, 18, 0.82)', paddingHorizontal: spacing.md, paddingVertical: 7, minWidth: 48, alignItems: 'center' },
+  lapsePillOn: { backgroundColor: colors.accent, borderColor: colors.accent },
   lapseText: { color: colors.text, fontFamily: font.semibold, fontSize: 12, letterSpacing: 0.3 },
   strip: { flexDirection: 'row', paddingVertical: spacing.md, paddingHorizontal: spacing.sm },
   stripCell: { flex: 1, alignItems: 'center', gap: 2, paddingHorizontal: spacing.xs },
@@ -472,6 +514,7 @@ const styles = StyleSheet.create({
   voteText: { fontFamily: font.monoSemibold, fontSize: 11.5 },
   icon: { backgroundColor: colors.line },
   iconOurs: { borderWidth: 1.5, borderColor: colors.metal },
+  iconClip: { overflow: 'hidden' },
   monogram: { alignItems: 'center', justifyContent: 'center' },
   monogramText: { color: 'rgba(242, 247, 251, 0.86)', fontFamily: font.bold },
   badgeBlank: { backgroundColor: colors.lineStrong },

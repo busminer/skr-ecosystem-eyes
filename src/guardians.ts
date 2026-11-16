@@ -189,7 +189,7 @@ export function releaseRows(events: GuardianEvent[], limit = 12): ReleaseRow[] {
 
 // Polls while the screen is open and the app is in front; a phone in a pocket
 // asks for nothing.
-export function useStoreGuardians(active: boolean, everyMs = 15_000) {
+export function useStoreGuardians(active: boolean, everyMs = 5_000) {
   const [data, setData] = useState<StoreGuardians | null>(null);
   const [error, setError] = useState<string | null>(null);
   const busy = useRef(false);

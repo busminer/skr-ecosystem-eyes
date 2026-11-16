@@ -50,7 +50,38 @@ export const fetchEcosystemState = () => getJson<EcosystemState>('/api/state');
 // The store's guardians (1.6.0): every release request and vote of the last
 // day, and this build's own receipt. A 404 on the receipt means the votes are
 // not on chain yet, not that something broke.
-export const fetchStoreGuardians = () => getJson<StoreGuardians>('/api/store-guardians');
+//
+// The tab asks every few seconds while it is open, so a vote shows as it
+// lands. The server tags its answer; asked with the tag, it answers an empty
+// 304 until something changes, and then this returns the very same object, so
+// nothing on the screen redraws for a poll that found nothing.
+let guardiansTag: string | null = null;
+let guardiansLast: StoreGuardians | null = null;
+export async function fetchStoreGuardians(): Promise<StoreGuardians> {
+  const controller = new AbortController();
+  const deadline = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  let response: Response;
+  try {
+    const install = installId();
+    response = await fetch(`${API_BASE_URL}/api/store-guardians`, {
+      headers: {
+        accept: 'application/json',
+        'x-skr-lang': lang(),
+        ...(install ? { 'x-skr-install': install } : {}),
+        ...(guardiansTag && guardiansLast ? { 'if-none-match': guardiansTag } : {}),
+      },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(deadline);
+  }
+  if (response.status === 304 && guardiansLast) return guardiansLast;
+  if (!response.ok) throw new ApiError(response.status, t('SKR Eyes API returned {status}', { status: response.status }));
+  const next = await response.json() as StoreGuardians;
+  guardiansTag = response.headers.get('etag');
+  guardiansLast = next;
+  return next;
+}
 export const fetchReleaseReceipt = (versionCode: number) => getJson<ReleaseReceipt>(`/api/store-guardians/receipt/${versionCode}`);
 export const fetchWalletProfile = (wallet: string) => getJson<WalletProfile>(`/api/wallet/${encodeURIComponent(wallet)}`);
 

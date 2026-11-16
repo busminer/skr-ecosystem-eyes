@@ -1,47 +1,59 @@
-import { GUARDIAN_BRAND, GUARDIAN_MARKS } from './guardianLogos';
+import { DAPP_STORE_MARK, GUARDIAN_BRAND, GUARDIAN_MARKS } from './guardianLogos';
 import { GLYPH_DATA_URL } from './vaultSceneHtml';
 
 // The guardians at work: a small world where a release comes in, is looked at,
 // and either goes down into the store or does not.
 //
-// The ground is the night every tab stands in. Along the bottom rises the
-// store: the vault's own moon with the token's mark, lit windows on it, and
-// along its edge the day's releases standing where they came down. Across the
-// middle runs the belt, a rail of light the apps ride in on from the left,
-// with the plate at its centre. Over the plate hang the guardians.
+// The ground is the night every tab stands in. Far behind everything, in
+// shadow, stands the dApp Store itself: its own mark raised into a slab the
+// size of a mountain, drifting by a hair, its upper edges catching a light
+// that breathes. It is scenery and never comes forward.
 //
-// A guardian is a medallion: a thick coin in its own colours with its own mark
+// Along the bottom rises the store's floor: the vault's moon with the token's
+// mark and lit windows on it. Two rows stand along its edge, on one arc, with
+// the same tiles and the same spacing. The passed stand on the edge itself,
+// green-framed, with their count on the moon. The turned-away stand at the far
+// right on a ledge of their own, a little above the edge, red-framed, with a
+// small count: beside the others, and not in the store.
+//
+// Across the middle runs the belt, a rail of light the apps ride in on from the
+// left, with the plate at its centre. Over the plate hang the guardians. A
+// guardian is a medallion: a thick coin in its own colours with its own mark
 // struck into the face, lit from the upper left. It sways, so the milled edge
-// and the glint on the face are never still. When it votes it jumps, turns
-// once round, comes to rest facing the app, and its light falls on the tile:
-// green for yes, red for no, with the seconds the vote took written under its
-// name.
+// and the glint on the face are never still. When it votes it jumps, turns once
+// round, comes to rest facing the app, and its light falls on the tile: green
+// for yes, red for no, with the seconds the vote took written under its name.
 //
-// An app is its own icon from the store, under its own store name; while it
-// has none yet, its initials. Its frame takes the colour of the votes as they
-// land: one yes of three is a light green, two is deeper, three is the full
-// colour, and a no takes its share of the frame in red, so a split vote reads
-// as a split tile. Passed, the trapdoor under the plate opens and the app
-// falls to the store's shelf; turned away, the trapdoor stays shut, the tile
-// shakes and is carried off the end of the belt. An app that passed on two
-// votes waits a while for the third, so the third can land where it is seen.
-// Our own release is gold.
+// An app is its own icon under its own store name; while it has no icon yet,
+// its initials. Its frame takes the colour of the votes as they land: one yes
+// of three is a light green, two is deeper, three is the full colour, and a no
+// takes its share of the frame in red, so a split vote reads as a split tile.
+// Passed, the trapdoor under the plate opens and the app falls to the store's
+// edge. Turned away, the trapdoor stays shut, the tile shakes, rides the belt
+// to its end and comes down on the ledge. Our own release is gold.
 //
-// Live, real votes play as they arrive. On opening, the last two releases go
-// through once more, and between real events one past release does now and
-// then; both carry their age under the name. The 24 hour replay sends the
-// whole day down the belt again in twenty seconds.
+// The scene is live and nothing else, unless a replay is asked for. On opening
+// everything stands where it ended up and the belt is empty; the medallions
+// sway and that is all. A new request walks in when it is heard of, and its
+// votes land in their real rhythm: so many seconds after the request, counted
+// from the moment the app reached the plate. A vote heard of after its moment
+// plays at once. An app that passed on two votes waits a while for the third.
+//
+// A replay takes a window: the last hour, six hours or day. Only what was
+// requested inside the window comes down the belt again; what was decided
+// before it stands in place from the start.
 //
 // Same approach as the vault and the radar: a canvas in a WebView, fed through
 // window.__push. Push the server's summary as it is, or the same under
-// `type: 'state'`; the scene reads `guardians` and `releases` and finds what
-// is new by release key and vote signature. It fetches nothing of its own
-// except the app icons, which are images from the URLs the server names
-// (joined to `iconBase` when they start with a slash).
+// `type: 'state'`; the scene reads `guardians`, `releases` and
+// `activeGuardians`, and finds what is new by release key and vote signature.
+// It fetches nothing of its own except the app icons, which are images from
+// the URLs the server names (joined to `iconBase` when they start with a slash).
 
 export type GuardianSceneState = {
   updatedAt: number | string;
   iconBase?: string | null;
+  activeGuardians?: number | null;
   guardians: Array<{ key: string; id: string | null; name: string | null; lastVoteAt?: number | null }>;
   releases: Array<{
     key: string;
@@ -59,25 +71,31 @@ export type GuardianSceneState = {
   }>;
 };
 
-// Words the scene draws. `ago` and `lastVote` take `{age}`.
-export type GuardianSceneLabels = Partial<Record<'live' | 'lapse' | 'passed' | 'ago' | 'lastVote' | 'waiting', string>>;
+// The three windows a replay can cover, in seconds.
+export type GuardianSceneWindow = 3600 | 21600 | 86400;
+
+// Words the scene draws. `lastVote` takes `{age}`. `lapse` is what the day's
+// replay is called when `lapse24h` is not given.
+export type GuardianSceneLabels = Partial<Record<'live' | 'lapse' | 'lapse1h' | 'lapse6h' | 'lapse24h' | 'lapseEmpty' | 'passed' | 'lastVote' | 'waiting', string>>;
 
 export type GuardianSceneMessage =
   | ({ type: 'state' } & GuardianSceneState)
   | { type: 'motion'; mode: 'live' | 'calm' | 'off' }
   | { type: 'pause'; on: boolean }
   | { type: 'inset'; top: number; bottom?: number }
-  // Twenty four hours replayed in `seconds` (20 by default); `on: false` stops it.
-  | { type: 'timelapse'; on: boolean; seconds?: number }
+  // A replay of the last `window` seconds (a day when it is left out); asking
+  // for another window while one runs starts that one instead. `on: false`
+  // stops it. `seconds` overrides how long the replay's clock runs.
+  | { type: 'timelapse'; on: boolean; window?: GuardianSceneWindow; seconds?: number }
   // `logos: false` strikes the guardians' initials into plain medallions instead
-  // of their marks. `ambient: false` stops the look back between real events.
-  | { type: 'config'; logos?: boolean; hud?: boolean; ambient?: boolean; iconBase?: string; labels?: GuardianSceneLabels };
+  // of their marks. `far: false` takes the distant dApp Store out of the sky.
+  | { type: 'config'; logos?: boolean; hud?: boolean; far?: boolean; iconBase?: string; labels?: GuardianSceneLabels };
 
 export type GuardianSceneEvent =
   | { type: 'ready' }
   | { type: 'beat' }
   | { type: 'error'; message: string }
-  | { type: 'timelapse'; state: 'start' | 'end' }
+  | { type: 'timelapse'; state: 'start' | 'end'; window: number }
   // A real vote or verdict has just been played (never a replayed one): for a buzz.
   | { type: 'cue'; kind: 'vote'; approve: boolean; key: string }
   | { type: 'cue'; kind: 'approved' | 'rejected'; key: string }
@@ -94,8 +112,14 @@ var TEXT='#F2F7FB', MUTED='#8296A8', FAINT='#6F849A', ACCENT='#56E0FF', GOLD='#C
 var MARK_SRC={solana_mobile:'${GUARDIAN_MARKS.solana_mobile}',jito:'${GUARDIAN_MARKS.jito}',helius:'${GUARDIAN_MARKS.helius}'}, MARK={};
 var BRAND=${JSON.stringify(GUARDIAN_BRAND)};
 var GLYPH=new Image(); GLYPH.src='${GLYPH_DATA_URL}';
-var CFG={logos:true,hud:true,ambient:true,iconBase:'',labels:{live:'LIVE',lapse:'24 HOURS',passed:'passed · 24h',ago:'{age} ago',lastVote:'last vote {age} ago',waiting:'waiting for the next release'}};
-var S={t:0,idle:0,motion:'live',paused:false,insTop:0,insBot:0,off:0,has:false,G:[],R:{},order:[],shelf:[],rej:0,rejects:[],rbump:0,N:0,actors:[],q:[],plate:null,parked:[],checks:[],pings:[],tl:null,beatAt:0,amb:0,door:0,lock:0,bump:0,f:1,sel:null,bg:null,bgKey:'',lastVoteAt:0,img:{},M:11};
+// The dApp Store's mark, and its three faces one by one: the same paths, each
+// in an image of its own, so each side of the cube can take its own light.
+var FAR_SRC='${DAPP_STORE_MARK}', FAR=null, FARF=[];
+if(FAR_SRC.indexOf('data:')===0){ FAR=new Image(); FAR.src=FAR_SRC;
+  try{ var raw=atob(FAR_SRC.slice(FAR_SRC.indexOf(',')+1)), sides=raw.match(/<path[^>]*>/g)||[], open=raw.slice(0,raw.indexOf('<path')), shut=raw.slice(raw.lastIndexOf('/>')+2);
+    if(sides.length===3) sides.forEach(function(d){ var im=new Image(); im.onload=function(){ S.far=null; }; im.src='data:image/svg+xml;base64,'+btoa(open+d+shut); FARF.push(im); }); }catch(e){ FARF=[]; } }
+var CFG={logos:true,hud:true,far:true,iconBase:'',labels:{live:'LIVE',lapse:'24 HOURS',lapse1h:'1 HOUR',lapse6h:'6 HOURS',lapse24h:'',lapseEmpty:'nothing in this window',passed:'passed · 24h',lastVote:'last vote {age} ago',waiting:'waiting for the next release'}};
+var S={t:0,idle:0,motion:'live',paused:false,insTop:0,insBot:0,off:0,has:false,G:[],R:{},order:[],shelf:[],rej:0,rejects:[],rbump:0,N:0,actors:[],q:[],plate:null,parked:[],checks:[],pings:[],tl:null,beatAt:0,note:null,far:null,door:0,lock:0,bump:0,f:1,sel:null,bg:null,bgKey:'',lastVoteAt:0,img:{},M:11};
 
 function post(m){ try{ if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(m)); else if(window.parent&&window.parent!==window) window.parent.postMessage({__scene:m},'*'); }catch(e){} }
 function clamp(x,a,b){ return x<a?a:x>b?b:x; }
@@ -141,28 +165,36 @@ function layout(){ sky(); var top=S.insTop, bot=S.insBot, h=Math.max(60,H-top-bo
   for(i=0;i<S.G.length;i++){ var g=S.G[i], k=Math.min(i,n-1)-(n-1)/2; g.x=S.cx+k*gap; var kk=(g.x-S.cx)/(W/2); g.y=top+27*U+S.Rm+13*U*kk*kk; }
   S.St=58*U; S.Sq=38*U; S.yRail=top+h*0.585; S.xq=S.cx-W*0.335; S.xp=S.cx+W*0.335;
   S.Rs=W*0.80; S.limb=H-bot-h*0.20; S.cys=S.limb+S.Rs; S.mini=21*U; S.M=Math.max(5,Math.min(11,Math.floor((W-24*U)/(S.mini+6*U))));
-  S.shelf.forEach(function(r){ var p=shelfPos(r); r.sx=p[0]; r.sy=p[1]; }); }
-function trayPos(){ return [W-14*U-S.mini/2,S.yRail-9*U-S.mini/2]; }
-function trayRel(){ for(var i=S.rejects.length-1;i>=0;i--) if(S.rejects[i].trayed) return S.rejects[i]; return null; }
+  S.shelf.forEach(function(r){ var p=shelfPos(r); r.sx=p[0]; r.sy=p[1]; }); S.rejects.forEach(function(r){ var p=outPos(r); r.ox=p[0]; r.oy=p[1]; }); }
+// The two rows that stand along the store's edge, on one arc, with the same
+// tiles and the same spacing. The passed stand on the edge itself. The
+// turned-away stand at the far right on a ledge of their own, a little above
+// it: beside the others, and not in the store.
+function outList(){ var L=[], i; for(i=0;i<S.rejects.length;i++) if(S.rejects[i].trayed) L.push(S.rejects[i]); return L.slice(-3); }
+function outRoom(){ var k=outList().length; return k?k+1:0; }
+function arcPos(t,lift){ var d=(S.mini+6*U)/S.Rs, a=-Math.PI/2+(t-(S.M-1)/2)*d, rad=S.Rs+S.mini*0.64+lift; return [S.cx+Math.cos(a)*rad,S.cys+Math.sin(a)*rad]; }
+function outPos(r){ var L=outList(), j=L.indexOf(r); return j<0?arcPos(S.M+1.5,9*U):arcPos(S.M-L.length+j,9*U); }
 function yFor(s){ return S.yRail-9*U-S.St*s/2; }
 function slotQ(i){ return i===0?{x:S.xq,s:S.Sq/S.St,a:1}:i===1?{x:-S.Sq*0.1,s:S.Sq/S.St*0.92,a:0.75}:{x:-80*U,s:0.5,a:0}; }
 function slotP(i){ return i===0?{x:S.xp,s:S.Sq/S.St,a:1}:{x:W+S.Sq*0.1,s:S.Sq/S.St*0.92,a:0.75}; }
-function shelfList(){ return S.shelf.slice(-S.M); }
-function shelfPos(r){ var L=shelfList(), j=L.indexOf(r), m=L.length, d=(S.mini+6*U)/S.Rs; if(j<0) j=-1.4; var a=-Math.PI/2+(j-(m-1)/2)*d, rad=S.Rs+S.mini*0.64; return [S.cx+Math.cos(a)*rad,S.cys+Math.sin(a)*rad]; }
+function shelfList(){ return S.shelf.slice(-(S.M-outRoom())); }
+function shelfPos(r){ var L=shelfList(), j=L.indexOf(r), m=L.length, cap=S.M-outRoom(); if(j<0) return arcPos(-1.6,0); return arcPos((cap-1)/2+j-(m-1)/2,0); }
 
 // ---------- state ----------
 function findG(ref){ if(ref==null) return -1; for(var i=0;i<S.G.length;i++) if(S.G[i].key===ref||S.G[i].id===ref) return i; return -1; }
 function mk(r,mode){ var a={r:r,mode:mode,st:'q',x:-80*U,s:0.5,al:0,started:0,rev:0,nextAt:0,settledAt:0,t:0,flash:0,shake:0}; S.actors.push(a); return a; }
-function enqueue(r,mode){ var a=mk(r,mode); S.q.push(a); if(mode==='replay') r.acting=a; return a; }
+function enqueue(r,mode){ var a=mk(r,mode); S.q.push(a); return a; }
 function drop(a){ var i=S.actors.indexOf(a); if(i>=0) S.actors.splice(i,1); i=S.q.indexOf(a); if(i>=0) S.q.splice(i,1); i=S.parked.indexOf(a); if(i>=0) S.parked.splice(i,1); if(S.plate===a) S.plate=null; if(a.r.acting===a) a.r.acting=null; }
 function clearStage(){ S.actors=[]; S.q=[]; S.plate=null; S.parked=[]; S.checks=[]; S.pings=[]; S.door=0; S.lock=0; S.order.forEach(function(r){ r.acting=null; }); }
-// Everything the last day decided, put where it ended up: on the store's
-// shelf, or turned away. What is still undecided waits on the plate.
-function settle(){ S.shelf=[]; S.rej=0; S.rejects=[];
-  S.order.forEach(function(r){ r.vis=r.votes.length; r.landed=true; if(r.verdict==='approved'){ r.place='shelf'; S.shelf.push(r); } else if(r.verdict==='rejected'){ r.place='rejected'; S.rej++; S.rejects.push(r); r.trayed=true; } else r.place=null; });
-  S.shelf.forEach(function(r){ var p=shelfPos(r); r.sx=p[0]; r.sy=p[1]; });
-  var pend=S.order.filter(function(r){ return !r.place; }).slice(-3);
-  pend.forEach(function(r,i){ var a=mk(r,'live'); a.started=a.rev=r.votes.length; a.al=1; if(i===pend.length-1){ a.st='plate'; S.plate=a; a.x=S.cx; a.s=1; } else { a.st='park'; S.parked.push(a); var p=slotP(S.parked.length-1); a.x=p.x; a.s=p.s; } }); }
+// Everything the last day decided, put where it ended up: the passed on the
+// store's edge, the turned-away on their ledge. The belt is empty, unless a
+// release is being voted on at this very moment: that one waits on the plate
+// with the votes it has.
+function place(r){ r.vis=r.votes.length; r.landed=true; r.outLanded=true; if(r.verdict==='approved'){ r.place='shelf'; S.shelf.push(r); } else if(r.verdict==='rejected'){ r.place='rejected'; S.rej++; S.rejects.push(r); r.trayed=true; } else r.place=null; }
+function snap(){ S.shelf.forEach(function(r){ var p=shelfPos(r); r.sx=p[0]; r.sy=p[1]; }); S.rejects.forEach(function(r){ var p=outPos(r); r.ox=p[0]; r.oy=p[1]; }); }
+function settle(){ S.shelf=[]; S.rej=0; S.rejects=[]; var now=nowS(); S.order.forEach(function(r){ r.trayed=false; r.queued=false; place(r); }); snap();
+  var pend=S.order.filter(function(r){ return !r.place&&now-r.at<1800; }).slice(-3);
+  pend.forEach(function(r,i){ var a=mk(r,'live'); a.started=a.rev=r.votes.length; a.al=1; a.rt=false; a.t0=S.t; if(i===pend.length-1){ a.st='plate'; S.plate=a; a.x=S.cx; a.s=1; } else { a.st='park'; S.parked.push(a); var p=slotP(S.parked.length-1); a.x=p.x; a.s=p.s; } }); }
 function ingest(st){ var first=!S.has, up=stamp(st.updatedAt), fresh=[], late=[], seen={};
   if(up>0) S.off=up-Date.now()/1000;
   if(st.iconBase&&!CFG.iconBase) CFG.iconBase=st.iconBase;
@@ -179,55 +211,74 @@ function ingest(st){ var first=!S.has, up=stamp(st.updatedAt), fresh=[], late=[]
   // Yesterday leaves the shelf.
   S.order=S.order.filter(function(r){ if(seen[r.key]) return true; if(r.acting) return true; delete S.R[r.key]; var i=S.shelf.indexOf(r); if(i>=0) S.shelf.splice(i,1); i=S.rejects.indexOf(r); if(i>=0){ S.rejects.splice(i,1); S.rej=S.rejects.length; } S.actors.slice().forEach(function(a){ if(a.r===r) drop(a); }); return false; });
   S.order.sort(function(a,b){ return a.at-b.at; });
-  if(first){ S.has=true; settle(); intro(); return; }
+  if(first){ S.has=true; settle(); return; }
   if(S.tl) return;
-  // News. A phone that was away for hours does not replay the whole queue it
-  // missed: the last two walk in, the rest are simply where they ended up.
-  S.idle=0; fresh.sort(function(a,b){ return a.at-b.at; });
-  fresh.forEach(function(r,i){ if(i<fresh.length-2){ r.vis=r.votes.length; r.landed=true; if(r.verdict==='approved'){ r.place='shelf'; S.shelf.push(r); var p=shelfPos(r); r.sx=p[0]; r.sy=p[1]; } else if(r.verdict==='rejected'){ r.place='rejected'; S.rej++; S.rejects.push(r); r.trayed=true; } } else enqueue(r,'live'); });
-  late.forEach(function(l){ var has=S.actors.some(function(a){ return a.r===l.r&&a.mode!=='replay'; }); if(!has&&l.r.place==='shelf') S.checks.push({a:null,r:l.r,v:l.v,gi:findG(l.v.g),t:0,hit:0.5,dur:1.3,done:false,L:false,live:true}); });
+  // News. What was requested in the last few minutes is happening now and
+  // comes down the belt. Anything older that this phone simply had not heard
+  // of is put where it ended up, without a show: this is live, not a recap.
+  var now=nowS(); fresh.sort(function(a,b){ return a.at-b.at; });
+  fresh.forEach(function(r){ if(now-r.at<240||r.verdict==='pending'){ S.idle=0; r.queued=true; enqueue(r,'live'); } else { place(r); snap(); } });
+  late.forEach(function(l){ var r=l.r, has=S.actors.some(function(a){ return a.r===r; }); S.idle=0; if(has) return;
+    if(r.place==='shelf') S.checks.push({a:null,r:r,v:l.v,gi:findG(l.v.g),t:0,hit:0.5,dur:1.3,done:false,L:false,live:true});
+    else if(!r.place&&!r.queued){ r.queued=true; enqueue(r,'live'); } });
 }
-// On opening, the last two releases go through once more, so the first look is
-// at the thing happening. Their age is written under the name: it is a memory.
-function intro(){ var pool=S.order.filter(function(r){ return r.place&&r.votes.length; }).slice(-2); pool.forEach(function(r){ enqueue(r,'replay'); }); S.amb=S.t+16; }
 
 // ---------- the director ----------
 function verdict(a){ var r=a.r, N=Math.max(1,S.N||S.G.length), need=Math.floor(N/2)+1, y=0, n=0, i; for(i=0;i<a.rev&&i<r.votes.length;i++){ if(r.votes[i].yes===false) n++; else y++; }
   if(y>=need) return 'approved'; if(n>=need) return 'rejected'; if(y+n>=N) return y>n?'approved':'rejected';
-  if(a.mode!=='live'&&a.rev>=r.votes.length&&r.verdict!=='pending') return r.verdict; return null; }
+  if(a.rev>=r.votes.length&&r.verdict!=='pending'&&(a.mode!=='live'||!a.rt)) return r.verdict; return null; }
 // A vote: the guardian's medallion jumps, turns once round and comes to rest
 // facing the app; its light falls on the tile, and where it lands the tile
 // takes the colour of the vote.
 function startVote(a){ var v=a.r.votes[a.started++], gi=findG(v.g), g=S.G[gi], L=a.mode==='lapse', f=L?S.f:1; a.settledAt=0;
   S.checks.push({a:a,r:a.r,v:v,gi:gi,t:0,hit:(L?0.17:0.52)/f,dur:(L?0.55:1.35)/f,done:false,L:L,live:a.mode==='live'});
-  if(g){ g.spinT=0; g.spinD=(L?0.36:0.7)/f; g.hot=1; g.aim=a; g.lab={txt:'+'+secs(v.seconds),yes:v.yes,t:S.t,d:L?0.75:1.7}; } }
+  if(g){ g.spinT=0; g.spinD=(L?0.36:0.7)/f; g.hot=1; g.aim=a; g.lab={txt:'+'+secs(v.seconds),yes:v.yes,t:S.t,d:L?0.75/f:1.7}; } }
 function landVote(c){ var p=target(c), yes=c.v.yes; if(c.a){ c.a.rev++; c.a.flash=1; } else c.r.vis=c.r.votes.length; S.pings.push({x:p[0],y:p[1],t:S.t,r0:p[2]*0.62,hex:yes?GREEN:RED,big:false}); if(c.live) post({type:'cue',kind:'vote',approve:yes,key:c.r.key}); }
 function target(c){ if(c.a) return [c.a.x+c.a.shake,yFor(c.a.s),S.St*c.a.s]; return [c.r.sx,c.r.sy,S.mini]; }
 function exitDrop(a){ var r=a.r; a.st='drop'; a.t=0; a.fx=a.x; a.fy=yFor(a.s); a.fs=a.s; a.dur=a.mode==='lapse'?0.44/Math.min(1.6,S.f):0.85; if(S.plate===a){ S.plate=null; S.door=1; } var i=S.parked.indexOf(a); if(i>=0) S.parked.splice(i,1);
-  if(a.mode!=='replay'&&r.place!=='shelf'){ r.place='shelf'; r.landed=false; r.vis=r.votes.length; S.shelf.push(r); var p=shelfPos(r); r.sx=p[0]; r.sy=p[1]; } }
-function exitEject(a){ a.st='eject'; a.t=0; a.ex=a.x; a.es=a.s; a.dur=a.mode==='lapse'?0.7:1.35; if(S.plate===a){ S.plate=null; S.lock=1; } var i=S.parked.indexOf(a); if(i>=0) S.parked.splice(i,1); }
+  if(r.place!=='shelf'){ r.place='shelf'; r.landed=false; r.vis=r.votes.length; S.shelf.push(r); var p=shelfPos(r); r.sx=p[0]; r.sy=p[1]; } }
+function exitEject(a){ var r=a.r; a.st='eject'; a.t=0; a.ex=a.x; a.ey=yFor(a.s); a.es=a.s; a.dur=a.mode==='lapse'?0.8/Math.min(1.6,S.f):1.5; if(S.plate===a){ S.plate=null; S.lock=1; } var i=S.parked.indexOf(a); if(i>=0) S.parked.splice(i,1);
+  if(r.place!=='rejected'){ r.place='rejected'; S.rej++; S.rejects.push(r); r.vis=r.votes.length; } r.trayed=true; r.outLanded=false; var p=outPos(r); r.ox=p[0]; r.oy=p[1]; }
 function park(a){ a.st='park'; S.plate=null; S.parked.push(a); if(S.parked.length>2){ var old=S.parked.shift(); old.st='fade'; } }
+// Live, a vote lands when it landed: so many seconds after the request, counted
+// from the moment the app reached the plate. Our news is some seconds behind
+// the chain, so the first votes are often known already; they still take their
+// real places in time. A vote heard of after its moment has passed plays at
+// once, and so does everything when another app is waiting for the plate, or
+// when the request is too old for this to be the present any more.
 function direct(){ var i, a;
-  if(!S.plate&&S.q.length){ a=S.q.shift(); a.st='plate'; S.plate=a; a.nextAt=S.t+(a.mode==='lapse'?0.27/S.f:0.85); a.settledAt=0; }
+  if(!S.plate&&S.q.length){ a=S.q.shift(); a.st='plate'; S.plate=a; var L0=a.mode==='lapse'; a.nextAt=S.t+(L0?0.27/S.f:0.85); a.t0=a.nextAt; a.rt=!L0&&nowS()-a.r.at<75; a.settledAt=0; }
   var list=S.plate?[S.plate].concat(S.parked):S.parked.slice();
-  for(i=0;i<list.length;i++){ a=list[i]; var r=a.r, L=a.mode==='lapse';
-    if(a.started<r.votes.length){ if(S.t>=a.nextAt){ startVote(a); a.nextAt=S.t+(L?0.18/S.f:a.mode==='replay'?1.0:1.4); } continue; }
+  for(i=0;i<list.length;i++){ a=list[i]; var r=a.r, L=a.mode==='lapse', busy=S.q.length>0, hurry=busy&&a===S.plate;
+    if(a.started<r.votes.length){ var due=L||!a.rt||hurry?0:a.t0+r.votes[a.started].seconds-0.52; if(S.t>=a.nextAt&&S.t>=due){ startVote(a); a.nextAt=S.t+(L?0.18/S.f:0.6); } continue; }
     if(a.rev<a.started) continue;
     if(!a.settledAt) a.settledAt=S.t;
-    var dec=verdict(a), N=Math.max(1,S.N||S.G.length), busy=S.q.length>0, hold=L?(busy?0.12:0.24)/S.f:a.mode==='replay'?1.15:dec?(a.rev>=N||busy?1.5:28):(busy&&a===S.plate?1.3:1e9);
+    var dec=verdict(a), N=Math.max(1,S.N||S.G.length), hold=L?(busy?0.12:0.24)/S.f:dec?(a.rev>=N||busy?1.5:28):(hurry?1.3:1e9);
     if(S.t-a.settledAt<hold) continue;
     if(dec==='approved') exitDrop(a); else if(dec==='rejected') exitEject(a); else if(a===S.plate) park(a); } }
 
-// Twenty four hours in twenty seconds: every release of the day comes down
-// the belt again in the order it was requested, and is voted on as it was.
-function lapse(sec){ var now=nowS(); clearStage(); S.shelf=[]; S.rej=0; S.rejects=[]; S.order.forEach(function(r){ r.place=null; r.landed=false; r.trayed=false; r.vis=0; });
-  var list=S.order.slice().sort(function(a,b){ return a.at-b.at; }); S.tl={t0:S.t+0.5,dur:Math.max(6,+sec||20),from:now-86400,list:list,i:0,vt:now-86400}; S.idle=0; post({type:'timelapse',state:'start'}); }
-function lapseEnd(){ S.tl=null; S.f=1; clearStage(); settle(); S.amb=S.t+8; post({type:'timelapse',state:'end'}); }
+// The replay, and only when asked for. Every release requested inside the
+// window comes down the belt again in the order it was requested and is voted
+// on as it was; what was decided before the window stands where it ended up
+// from the start. A day takes about twenty seconds, six hours fourteen, an
+// hour eight, less when the releases all fall in one part of the window: the
+// clock runs from just before the first of them to just after the last. A
+// window with only a few releases gives each of them time: the pace only ever
+// slows, it is never faster than the day's.
+var LAPSE={3600:8,21600:14,86400:20};
+function lapse(win,sec){ var now=nowS(); win=+win>0?+win:86400; clearStage(); S.shelf=[]; S.rej=0; S.rejects=[];
+  var from=now-win, list=S.order.filter(function(r){ return r.at>=from; }).sort(function(a,b){ return a.at-b.at; }), dur=Math.max(4,+sec||LAPSE[win]||clamp(8+12*Math.log(win/3600)/Math.log(24),8,20));
+  S.order.forEach(function(r){ r.place=null; r.landed=false; r.trayed=false; r.outLanded=false; r.queued=false; r.vis=0; if(r.at<from) place(r); }); snap();
+  var n=list.length, pace=clamp(dur/Math.max(1,n*1.5),1,2.6), a0=n?Math.max(from,list[0].at-win*0.06):from, a1=n?Math.min(now,list[n-1].at+win*0.03):now, span=Math.max(1,a1-a0);
+  S.tl={t0:S.t+0.5,dur:Math.max(dur*span/win,1+1.1*Math.max(0,n-1)*pace),win:win,from:a0,span:span,list:list,i:0,vt:a0,pace:pace}; S.idle=0; S.note=null;
+  if(!list.length){ S.tl.dur=2.4; S.note={txt:CFG.labels.lapseEmpty,until:S.t+2.9}; }
+  post({type:'timelapse',state:'start',window:win}); }
+function lapseEnd(){ var win=S.tl?S.tl.win:86400; S.tl=null; S.f=1; clearStage(); settle(); post({type:'timelapse',state:'end',window:win}); }
 
 function step(dt,coarse){ var i, a, k; S.t+=dt; S.idle+=dt; S.door=Math.max(0,S.door-dt*1.5); S.lock=Math.max(0,S.lock-dt*1.4); S.bump=Math.max(0,S.bump-dt*2.4); S.rbump=Math.max(0,S.rbump-dt*2.4);
-  if(S.tl){ k=(S.t-S.tl.t0)/S.tl.dur; S.tl.vt=S.tl.from+clamp(k,0,1)*86400; S.f=clamp(1+0.3*S.q.length,1,2.6);
+  if(S.tl){ k=(S.t-S.tl.t0)/S.tl.dur; S.tl.vt=S.tl.from+clamp(k,0,1)*S.tl.span; S.f=clamp(1+0.3*S.q.length,1,2.6)/S.tl.pace;
     while(S.tl.i<S.tl.list.length&&S.tl.list[S.tl.i].at<=S.tl.vt) enqueue(S.tl.list[S.tl.i++],'lapse');
-    if((k>=1&&S.tl.i>=S.tl.list.length&&!S.actors.length&&!S.checks.length)||k>2.4) lapseEnd(); }
+    if((k>=1&&S.tl.i>=S.tl.list.length&&!S.actors.length&&!S.checks.length)||k>3+S.tl.list.length*0.5) lapseEnd(); }
   direct();
   for(i=S.checks.length-1;i>=0;i--){ var c=S.checks[i]; c.t+=coarse?9:dt; if(!c.done&&c.t>=c.hit){ c.done=true; landVote(c); } if(c.t>=c.dur) S.checks.splice(i,1); }
   for(i=S.pings.length-1;i>=0;i--) if(S.t-S.pings[i].t>(S.pings[i].big?1.0:0.6)) S.pings.splice(i,1);
@@ -236,16 +287,34 @@ function step(dt,coarse){ var i, a, k; S.t+=dt; S.idle+=dt; S.door=Math.max(0,S.
     if(a.st==='q') tg=slotQ(S.q.indexOf(a)); else if(a.st==='plate') tg={x:S.cx,s:1,a:1}; else if(a.st==='park') tg=slotP(S.parked.indexOf(a));
     if(tg){ a.x+=(tg.x-a.x)*rate; a.s+=(tg.s-a.s)*rate; a.al+=(tg.a-a.al)*rate; a.shake=0; continue; }
     a.t+=dt;
-    if(a.st==='drop'){ if(a.t>=a.dur||coarse){ var r=a.r; r.landed=true; if(r.place!=='shelf'&&a.mode!=='replay'){ r.place='shelf'; } S.bump=1; S.pings.push({x:r.sx,y:r.sy,t:S.t,r0:S.mini*0.7,hex:r.ours?GOLD:GREEN,big:true}); if(a.mode==='live') post({type:'cue',kind:'approved',key:r.key}); drop(a); } }
-    else if(a.st==='eject'){ var k2=a.t/a.dur; a.shake=k2<0.3?Math.sin(a.t*58)*3.2*U*(1-k2/0.3):0; if(k2>=1||coarse){ var rj=a.r, tq=trayPos(); if(a.mode!=='replay'&&rj.place!=='rejected'){ rj.place='rejected'; S.rej++; S.rejects.push(rj); rj.vis=rj.votes.length; } rj.trayed=true; S.rbump=1; S.pings.push({x:tq[0],y:tq[1],t:S.t,r0:S.mini*0.7,hex:RED,big:true}); if(a.mode==='live') post({type:'cue',kind:'rejected',key:rj.key}); drop(a); } }
+    if(a.st==='drop'){ if(a.t>=a.dur||coarse){ var r=a.r; r.landed=true; r.place='shelf'; S.bump=1; S.pings.push({x:r.sx,y:r.sy,t:S.t,r0:S.mini*0.7,hex:r.ours?GOLD:GREEN,big:true}); if(a.mode==='live') post({type:'cue',kind:'approved',key:r.key}); drop(a); } }
+    else if(a.st==='eject'){ var k2=a.t/a.dur; a.shake=k2<0.26?Math.sin(a.t*58)*3.2*U*(1-k2/0.26):0; if(k2>=1||coarse){ var rj=a.r; rj.outLanded=true; S.rbump=1; S.pings.push({x:rj.ox,y:rj.oy,t:S.t,r0:S.mini*0.7,hex:RED,big:true}); if(a.mode==='live') post({type:'cue',kind:'rejected',key:rj.key}); drop(a); } }
     else if(a.st==='fade'){ a.al-=dt*2; a.x+=dt*40*U; if(a.al<=0||coarse) drop(a); } }
-  var sm=1-Math.exp(-dt*7); for(i=0;i<S.shelf.length;i++){ var s=S.shelf[i], p=shelfPos(s); s.sx+=(p[0]-s.sx)*sm; s.sy+=(p[1]-s.sy)*sm; }
-  // Between real events the scene looks back now and then: one past release
-  // goes down the belt again, with its age written under the name.
-  if(CFG.ambient&&!coarse&&!S.tl&&S.has&&!S.actors.length&&S.t>S.amb){ var pool=S.order.filter(function(r){ return r.place&&r.votes.length; }); if(pool.length){ var pk=Math.pow(Math.random(),1.6); enqueue(pool[pool.length-1-Math.floor(pk*pool.length)],'replay'); } S.amb=S.t+17+Math.random()*9; }
+  var sm=1-Math.exp(-dt*7), s2, p2; for(i=0;i<S.shelf.length;i++){ s2=S.shelf[i]; p2=shelfPos(s2); s2.sx+=(p2[0]-s2.sx)*sm; s2.sy+=(p2[1]-s2.sy)*sm; }
+  for(i=0;i<S.rejects.length;i++){ s2=S.rejects[i]; p2=outPos(s2); s2.ox+=(p2[0]-s2.ox)*sm; s2.oy+=(p2[1]-s2.oy)*sm; }
 }
 
 // ---------- drawing ----------
+// Far behind everything, in shadow: the dApp Store itself, its own mark the
+// size of a mountain. The mark is a cube seen from below, and it is lit as
+// one: the face turned to the light is the palest, its neighbour is in half
+// shadow, the underside is dark and sinks into the haze. Only the upper edges
+// catch the light outright. It is scenery: it drifts by a hair, that light
+// breathes, and it never comes forward.
+function farBuild(){ var c=document.createElement('canvas'), x=c.getContext('2d'), t=document.createElement('canvas'), tx=t.getContext('2d'), n=432, m=392, ox=64, oy=30, i, faces=null; c.width=c.height=520; t.width=t.height=n;
+  function paint(im,top,bottom){ tx.globalCompositeOperation='source-over'; tx.clearRect(0,0,n,n); tx.drawImage(im,0,0,n,n); tx.globalCompositeOperation='source-in'; var fg=tx.createLinearGradient(0,n*0.05,0,n*0.95); fg.addColorStop(0,top); fg.addColorStop(1,bottom); tx.fillStyle=fg; tx.fillRect(0,0,n,n); x.drawImage(t,ox,oy,m,m); }
+  if(FARF.length===3&&FARF.every(function(f){ return f.complete&&f.naturalWidth>0; })){
+    // Which face is which is read off the picture: the lowest is the underside, and of the other two the left one faces the light.
+    var info=FARF.map(function(f){ var q=document.createElement('canvas'), qx=q.getContext('2d'), d, k, sx=0, sy=0, cnt=0; q.width=q.height=48; qx.drawImage(f,0,0,48,48); d=qx.getImageData(0,0,48,48).data; for(k=3;k<d.length;k+=4){ if(d[k]>40){ var px=(k-3)/4; sx+=px%48; sy+=Math.floor(px/48); cnt++; } } return {im:f,x:cnt?sx/cnt:0,y:cnt?sy/cnt:0}; });
+    info.sort(function(a,b){ return b.y-a.y; }); var rest=[info[1],info[2]].sort(function(a,b){ return a.x-b.x; }); faces=[[info[0].im,'#1C4C58','#081A25'],[rest[1].im,'#2F7781','#12343F'],[rest[0].im,'#74CBC8','#235A66']]; }
+  if(faces){ for(i=0;i<3;i++) paint(faces[i][0],faces[i][1],faces[i][2]); } else paint(FAR,'#4C97A0','#0E2A38');
+  tx.globalCompositeOperation='source-over'; tx.clearRect(0,0,n,n); tx.drawImage(FAR,0,0,n,n); tx.globalCompositeOperation='destination-out'; tx.drawImage(FAR,-1.5,4,n,n); tx.globalCompositeOperation='source-in'; tx.fillStyle='#D2F6F1'; tx.fillRect(0,0,n,n);
+  x.globalAlpha=0.85; x.drawImage(t,ox,oy,m,m); x.globalAlpha=1;
+  x.globalCompositeOperation='destination-in'; var hz=x.createLinearGradient(0,oy,0,oy+m+30); hz.addColorStop(0,'rgba(0,0,0,1)'); hz.addColorStop(0.55,'rgba(0,0,0,0.82)'); hz.addColorStop(1,'rgba(0,0,0,0.1)'); x.fillStyle=hz; x.fillRect(0,0,520,520); S.far=c; }
+function farStore(){ if(!CFG.far||!FAR||!FAR.complete||!(FAR.naturalWidth>0)) return; if(!S.far) farBuild();
+  var w=Math.min(W*1.18,(S.yRail-S.insTop)*1.5), br=0.5+0.5*Math.sin(S.t*0.33), x=S.cx-w*0.5+3.5*U*Math.sin(S.t*0.09), y=S.insTop+(S.yRail-S.insTop)*0.53-w*0.374+2*U*Math.sin(S.t*0.07+1);
+  glow('#12808F',S.cx,y+w*0.40,w*0.6,0.06+0.03*br);
+  ctx.save(); ctx.globalAlpha=0.27+0.07*br; ctx.drawImage(S.far,x,y,w,w*0.86); ctx.restore(); }
 // The store is the vault's moon risen from below: the same body, the same
 // mark, and along its edge the day's releases stand where they came down.
 function store(now){ var cx=S.cx, cy=S.cys, R=S.Rs, i;
@@ -263,6 +332,14 @@ function store(now){ var cx=S.cx, cy=S.cys, R=S.Rs, i;
 function shelf(){ var L=shelfList(), i; for(i=0;i<S.shelf.length;i++){ var r=S.shelf[i]; if(!r.landed) continue; var vis=L.indexOf(r)>=0, al=(vis?1:0)*(r.acting?0.28:1); if(al<=0) continue;
     glow(r.ours?GOLD:GREEN,r.sx,r.sy+S.mini*0.5,S.mini*0.95,0.20*al); tile(r,r.sx,r.sy,S.mini,al,r.vis,0,S.sel===r);
     if(r.liveAt){ ctx.beginPath(); ctx.arc(r.sx+S.mini*0.52,r.sy-S.mini*0.52,2.1*U,0,TAU); ctx.fillStyle=TEXT; ctx.globalAlpha=al; ctx.fill(); ctx.globalAlpha=1; } } }
+// The turned-away: the same tiles in the same rhythm, red where the others are
+// green, on their ledge, with the day's count over its far end.
+function outLine(){ var L=outList(), k=L.length, i, n=0, d=(S.mini+6*U)/S.Rs; if(!k) return;
+  var a0=-Math.PI/2+(S.M-k-0.5-(S.M-1)/2)*d, a1=-Math.PI/2+(S.M-0.5-(S.M-1)/2)*d, rl=S.Rs+9*U;
+  ctx.lineCap='round'; ctx.strokeStyle=rgba(RED,0.16); ctx.lineWidth=5*U; ctx.beginPath(); ctx.arc(S.cx,S.cys,rl,a0,a1); ctx.stroke(); ctx.strokeStyle=rgba(RED,0.6+0.3*S.rbump); ctx.lineWidth=1.3; ctx.beginPath(); ctx.arc(S.cx,S.cys,rl,a0,a1); ctx.stroke();
+  for(i=0;i<k;i++){ var r=L[i]; if(!r.outLanded) continue; n++; glow(RED,r.ox,r.oy+S.mini*0.5,S.mini*0.95,0.18); tile(r,r.ox,r.oy,S.mini,1,r.votes.length,0,S.sel===r); }
+  for(i=0;i<S.rejects.length;i++) if(S.rejects[i].outLanded&&L.indexOf(S.rejects[i])<0) n++;
+  if(n>0){ var e=arcPos(S.M-1,9*U), rx=Math.min(W-9*U,e[0]+S.mini*0.5), ry=e[1]-S.mini*0.5-11*U, z=1+0.35*S.rbump; ctx.strokeStyle=rgba(RED,0.9); ctx.lineWidth=1.5*U*z; ctx.beginPath(); ctx.moveTo(rx-7*U*z,ry-3.4*U*z); ctx.lineTo(rx-0.2*U,ry+3.4*U*z); ctx.moveTo(rx-0.2*U,ry-3.4*U*z); ctx.lineTo(rx-7*U*z,ry+3.4*U*z); ctx.stroke(); ctx.fillStyle=rgba(RED,0.95); ctx.font='700 '+Math.round(10.5*U*z)+'px monospace'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillText(String(n),rx-11*U*z,ry+0.5); } }
 // The belt: a rail of light the apps ride in on, left to right, with the plate
 // in the middle where the guardians look. Its two halves under the plate are a
 // trapdoor: it opens for an app that passed and stays shut for one that did not.
@@ -275,12 +352,7 @@ function belt(){ var y=S.yRail, half=S.St*0.5+10*U, x0=S.cx-half, x1=S.cx+half, 
   var tone=S.lock>0?RED:(S.plate?ACCENT:'#78B4CD'), al=S.lock>0?0.5+0.5*S.lock:(S.plate?0.75+0.2*Math.sin(S.t*3.2):0.42);
   ctx.strokeStyle=rgba(tone,al); ctx.lineWidth=2*U;
   for(i=-1;i<=1;i+=2){ var hx=S.cx+i*half; ctx.beginPath(); ctx.moveTo(hx,y); ctx.lineTo(hx-i*Math.cos(open)*half,y+Math.sin(open)*half); ctx.stroke(); ctx.beginPath(); ctx.arc(hx,y,2.2*U,0,TAU); ctx.fillStyle=rgba(tone,al); ctx.fill(); }
-  glow(S.lock>0?RED:ACCENT,S.cx,y,half*1.5,(S.plate?0.13:0.06)+0.2*S.lock);
-  // The far end of the belt: the last app that was turned away rests there,
-  // dimmed, with the day's count over it. It did not go down into the store.
-  var out=trayRel(), tp=trayPos(), cnt=0; for(i=0;i<S.rejects.length;i++) if(S.rejects[i].trayed) cnt++;
-  if(out){ tile(out,tp[0],tp[1],S.mini,out.acting?0.3:1,out.votes.length,0,S.sel===out); rr(tp[0]-S.mini/2,tp[1]-S.mini/2,S.mini,S.mini,S.mini*0.235); ctx.fillStyle='rgba(4,7,11,0.28)'; ctx.fill(); }
-  if(cnt>0){ var rx=tp[0]+S.mini/2-4*U, ry=tp[1]-S.mini/2-11*U, k=1+0.35*S.rbump; ctx.strokeStyle=rgba(RED,0.9); ctx.lineWidth=1.5*U*k; ctx.beginPath(); ctx.moveTo(rx-3.4*U*k,ry-3.4*U*k); ctx.lineTo(rx+3.4*U*k,ry+3.4*U*k); ctx.moveTo(rx+3.4*U*k,ry-3.4*U*k); ctx.lineTo(rx-3.4*U*k,ry+3.4*U*k); ctx.stroke(); ctx.fillStyle=rgba(RED,0.95); ctx.font='700 '+Math.round(10.5*U*k)+'px monospace'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillText(String(cnt),rx-8*U,ry+0.5); } }
+  glow(S.lock>0?RED:ACCENT,S.cx,y,half*1.5,(S.plate?0.13:0.06)+0.2*S.lock); }
 // An app: its own icon from the store, or its initials while it has none yet,
 // in a frame that takes the colour of the votes as they land. One yes of three
 // is a light green; two is deeper; all three is the full colour. A no takes its
@@ -305,7 +377,8 @@ function actorTile(a,now){ var r=a.r, sz=S.St*a.s, x=a.x+a.shake, y=yFor(a.s), a
   if(a.st==='drop'){ var k=clamp(a.t/a.dur,0,1), p=r.acting===a||r.place==='shelf'?[r.sx,r.sy]:[S.cx,S.limb], e=eio(k); x=a.fx+(p[0]-a.fx)*e; y=a.fy+(p[1]-a.fy)*k*k; sz=S.St*(a.fs+(S.mini/S.St-a.fs)*e);
     var tr=ctx.createLinearGradient(0,a.fy,0,y); tr.addColorStop(0,rgba(r.ours?GOLD:GREEN,0)); tr.addColorStop(1,rgba(r.ours?GOLD:GREEN,0.5*(1-k*0.5))); ctx.strokeStyle=tr; ctx.lineWidth=sz*0.5; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(a.fx+(x-a.fx)*0.5,a.fy+(y-a.fy)*0.25); ctx.lineTo(x,y); ctx.stroke();
     glow(r.ours?GOLD:GREEN,x,y,sz*1.6,0.35); tile(r,x,y,sz,1,a.rev,0,false); return; }
-  if(a.st==='eject'){ var ke=clamp((a.t/a.dur-0.3)/0.7,0,1), e2=eio(ke), tq=trayPos(); x=a.ex+(tq[0]-a.ex)*e2+a.shake; sz=S.St*(a.es+(S.mini/S.St-a.es)*e2); y=S.yRail-9*U-sz/2; glow(RED,x,y,sz*1.3,0.25*(1-e2)); tile(r,x,y,sz,1,a.rev,a.flash,false); if(e2>0){ rr(x-sz/2,y-sz/2,sz,sz,sz*0.235); ctx.fillStyle='rgba(4,7,11,'+(0.28*e2)+')'; ctx.fill(); } return; }
+  if(a.st==='eject'){ var ke=clamp((a.t/a.dur-0.26)/0.74,0,1), e2=eio(ke), u=1-e2, bx=W-8*U, by=a.ey-2*U; x=u*u*a.ex+2*u*e2*bx+e2*e2*r.ox+a.shake; y=u*u*a.ey+2*u*e2*by+e2*e2*r.oy; sz=S.St*(a.es+(S.mini/S.St-a.es)*e2);
+    glow(RED,x,y,sz*1.4,0.3*(1-e2*0.6)); tile(r,x,y,sz,1,a.rev,a.flash,false); return; }
   tile(r,x,y,sz,al,a.rev,a.flash,S.sel===r);
   if(al<0.25||a.st==='fade'||(a.st==='q'&&S.q.indexOf(a)>0)||(a.st==='park'&&S.parked.indexOf(a)>0)) return;
   // The name, where it can be read: white on the night, under the rail.
@@ -315,7 +388,6 @@ function actorTile(a,now){ var r=a.r, sz=S.St*a.s, x=a.x+a.shake, y=yFor(a.s), a
   // Under it, the seconds each vote took, in the colour of the vote.
   var parts=[], tw=0, sep=' · '; ctx.font='600 '+Math.round((big?10:8.5)*U)+'px monospace';
   for(i=0;i<a.rev&&i<r.votes.length;i++){ parts.push({t:secs(r.votes[i].seconds),c:r.votes[i].yes===false?RED:GREEN}); }
-  if(a.mode==='replay'&&big) parts.push({t:CFG.labels.ago.replace('{age}',age(now-r.at)),c:FAINT});
   for(i=0;i<parts.length;i++){ parts[i].w=ctx.measureText(parts[i].t).width; tw+=parts[i].w+(i?ctx.measureText(sep).width:0); }
   var px=nx-tw/2, sw=ctx.measureText(sep).width; ctx.textAlign='left'; ctx.globalAlpha=al;
   for(i=0;i<parts.length;i++){ if(i){ ctx.fillStyle=FAINT; ctx.fillText(sep,px,ny+13*U); px+=sw; } ctx.fillStyle=parts[i].c; ctx.fillText(parts[i].t,px,ny+13*U); px+=parts[i].w; } ctx.globalAlpha=1; }
@@ -364,7 +436,7 @@ function beams(){ for(var i=0;i<S.checks.length;i++){ var c=S.checks[i], g=S.G[c
     var lg=ctx.createLinearGradient(gx,gy,tx,ty); lg.addColorStop(0,rgba(hex,0.02)); lg.addColorStop(1,rgba(hex,0.5*al)); ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.fillStyle=lg; ctx.beginPath(); ctx.moveTo(gx-4*U,gy); ctx.lineTo(gx+4*U,gy); ctx.lineTo(ex+ew,ey); ctx.lineTo(ex-ew,ey); ctx.closePath(); ctx.fill();
     ctx.strokeStyle=rgba(hex,0.75*al); ctx.lineWidth=1.3*U; ctx.beginPath(); ctx.moveTo(gx,gy); ctx.lineTo(ex,ey); ctx.stroke(); glow(hex,ex,ey,(c.t<c.hit?12:20)*U,0.75*al); ctx.restore(); } }
 function pings(){ for(var i=0;i<S.pings.length;i++){ var p=S.pings[i], k=(S.t-p.t)/(p.big?1.0:0.6); if(k>=1) continue; ctx.strokeStyle=rgba(p.hex,0.85*(1-k)); ctx.lineWidth=(p.big?2:1.6)*U; ctx.beginPath(); ctx.arc(p.x,p.y,p.r0+eo(k)*(p.big?17:20)*U,0,TAU); ctx.stroke(); } }
-function hud(now){ if(!CFG.hud) return; var y=S.insTop+13*U, x=13*U, L=CFG.labels, word=S.tl?L.lapse:L.live, tone=S.tl?GOLD:GREEN;
+function hud(now){ if(!CFG.hud) return; var y=S.insTop+13*U, x=13*U, L=CFG.labels, word=S.tl?((S.tl.win===3600?L.lapse1h:S.tl.win===21600?L.lapse6h:L.lapse24h)||L.lapse):L.live, tone=S.tl?GOLD:GREEN;
   ctx.textBaseline='middle'; ctx.textAlign='left'; ctx.beginPath(); ctx.arc(x+3*U,y,3*U*(S.tl?1:0.8+0.2*Math.sin(S.t*3)),0,TAU); ctx.fillStyle=tone; ctx.fill();
   ctx.fillStyle=tone; ctx.font='700 '+Math.round(10*U)+'px sans-serif'; ctx.fillText(word,x+11*U,y+0.5); var wd=ctx.measureText(word).width;
   ctx.fillStyle=MUTED; ctx.font='600 '+Math.round(9.5*U)+'px monospace';
@@ -372,12 +444,13 @@ function hud(now){ if(!CFG.hud) return; var y=S.insTop+13*U, x=13*U, L=CFG.label
   else if(S.lastVoteAt){ ctx.fillText(L.lastVote.replace('{age}',age(now-S.lastVoteAt)),x+19*U+wd,y+0.5); } }
 function draw(){ if(W<2) return; var now=S.tl?S.tl.vt:nowS(), i, a; ctx.setTransform(DPR,0,0,DPR,0,0); ctx.clearRect(0,0,W,H); if(S.bg) ctx.drawImage(S.bg,0,0,W,H);
   for(i=0;i<9;i++){ var sx=(Math.sin(i*37.1)*0.5+0.5)*W, sy=(Math.sin(i*71.3+2)*0.5+0.5)*S.yRail*0.9, tw=0.5+0.5*Math.sin(S.t*(0.6+i*0.13)+i*1.7); ctx.fillStyle='rgba(216,244,255,'+(0.08+0.38*tw)+')'; ctx.beginPath(); ctx.arc(sx,sy,(0.7+0.5*tw)*U,0,TAU); ctx.fill(); }
-  store(now); shelf(); belt();
+  farStore(); store(now); shelf(); outLine(); belt();
   for(i=0;i<S.actors.length;i++){ a=S.actors[i]; if(a.st!=='drop') actorTile(a,now); }
   beams();
   for(i=0;i<S.G.length;i++) medallion(S.G[i],i);
   for(i=0;i<S.actors.length;i++){ a=S.actors[i]; if(a.st==='drop') actorTile(a,now); }
   pings(); hud(now);
+  if(S.note){ if(S.t>S.note.until) S.note=null; else { var na=clamp((S.note.until-S.t)/0.5,0,1); ctx.fillStyle=rgba(TEXT,0.85*na); ctx.font='600 '+Math.round(12*U)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(S.note.txt,S.cx,yFor(1)); } }
   if(!S.has||(!S.order.length&&!S.tl)){ ctx.fillStyle=FAINT; ctx.font='600 '+Math.round(10.5*U)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(CFG.labels.waiting,S.cx,S.yRail+22*U); }
   if(S.sel&&S.t-S.selT>5) S.sel=null; }
 
@@ -387,13 +460,13 @@ window.__push=function(m){ try{ if(!m) return; var t=m.type;
   else if(t==='motion'){ S.motion=m.mode==='calm'||m.mode==='off'?m.mode:'live'; S.idle=0; }
   else if(t==='pause'){ S.paused=!!m.on; }
   else if(t==='inset'){ S.insTop=+m.top||0; S.insBot=+m.bottom||0; layout(); }
-  else if(t==='timelapse'){ if(m.on===false){ if(S.tl) lapseEnd(); } else if(S.has&&!S.tl) lapse(m.seconds); }
-  else if(t==='config'){ ['logos','hud','ambient','iconBase'].forEach(function(k){ if(m[k]!==undefined&&m[k]!==null) CFG[k]=m[k]; }); if(m.labels) for(var k in m.labels) if(typeof m.labels[k]==='string') CFG.labels[k]=m.labels[k]; layout(); }
+  else if(t==='timelapse'){ if(m.on===false){ if(S.tl) lapseEnd(); } else if(S.has){ if(S.tl) lapseEnd(); lapse(m.window,m.seconds); } }
+  else if(t==='config'){ ['logos','hud','far','iconBase'].forEach(function(k){ if(m[k]!==undefined&&m[k]!==null) CFG[k]=m[k]; }); if(m.labels) for(var k in m.labels) if(typeof m.labels[k]==='string') CFG.labels[k]=m.labels[k]; layout(); }
   draw(); }catch(e){ post({type:'error',message:String(e&&e.stack||e).slice(0,400)}); } };
 function hit(x,y){ var i, a, d;
   for(i=0;i<S.G.length;i++){ var g=S.G[i]; if(Math.hypot(x-g.x,y-g.y)<S.Rm+9*U) return {g:g}; }
   for(i=S.actors.length-1;i>=0;i--){ a=S.actors[i]; if(a.st==='drop'||a.al<0.3) continue; var sz=S.St*a.s; if(Math.abs(x-a.x)<sz/2+8*U&&y>yFor(a.s)-sz/2-8*U&&y<S.yRail+30*U) return {r:a.r}; }
-  var out=trayRel(), tp=trayPos(); if(out&&Math.hypot(x-tp[0],y-tp[1])<S.mini*0.5+9*U) return {r:out};
+  var O=outList(); for(i=0;i<O.length;i++){ if(O[i].outLanded&&Math.hypot(x-O[i].ox,y-O[i].oy)<S.mini*0.5+8*U) return {r:O[i]}; }
   var best=null, bd=S.mini*0.5+9*U, L=shelfList(); for(i=0;i<L.length;i++){ if(!L[i].landed) continue; d=Math.hypot(x-L[i].sx,y-L[i].sy); if(d<bd){ bd=d; best={r:L[i]}; } }
   if(best) return best; if(Math.hypot(x-S.cx,y-S.cys)<S.Rs) return {store:true}; return null; }
 cv.addEventListener('click',function(e){ S.idle=0; var h=hit(e.clientX,e.clientY); if(!h){ S.sel=null; post({type:'tap',kind:'none'}); return; }
