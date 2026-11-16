@@ -1,56 +1,64 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AppState, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
-import { compact, integer } from '../format';
+import { API_BASE_URL } from '../api';
+import { integer } from '../format';
 import {
   BUILD_VERSION_CODE,
   BUILD_VERSION_NAME,
   guardianLabel,
   guardianTone,
-  releaseRows,
+  iconUrl,
+  releaseName,
   shortKey,
   useReleaseReceipt,
   useStoreGuardians,
   type ReleaseReceipt,
-  type ReleaseRow,
   type StoreGuardian,
   type StoreGuardians,
+  type StoreRelease,
+  type Verdict,
 } from '../guardians';
 import { t } from '../i18n';
 import { prefValue } from '../prefs';
 import { colors, font, radius, spacing, type } from '../theme';
-import { Eyebrow, Hero, Inset, Panel } from './kit';
+import { Evidence, Eyebrow, Panel } from './kit';
+import { GUARDIAN_BADGES } from './guardianLogos';
 import { GUARDIAN_SCENE_HTML } from './guardianSceneHtml';
 
-// The guardians tab (1.6.0, Alex 15.11.2026): SKR Eyes watched the vault, and
-// now it watches the dApp Store's guardians too. Every release to the store is
-// asked for on chain and voted on, on chain, by Solana Mobile, Jito and Helius;
-// nobody else shows those votes as they happen.
+// The guardians tab, second drawing (Alex, 16.11.2026: "an app comes in, a
+// guardian jumps up and checks it, it turns green and goes down into the
+// store; turned away, it goes red and does not pass").
 //
-// The scene up top is the living picture (guardianSceneHtml.ts). Under it, in
-// the app's usual panels: today in one number, each guardian's pace, the
-// releases of the last hours with the seconds each vote took, this very
-// build's own receipt, and the SKR that stands behind the guardian pools.
+// The scene up top is the world itself (guardianSceneHtml.ts, by the senior
+// model): the guardians as struck medallions, the belt, the trapdoor, the
+// store's moon with the day's passed apps along its edge. Under it, what is
+// read rather than watched: the day in one strip, the releases with the
+// seconds and the verdict of every vote, the three guardians, this build's
+// own receipt, and where all of it comes from.
 //
-// Whether a vote said yes or no is shown for one release only: this one.
+// Every app goes by its store name and icon; one the store does not list yet,
+// by the name its publisher registered on chain. Package names are not shown.
 
-// The marks of Solana Mobile, Jito and Helius belong to them. Drawn in the
-// scene only when this is on; otherwise each guardian wears its initials in
-// its own colour. Alex's call before the build (15.11.2026).
-const SHOW_GUARDIAN_LOGOS = true;
+const RELEASES_SHOWN = 8;
+const MONOGRAM_TONES = ['#3B5568', '#4B4A6B', '#3F5E55', '#5D4A3F'];
 
 function seconds(value: number | null | undefined): string {
   if (value == null) return '—';
   if (value < 120) return `${value}s`;
-  return `${Math.round(value / 60)}m`;
+  if (value < 7_200) return `${Math.round(value / 60)}m`;
+  return `${Math.round(value / 3_600)}h`;
+}
+
+function age(at: number | null | undefined): string {
+  if (!at) return '—';
+  const gap = Math.max(0, Math.floor(Date.now() / 1000) - at);
+  return gap < 60 ? `${gap}s` : gap < 3_600 ? `${Math.floor(gap / 60)}m` : `${Math.floor(gap / 3_600)}h`;
 }
 
 function ago(at: number | null | undefined): string {
-  if (!at) return '—';
-  const gap = Math.max(0, Math.floor(Date.now() / 1000) - at);
-  const age = gap < 60 ? `${gap}s` : gap < 3_600 ? `${Math.floor(gap / 60)}m` : `${Math.floor(gap / 3_600)}h`;
-  return t('{age} ago', { age });
+  return at ? t('{age} ago', { age: age(at) }) : '—';
 }
 
 function sinceDate(at: number | null): string {
@@ -64,14 +72,35 @@ function openTx(sig: string | null | undefined) {
   void Linking.openURL(`https://solscan.io/tx/${sig}`).catch(() => undefined);
 }
 
-type Picked =
-  | { kind: 'guardian'; key: string }
-  | { kind: 'request'; app: string; versionCode: number }
-  | null;
+function verdictTone(verdict: Verdict): string {
+  return verdict === 'approved' ? colors.positive : verdict === 'rejected' ? colors.negative : colors.faint;
+}
 
-function Scene({ data, height, onPick }: { data: StoreGuardians | null; height: number; onPick: (picked: Picked) => void }) {
+function verdictWord(verdict: Verdict): string {
+  return verdict === 'approved' ? t('Passed') : verdict === 'rejected' ? t('Turned away') : t('Voting');
+}
+
+// Any alphabet: split on spaces and punctuation, not on what a letter is.
+function initials(name: string): string {
+  const [first = '', second = ''] = name.split(/[\s:;.,_\-–—()[\]{}'"!?&+/|]+/).filter(Boolean);
+  if (!first) return '?';
+  if (!second) return first.slice(0, 2);
+  return `${first.charAt(0)}${second.charAt(0)}`.toUpperCase();
+}
+
+function toneFor(text: string): string {
+  let hash = 0;
+  for (const char of text) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return MONOGRAM_TONES[hash % MONOGRAM_TONES.length] ?? colors.lineStrong;
+}
+
+type Picked = { kind: 'guardian'; key: string } | { kind: 'release'; key: string } | null;
+
+function Scene({ data, height, active, onPick }: { data: StoreGuardians | null; height: number; active: boolean; onPick: (picked: Picked) => void }) {
   const web = useRef<WebView>(null);
   const ready = useRef(false);
+  const activeRef = useRef(active);
+  activeRef.current = active;
   const [lapse, setLapse] = useState(false);
   const push = useCallback((message: object) => {
     web.current?.injectJavaScript(`window.__push(${JSON.stringify(message)});true;`);
@@ -79,19 +108,14 @@ function Scene({ data, height, onPick }: { data: StoreGuardians | null; height: 
   const configure = useCallback(() => {
     push({
       type: 'config',
-      logos: SHOW_GUARDIAN_LOGOS,
-      // Our own releases are drawn in gold, the way your own phone is on Top.
-      // Eyes above, radar below: a phone is always tall.
-      orient: 'v',
-      mePkg: 'dev.alexkosa.skreyes',
-      meLabel: 'SKR Eyes',
+      logos: true,
+      hud: true,
+      ambient: true,
+      iconBase: API_BASE_URL,
       labels: {
         live: t('LIVE'),
-        replay: t('REPLAY'),
         lapse: t('24 HOURS'),
-        releases: t('releases'),
-        votes: t('votes'),
-        apps: t('apps'),
+        passed: t('passed · 24h'),
         ago: t('{age} ago'),
         lastVote: t('last vote {age} ago'),
         waiting: t('waiting for votes'),
@@ -106,9 +130,12 @@ function Scene({ data, height, onPick }: { data: StoreGuardians | null; height: 
     const subscription = AppState.addEventListener('change', (next) => push({ type: 'pause', on: next !== 'active' }));
     return () => subscription.remove();
   }, [push]);
+  useEffect(() => { push({ type: 'pause', on: !active }); }, [active, push]);
   const onMessage = useCallback((event: WebViewMessageEvent) => {
     try {
-      const message = JSON.parse(event.nativeEvent.data) as { type: string; kind?: string; key?: string; app?: string; versionCode?: number; state?: string };
+      const message = JSON.parse(event.nativeEvent.data) as {
+        type: string; kind?: string; key?: string; state?: string; approve?: boolean;
+      };
       if (message.type === 'ready') {
         ready.current = true;
         configure();
@@ -116,8 +143,13 @@ function Scene({ data, height, onPick }: { data: StoreGuardians | null; height: 
       } else if (message.type === 'tap') {
         void Haptics.selectionAsync();
         if (message.kind === 'guardian' && message.key) onPick({ kind: 'guardian', key: message.key });
-        else if (message.kind === 'request' && message.app && message.versionCode != null) onPick({ kind: 'request', app: message.app, versionCode: message.versionCode });
+        else if (message.kind === 'release' && message.key) onPick({ kind: 'release', key: message.key });
         else onPick(null);
+      } else if (message.type === 'cue' && activeRef.current && AppState.currentState === 'active') {
+        // A real vote or verdict, as it is played (never a replayed one).
+        if (message.kind === 'approved') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        else if (message.kind === 'rejected') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        else if (message.kind === 'vote') void Haptics.impactAsync(message.approve === false ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
       } else if (message.type === 'timelapse') {
         setLapse(message.state === 'start');
       }
@@ -154,178 +186,257 @@ function Scene({ data, height, onPick }: { data: StoreGuardians | null; height: 
   );
 }
 
-function GuardianTile({ guardian, picked, onPress }: { guardian: StoreGuardian; picked: boolean; onPress: () => void }) {
-  const tone = guardianTone(guardian.id);
+function DayStrip({ data }: { data: StoreGuardians | null }) {
+  const cells = [
+    { value: data ? integer(data.today.releases) : '—', label: t('releases today') },
+    { value: data ? integer(data.today.votes) : '—', label: t('votes today') },
+    { value: data ? seconds(data.today.medianSeconds) : '—', label: t('median to a vote') },
+  ];
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.tileWrap, pressed && styles.pressed]}>
-      <Panel style={[styles.tile, picked && { borderColor: tone }]} tone={tone}>
-        <Text numberOfLines={1} style={[styles.tileName, { color: tone }]}>{guardianLabel(guardian)}</Text>
-        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.tileValue}>{integer(guardian.votes24h)}</Text>
-        <Text numberOfLines={1} style={styles.tileUnit}>{t('votes today')}</Text>
-        <Text numberOfLines={1} style={styles.tileNote}>{t('median {seconds}', { seconds: seconds(guardian.medianSeconds24h ?? guardian.medianSecondsAll) })}</Text>
-        <Text numberOfLines={1} style={styles.tileNote}>{t('{count} in all', { count: integer(guardian.votesTotal) })}</Text>
-      </Panel>
-    </Pressable>
-  );
-}
-
-function GuardianDetail({ guardian }: { guardian: StoreGuardian }) {
-  const tone = guardianTone(guardian.id);
-  return (
-    <Panel tone={tone} style={styles.detail}>
-      <Eyebrow tone={tone}>{guardianLabel(guardian)}</Eyebrow>
-      <Text style={styles.detailLine}>{t('First vote {date} · {count} votes since', { date: sinceDate(guardian.firstVoteAt), count: integer(guardian.votesTotal) })}</Text>
-      <Text style={styles.detailLine}>{t('Last vote {age}', { age: ago(guardian.lastVoteAt) })}</Text>
-      <Text style={styles.detailLine}>{t('Median from request to vote: {today} today, {all} overall', { today: seconds(guardian.medianSeconds24h), all: seconds(guardian.medianSecondsAll) })}</Text>
-      <Text selectable style={styles.mono}>{guardian.key}</Text>
+    <Panel style={styles.strip}>
+      {cells.map((cell, index) => (
+        <View key={cell.label} style={[styles.stripCell, index > 0 && styles.stripDivider]}>
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.stripValue}>{cell.value}</Text>
+          <Text numberOfLines={1} style={styles.stripLabel}>{cell.label}</Text>
+        </View>
+      ))}
     </Panel>
   );
 }
 
-function ReleaseLine({ row, guardians, open, onPress }: { row: ReleaseRow; guardians: StoreGuardian[]; open: boolean; onPress: () => void }) {
+function AppIcon({ release, size = 40 }: { release: StoreRelease; size?: number }) {
+  const [broken, setBroken] = useState(false);
+  const uri = broken ? null : iconUrl(release.icon);
+  const name = releaseName(release);
+  const frame = { width: size, height: size, borderRadius: size * 0.24 };
+  return uri ? (
+    <Image source={{ uri }} onError={() => setBroken(true)} style={[styles.icon, frame, release.ours && styles.iconOurs]} />
+  ) : (
+    <View style={[styles.icon, styles.monogram, frame, { backgroundColor: toneFor(name) }, release.ours && styles.iconOurs]}>
+      <Text style={[styles.monogramText, { fontSize: size * 0.36 }]}>{initials(name)}</Text>
+    </View>
+  );
+}
+
+function Badge({ id, size = 18 }: { id: string | null; size?: number }) {
+  const source = id ? GUARDIAN_BADGES[id] : null;
+  if (!source) return <View style={[styles.badgeBlank, { width: size, height: size, borderRadius: size / 2 }]} />;
+  return <Image source={{ uri: source }} style={{ width: size, height: size, borderRadius: size / 2 }} />;
+}
+
+function ReleaseRow({ release, guardians, open, onPress, onLayout }: {
+  release: StoreRelease; guardians: StoreGuardian[]; open: boolean; onPress: () => void; onLayout: (y: number) => void;
+}) {
+  const tone = verdictTone(release.verdict);
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [pressed && styles.pressed]}>
-      <Inset style={[styles.release, open && styles.releaseOpen]}>
-        <View style={styles.releaseHead}>
-          <Text numberOfLines={1} style={styles.releasePkg}>{row.pkg || shortKey(row.app)}</Text>
-          <Text style={styles.releaseAge}>{ago(row.at)}</Text>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      onLayout={(event) => onLayout(event.nativeEvent.layout.y)}
+      style={({ pressed }) => [styles.release, open && styles.releaseOpen, pressed && styles.pressed]}
+    >
+      <View style={styles.releaseMain}>
+        <AppIcon release={release} />
+        <View style={styles.releaseText}>
+          <View style={styles.releaseHead}>
+            <Text numberOfLines={1} style={[styles.releaseName, release.ours && { color: colors.metal }]}>{releaseName(release)}</Text>
+            <Text style={[styles.verdict, { color: tone }]}>{verdictWord(release.verdict)}</Text>
+          </View>
+          <Text numberOfLines={1} style={styles.releaseMeta}>
+            {[release.versionName ? `v${release.versionName}` : `#${release.versionCode}`, ago(release.requestedAt), release.liveAt ? t('In the store') : null].filter(Boolean).join(' · ')}
+          </Text>
+          <View style={styles.releaseVotes}>
+            {guardians.map((guardian) => {
+              const vote = release.votes.find((item) => item.guardian === guardian.key);
+              return (
+                <View key={guardian.key} style={styles.voteChip}>
+                  <Badge id={guardian.id} size={14} />
+                  <Text style={[styles.voteText, { color: vote ? (vote.approve ? colors.positive : colors.negative) : colors.dim }]}>
+                    {vote ? seconds(vote.seconds) : '…'}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
         </View>
-        <View style={styles.releaseVotes}>
-          <Text style={styles.releaseVersion}>{row.versionName ? `v${row.versionName}` : `#${row.versionCode}`}</Text>
-          {guardians.map((guardian) => {
-            const vote = row.votes.find((item) => item.guardian === guardian.key);
-            const tone = guardianTone(guardian.id);
+      </View>
+      {open ? (
+        <View style={styles.releaseLinks}>
+          <Text onPress={() => openTx(release.sig)} style={styles.link}>{t('Request on Solscan')}</Text>
+          {release.votes.map((vote) => {
+            const guardian = guardians.find((item) => item.key === vote.guardian);
             return (
-              <View key={guardian.key} style={styles.voteChip}>
-                <View style={[styles.voteDot, { backgroundColor: vote ? tone : 'transparent', borderColor: tone }]} />
-                <Text style={[styles.voteText, { color: vote ? colors.text : colors.dim }]}>{vote ? seconds(vote.seconds) : '…'}</Text>
-              </View>
+              <Pressable key={vote.sig} onPress={() => openTx(vote.sig)} style={({ pressed }) => [styles.voteLine, pressed && styles.pressed]}>
+                <Badge id={guardian?.id ?? null} size={16} />
+                <Text style={styles.voteWho}>{guardian ? guardianLabel(guardian) : shortKey(vote.guardian)}</Text>
+                <Text style={[styles.voteSay, { color: vote.approve ? colors.positive : colors.negative }]}>{vote.approve ? t('yes') : t('no')}</Text>
+                <Text style={styles.voteWhen}>{`+${seconds(vote.seconds)}`}</Text>
+              </Pressable>
             );
           })}
         </View>
-        {open ? (
-          <View style={styles.releaseLinks}>
-            <Text onPress={() => openTx(row.request?.sig)} style={styles.link}>{t('Request on Solscan')}</Text>
-            {row.votes.map((vote) => {
-              const guardian = guardians.find((item) => item.key === vote.guardian);
-              return <Text key={vote.sig} onPress={() => openTx(vote.sig)} style={styles.link}>{`${guardian ? guardianLabel(guardian) : shortKey(vote.guardian || '')} · ${seconds(vote.seconds)}`}</Text>;
-            })}
-          </View>
-        ) : null}
-      </Inset>
+      ) : null}
     </Pressable>
   );
 }
 
-// This build, its request and every vote on it, with the verdict: the one
-// release in the app that is ours to show in full.
-function Receipt({ receipt, missing }: { receipt: ReleaseReceipt | null; missing: boolean }) {
-  const last = receipt?.votes.length ? Math.max(...receipt.votes.map((vote) => vote.seconds)) : null;
+function GuardianRow({ guardian, picked, onPress }: { guardian: StoreGuardian; picked: boolean; onPress: () => void }) {
+  const tone = guardianTone(guardian.id);
   return (
-    <Panel tone={colors.metal} style={styles.receipt}>
-      <Eyebrow tone={colors.metal}>{t('This release')}</Eyebrow>
-      <Text style={styles.receiptTitle}>{`SKR Eyes ${receipt?.versionName || BUILD_VERSION_NAME} (${BUILD_VERSION_CODE})`}</Text>
-      {receipt ? (
-        <>
-          {last != null ? (
-            <View style={styles.receiptHero}>
-              <Text style={styles.receiptNumber}>{seconds(last)}</Text>
-              <Text style={styles.receiptCaption}>{t('from the release request to the last guardian vote')}</Text>
-            </View>
-          ) : null}
-          <Pressable onPress={() => openTx(receipt.request.sig)} style={({ pressed }) => [styles.receiptRow, pressed && styles.pressed]}>
-            <Text style={styles.receiptWho}>{t('Request')}</Text>
-            <Text style={styles.receiptWhen}>{new Date(receipt.request.at * 1000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</Text>
-            <Text style={styles.receiptMono}>{shortKey(receipt.request.sig)}</Text>
-          </Pressable>
-          {receipt.votes.map((vote) => (
-            <Pressable key={vote.sig} onPress={() => openTx(vote.sig)} style={({ pressed }) => [styles.receiptRow, pressed && styles.pressed]}>
-              <Text style={[styles.receiptWho, { color: guardianTone(vote.id) }]}>{guardianLabel(vote)}</Text>
-              <Text style={styles.receiptWhen}>{`+${vote.seconds}s`}</Text>
-              <Text style={[styles.receiptVerdict, { color: vote.approve ? colors.positive : colors.negative }]}>{vote.approve ? 'YES' : 'NO'}</Text>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.guardian, picked && { borderColor: tone }, pressed && styles.pressed]}>
+      <Badge id={guardian.id} size={34} />
+      <View style={styles.guardianText}>
+        <Text numberOfLines={1} style={styles.guardianName}>{guardianLabel(guardian)}</Text>
+        <Text numberOfLines={1} style={styles.guardianNote}>{t('last vote {age} ago', { age: age(guardian.lastVoteAt) })}</Text>
+      </View>
+      <View style={styles.guardianNumbers}>
+        <Text style={styles.guardianValue}>{integer(guardian.votes24h)}</Text>
+        <Text numberOfLines={1} style={styles.guardianNote}>{t('median {seconds}', { seconds: seconds(guardian.medianSeconds24h ?? guardian.medianSecondsAll) })}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+// This build, its request and every vote on it: one line, opened on a tap.
+function Receipt({ receipt, total }: { receipt: ReleaseReceipt; total: number }) {
+  const [open, setOpen] = useState(false);
+  const last = receipt.votes.length ? Math.max(...receipt.votes.map((vote) => vote.seconds)) : null;
+  const verdict = receipt.verdict ?? 'pending';
+  return (
+    <Pressable accessibilityRole="button" onPress={() => { void Haptics.selectionAsync(); setOpen(!open); }} style={({ pressed }) => [pressed && styles.pressed]}>
+      <Panel tone={colors.metal} style={styles.receipt}>
+        <Eyebrow tone={colors.metal}>{t('This release')}</Eyebrow>
+        <View style={styles.releaseHead}>
+          <Text style={[styles.receiptLine, { flex: 1 }]}>
+            {[`SKR Eyes ${receipt.versionName || BUILD_VERSION_NAME}`, t('{voted} of {total} voted', { voted: integer(receipt.votes.length), total: integer(Math.max(total, receipt.votes.length)) }), last != null ? seconds(last) : null].filter(Boolean).join(' · ')}
+          </Text>
+          <Text style={[styles.verdict, { color: verdictTone(verdict) }]}>{verdictWord(verdict)}</Text>
+        </View>
+        {open ? (
+          <>
+            <Pressable onPress={() => openTx(receipt.request.sig)} style={({ pressed }) => [styles.receiptRow, pressed && styles.pressed]}>
+              <Text style={styles.receiptWho}>{t('Request')}</Text>
+              <Text style={styles.receiptWhen}>{new Date(receipt.request.at * 1000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</Text>
             </Pressable>
-          ))}
-          {!receipt.complete ? <Text style={styles.receiptNote}>{t('More votes may still arrive.')}</Text> : null}
-        </>
-      ) : (
-        <Text style={styles.receiptNote}>{missing ? t('The receipt appears here once this build\'s guardian votes are on chain.') : t('Reading the chain…')}</Text>
-      )}
-      <Text style={styles.receiptFine}>{t('Every dApp Store release is voted on chain by the store\'s guardians. A vote admits the build to the store. It is not an endorsement of the app.')}</Text>
-    </Panel>
+            {receipt.votes.map((vote) => (
+              <Pressable key={vote.sig} onPress={() => openTx(vote.sig)} style={({ pressed }) => [styles.receiptRow, pressed && styles.pressed]}>
+                <Badge id={vote.id} size={16} />
+                <Text style={styles.receiptWho}>{guardianLabel(vote)}</Text>
+                <Text style={styles.receiptWhen}>{`+${vote.seconds}s`}</Text>
+                <Text style={[styles.receiptVerdict, { color: vote.approve ? colors.positive : colors.negative }]}>{vote.approve ? t('yes') : t('no')}</Text>
+              </Pressable>
+            ))}
+            {!receipt.complete ? <Text style={styles.receiptNote}>{t('More votes may still arrive.')}</Text> : null}
+          </>
+        ) : null}
+      </Panel>
+    </Pressable>
   );
 }
 
 export function GuardiansLab({ active }: { active: boolean }) {
   const { width } = useWindowDimensions();
   const { data, error } = useStoreGuardians(active);
-  const { receipt, missing } = useReleaseReceipt(active);
+  const { receipt } = useReleaseReceipt(active);
   const [picked, setPicked] = useState<Picked>(null);
   const [openRow, setOpenRow] = useState<string | null>(null);
-  const rows = useMemo(() => (data ? releaseRows(data.events, 12) : []), [data]);
+  const [all, setAll] = useState(false);
+  const scroll = useRef<ScrollView>(null);
+  const place = useRef({ pad: 0, list: 0, guardians: 0, rows: {} as Record<string, number> });
+  const pendingScroll = useRef<string | null>(null);
+
+  const releases = useMemo(() => [...(data?.releases || [])].reverse(), [data]);
+  const shown = all ? releases : releases.slice(0, RELEASES_SHOWN);
   const guardians = data?.guardians || [];
-  const pickedGuardian = picked?.kind === 'guardian' ? guardians.find((item) => item.key === picked.key) : null;
+  const pickedGuardian = picked?.kind === 'guardian' ? picked.key : null;
+
+  const scrollTo = useCallback((y: number) => {
+    scroll.current?.scrollTo({ y: Math.max(0, y - spacing.lg), animated: true });
+  }, []);
+
   const onPick = useCallback((next: Picked) => {
     setPicked(next);
-    if (next?.kind === 'request') setOpenRow(`${next.app}:${next.versionCode}`);
-  }, []);
-  const pool = data?.pools.top[0];
+    if (next?.kind === 'release') {
+      setOpenRow(next.key);
+      const index = releases.findIndex((release) => release.key === next.key);
+      if (index >= RELEASES_SHOWN) setAll(true);
+      const y = place.current.rows[next.key];
+      if (y != null) scrollTo(place.current.pad + place.current.list + y);
+      else pendingScroll.current = next.key;
+    } else if (next?.kind === 'guardian') {
+      scrollTo(place.current.pad + place.current.guardians);
+    }
+  }, [releases, scrollTo]);
+
+  const totals = data
+    ? t('Since {date}: {votes} votes on {releases} releases from {apps} apps.', {
+      date: sinceDate(data.totals.since),
+      votes: integer(data.totals.votes),
+      releases: integer(data.totals.releases),
+      apps: integer(data.totals.apps),
+    })
+    : null;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Scene data={data} height={Math.round(Math.min(width * 1.32, 600))} onPick={onPick} />
+    <ScrollView ref={scroll} style={styles.screen} contentContainerStyle={styles.content}>
+      <Scene data={data} height={Math.round(Math.min(width * 1.32, 600))} active={active} onPick={onPick} />
 
-      <View style={styles.pad}>
-        <Hero
-          label={t('Guardian votes today')}
-          value={data ? integer(data.today.votes) : '—'}
-          note={data
-            ? t('{releases} releases from {apps} apps · median {seconds} from request to vote', { releases: integer(data.today.releases), apps: integer(data.today.apps), seconds: seconds(data.today.medianSeconds) })
-            : error ? t('The guardians could not be read just now.') : t('Reading the chain…')}
-        />
+      <View style={styles.pad} onLayout={(event) => { place.current.pad = event.nativeEvent.layout.y; }}>
+        <DayStrip data={data} />
+        {!data && error ? <Text style={styles.listNote}>{t('The guardians could not be read just now.')}</Text> : null}
 
-        {guardians.length ? (
-          <View style={styles.tiles}>
-            {guardians.map((guardian) => (
-              <GuardianTile
-                key={guardian.key}
-                guardian={guardian}
-                picked={pickedGuardian?.key === guardian.key}
-                onPress={() => { void Haptics.selectionAsync(); setPicked(pickedGuardian?.key === guardian.key ? null : { kind: 'guardian', key: guardian.key }); }}
-              />
-            ))}
+        {releases.length ? (
+          <View onLayout={(event) => { place.current.list = event.nativeEvent.layout.y; }}>
+            <Panel style={styles.list}>
+              <Eyebrow>{t('Latest releases')}</Eyebrow>
+              <Text style={styles.listNote}>{t('Each app with the seconds every guardian took, in the colour of its vote. Tap for the transactions.')}</Text>
+              {shown.map((release) => (
+                <ReleaseRow
+                  key={release.key}
+                  release={release}
+                  guardians={guardians}
+                  open={openRow === release.key}
+                  onPress={() => { void Haptics.selectionAsync(); setOpenRow(openRow === release.key ? null : release.key); }}
+                  onLayout={(y) => {
+                    // The panel's own padding sits between it and its rows.
+                    place.current.rows[release.key] = y;
+                    if (pendingScroll.current === release.key) {
+                      pendingScroll.current = null;
+                      scrollTo(place.current.pad + place.current.list + y);
+                    }
+                  }}
+                />
+              ))}
+              {releases.length > RELEASES_SHOWN ? (
+                <Text onPress={() => { void Haptics.selectionAsync(); setAll(!all); }} style={styles.more}>
+                  {all ? t('Show fewer') : t('Show all {count}', { count: integer(releases.length) })}
+                </Text>
+              ) : null}
+            </Panel>
           </View>
         ) : null}
-        {pickedGuardian ? <GuardianDetail guardian={pickedGuardian} /> : null}
 
-        {rows.length ? (
-          <Panel style={styles.list}>
-            <Eyebrow>{t('Latest releases')}</Eyebrow>
-            <Text style={styles.listNote}>{t('Seconds from each request to each guardian\'s vote. Tap for the transactions.')}</Text>
-            {rows.map((row) => {
-              const key = `${row.app}:${row.versionCode}`;
-              return <ReleaseLine key={key} row={row} guardians={guardians} open={openRow === key} onPress={() => { void Haptics.selectionAsync(); setOpenRow(openRow === key ? null : key); }} />;
-            })}
-          </Panel>
+        {guardians.length ? (
+          <View onLayout={(event) => { place.current.guardians = event.nativeEvent.layout.y; }}>
+            <Panel style={styles.list}>
+              <Eyebrow>{t('Guardians')}</Eyebrow>
+              {guardians.map((guardian) => (
+                <GuardianRow
+                  key={guardian.key}
+                  guardian={guardian}
+                  picked={pickedGuardian === guardian.key}
+                  onPress={() => { void Haptics.selectionAsync(); setPicked(pickedGuardian === guardian.key ? null : { kind: 'guardian', key: guardian.key }); }}
+                />
+              ))}
+            </Panel>
+          </View>
         ) : null}
 
-        <Receipt receipt={receipt} missing={missing} />
+        {receipt && receipt.versionCode === BUILD_VERSION_CODE ? <Receipt receipt={receipt} total={data?.activeGuardians ?? guardians.length} /> : null}
 
-        {data ? (
-          <Panel style={styles.list}>
-            <Eyebrow>{t('Since the guardians began')}</Eyebrow>
-            <View style={styles.totals}>
-              <View style={styles.total}><Text style={styles.totalValue}>{integer(data.totals.votes)}</Text><Text style={styles.totalLabel}>{t('votes')}</Text></View>
-              <View style={styles.total}><Text style={styles.totalValue}>{integer(data.totals.releases)}</Text><Text style={styles.totalLabel}>{t('releases')}</Text></View>
-              <View style={styles.total}><Text style={styles.totalValue}>{integer(data.totals.apps)}</Text><Text style={styles.totalLabel}>{t('apps')}</Text></View>
-            </View>
-            <Text style={styles.listNote}>{t('Counted from the first vote on {date}.', { date: sinceDate(data.totals.since) })}</Text>
-            {pool ? (
-              <Text style={styles.listNote}>{t('SKR staked behind guardian pools: {amount} in {count}.', { amount: compact(data.pools.top.reduce((sum, item) => sum + item.activeStaked, 0)), count: data.pools.count === 1 ? t('one pool') : t('{count} pools', { count: integer(data.pools.count || 0) }) })}</Text>
-            ) : null}
-          </Panel>
-        ) : null}
-
-        <Text style={styles.fine}>{t('Read from the store\'s guardian program on chain ({program}). The public view shows that a guardian voted and how fast; verdicts on other people\'s apps are not shown.', { program: shortKey(data?.program || 'GUARDsVUfAaydbPU6QGcpWRLUkExaULtaygwEtkdhZAD') })}</Text>
+        {totals ? <Evidence lines={[totals]} /> : null}
+        <Text style={styles.fine}>{t('Read from the store\'s guardian program on chain ({program}) by our own indexer. A vote is not the release itself: the store lists an approved build later, often hours later. Apps go by their store name and icon; one the store does not list yet, by the name registered on chain.', { program: shortKey(data?.program || 'GUARDsVUfAaydbPU6QGcpWRLUkExaULtaygwEtkdhZAD') })}</Text>
+        <Text style={styles.fine}>{t('Solana Mobile, Jito and Helius are named and shown only to say whose vote is whose. SKR Eyes is independent of them.')}</Text>
       </View>
     </ScrollView>
   );
@@ -341,45 +452,48 @@ const styles = StyleSheet.create({
   lapseButton: { position: 'absolute', right: spacing.lg, bottom: spacing.md, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: 'rgba(7, 12, 18, 0.82)', paddingHorizontal: spacing.md, paddingVertical: 7 },
   lapseButtonOn: { backgroundColor: colors.accent, borderColor: colors.accent },
   lapseText: { color: colors.text, fontFamily: font.semibold, fontSize: 12, letterSpacing: 0.3 },
-  tiles: { flexDirection: 'row', gap: spacing.sm },
-  tileWrap: { flex: 1 },
-  tile: { paddingHorizontal: spacing.sm, paddingVertical: spacing.md, gap: 2, borderWidth: 1, borderColor: 'transparent' },
-  tileName: { fontFamily: font.semibold, fontSize: 12, letterSpacing: 0.2 },
-  tileValue: { color: colors.text, fontFamily: font.monoBold, fontSize: 26, marginTop: 4 },
-  tileUnit: { color: colors.muted, fontFamily: font.medium, fontSize: 11 },
-  tileNote: { color: colors.faint, fontFamily: font.mono, fontSize: 10.5 },
-  detail: { gap: 6, padding: spacing.lg },
-  detailLine: { color: colors.muted, fontFamily: font.regular, fontSize: 13, lineHeight: 18 },
-  mono: { color: colors.faint, fontFamily: font.mono, fontSize: 10.5 },
+  strip: { flexDirection: 'row', paddingVertical: spacing.md, paddingHorizontal: spacing.sm },
+  stripCell: { flex: 1, alignItems: 'center', gap: 2, paddingHorizontal: spacing.xs },
+  stripDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.line },
+  stripValue: { color: colors.text, fontFamily: font.monoBold, fontSize: 22 },
+  stripLabel: { color: colors.faint, fontFamily: font.medium, ...type.eyebrow },
   list: { gap: spacing.sm, padding: spacing.lg },
   listNote: { color: colors.faint, fontFamily: font.regular, fontSize: 12, lineHeight: 17 },
-  release: { gap: 6 },
-  releaseOpen: { borderColor: colors.lineStrong },
+  release: { paddingVertical: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, gap: spacing.sm },
+  releaseOpen: { backgroundColor: 'rgba(255, 255, 255, 0.025)' },
+  releaseMain: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
+  releaseText: { flex: 1, gap: 3 },
   releaseHead: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
-  releasePkg: { flex: 1, color: colors.text, fontFamily: font.mono, fontSize: 12.5 },
-  releaseAge: { color: colors.faint, fontFamily: font.mono, fontSize: 10.5 },
-  releaseVotes: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  releaseVersion: { color: colors.muted, fontFamily: font.mono, fontSize: 11, minWidth: 54 },
+  releaseName: { flex: 1, color: colors.text, fontFamily: font.semibold, fontSize: 14.5 },
+  releaseMeta: { color: colors.faint, fontFamily: font.mono, fontSize: 11 },
+  verdict: { fontFamily: font.semibold, fontSize: 11.5, letterSpacing: 0.2 },
+  releaseVotes: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: 2 },
   voteChip: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  voteDot: { width: 8, height: 8, borderRadius: 4, borderWidth: 1 },
   voteText: { fontFamily: font.monoSemibold, fontSize: 11.5 },
-  releaseLinks: { gap: 4, marginTop: 4 },
-  link: { color: colors.accent, fontFamily: font.medium, fontSize: 12.5, paddingVertical: 3 },
-  receipt: { gap: spacing.sm, padding: spacing.lg },
-  receiptTitle: { color: colors.text, fontFamily: font.bold, fontSize: 17 },
-  receiptHero: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, flexWrap: 'wrap' },
-  receiptNumber: { color: colors.metal, fontFamily: font.monoBlack, fontSize: 40 },
-  receiptCaption: { color: colors.muted, fontFamily: font.regular, fontSize: 12.5, flexShrink: 1 },
+  icon: { backgroundColor: colors.line },
+  iconOurs: { borderWidth: 1.5, borderColor: colors.metal },
+  monogram: { alignItems: 'center', justifyContent: 'center' },
+  monogramText: { color: 'rgba(242, 247, 251, 0.86)', fontFamily: font.bold },
+  badgeBlank: { backgroundColor: colors.lineStrong },
+  releaseLinks: { gap: 2, paddingLeft: 40 + spacing.md },
+  link: { color: colors.accent, fontFamily: font.medium, fontSize: 12.5, paddingVertical: 4 },
+  voteLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 4 },
+  voteWho: { flex: 1, color: colors.text, fontFamily: font.medium, fontSize: 12.5 },
+  voteSay: { fontFamily: font.monoBold, fontSize: 11.5, minWidth: 28, textAlign: 'right' },
+  voteWhen: { color: colors.muted, fontFamily: font.mono, fontSize: 12, minWidth: 40, textAlign: 'right' },
+  more: { color: colors.accent, fontFamily: font.medium, fontSize: 13, paddingVertical: spacing.xs, alignSelf: 'flex-start' },
+  guardian: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, marginHorizontal: -spacing.sm, borderRadius: radius.inner, borderWidth: 1, borderColor: 'transparent' },
+  guardianText: { flex: 1, gap: 2 },
+  guardianName: { color: colors.text, fontFamily: font.semibold, fontSize: 14.5 },
+  guardianNumbers: { alignItems: 'flex-end', gap: 2 },
+  guardianValue: { color: colors.text, fontFamily: font.monoBold, fontSize: 18 },
+  guardianNote: { color: colors.faint, fontFamily: font.mono, fontSize: 10.5 },
+  receipt: { gap: spacing.sm, padding: spacing.lg, borderWidth: 1, borderColor: colors.metalDim },
+  receiptLine: { color: colors.text, fontFamily: font.semibold, fontSize: 14 },
   receiptRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
-  receiptWho: { flex: 1, color: colors.text, fontFamily: font.semibold, fontSize: 13.5 },
+  receiptWho: { flex: 1, color: colors.text, fontFamily: font.semibold, fontSize: 13 },
   receiptWhen: { color: colors.muted, fontFamily: font.mono, fontSize: 12.5 },
-  receiptMono: { color: colors.faint, fontFamily: font.mono, fontSize: 11 },
   receiptVerdict: { fontFamily: font.monoBold, fontSize: 12.5, minWidth: 30, textAlign: 'right' },
   receiptNote: { color: colors.muted, fontFamily: font.regular, fontSize: 13, lineHeight: 18 },
-  receiptFine: { color: colors.faint, fontFamily: font.regular, fontSize: 11.5, lineHeight: 16, marginTop: 4 },
-  totals: { flexDirection: 'row', gap: spacing.md },
-  total: { flex: 1 },
-  totalValue: { color: colors.text, fontFamily: font.monoBold, fontSize: 20 },
-  totalLabel: { color: colors.faint, fontFamily: font.medium, ...type.eyebrow },
-  fine: { color: colors.dim, fontFamily: font.regular, fontSize: 11, lineHeight: 16, marginTop: spacing.xs },
+  fine: { color: colors.dim, fontFamily: font.regular, fontSize: 11, lineHeight: 16 },
 });

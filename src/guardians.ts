@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import Constants from 'expo-constants';
-import { ApiError, fetchReleaseReceipt, fetchStoreGuardians } from './api';
+import { API_BASE_URL, ApiError, fetchReleaseReceipt, fetchStoreGuardians } from './api';
 
 // The dApp Store's guardians, as the server reads them from the chain
 // (skr-eyes-server src/store-guardians.js, live since 15.11.2026).
@@ -10,10 +10,43 @@ import { ApiError, fetchReleaseReceipt, fetchStoreGuardians } from './api';
 // on it on chain: Solana Mobile since 24.10, Jito since 03.11, Helius since
 // 09.11. SKR Eyes watched the vault; now it watches the guardians too.
 //
-// The public feed carries no verdicts, only that a guardian voted and how
-// fast. The one verdict this app shows is on its own release.
+// Since 16.11.2026 every vote carries its verdict, and every release its store
+// name and icon (Alex: the app turns green or red as its guardians vote, and
+// is called by the name it has in the store, not by its package).
 
 export type GuardianId = 'solana_mobile' | 'jito' | 'helius' | null;
+
+export type Verdict = 'pending' | 'approved' | 'rejected';
+
+export type StoreReleaseVote = {
+  guardian: string;
+  approve: boolean;
+  at: number;
+  seconds: number;
+  sig: string;
+};
+
+// One release request of the last day, with its votes and its face.
+export type StoreRelease = {
+  key: string;
+  app: string;
+  pkg: string | null;
+  versionCode: number;
+  versionName: string | null;
+  // The store's name; for an app the store does not list yet, the name its
+  // publisher registered on chain.
+  name: string | null;
+  nameSource: 'store' | 'chain' | null;
+  // A path on our server (/api/store-guardians/icon/<hash>), or null.
+  icon: string | null;
+  requestedAt: number;
+  sig: string;
+  votes: StoreReleaseVote[];
+  verdict: Verdict;
+  // When the store first served exactly this version, or null.
+  liveAt: number | null;
+  ours: boolean;
+};
 
 export type StoreGuardian = {
   key: string;
@@ -36,7 +69,9 @@ export type GuardianEvent = {
   pkg: string | null;
   versionCode: number;
   versionName?: string | null;
+  name?: string | null;
   guardian?: string;
+  approve?: boolean;
   seconds?: number | null;
 };
 
@@ -44,6 +79,9 @@ export type StoreGuardians = {
   updatedAt: string;
   program: string;
   guardians: StoreGuardian[];
+  // Absent on a server older than 16.11.2026.
+  activeGuardians?: number;
+  releases?: StoreRelease[];
   events: GuardianEvent[];
   today: { votes: number; releases: number; apps: number; medianSeconds: number | null };
   totals: { votes: number; releases: number; apps: number; since: number | null };
@@ -65,6 +103,10 @@ export type ReleaseVote = {
 
 export type ReleaseReceipt = {
   package: string;
+  name?: string | null;
+  icon?: string | null;
+  liveAt?: number | null;
+  verdict?: Verdict;
   versionCode: number;
   versionName: string | null;
   request: { at: number; slot: number; sig: string; publisher: string };
@@ -89,6 +131,19 @@ export const GUARDIAN_TONE: Record<string, string> = {
 
 export function guardianTone(id: GuardianId): string {
   return (id && GUARDIAN_TONE[id]) || '#8296A8';
+}
+
+// An icon path from the server made into an address the phone can load.
+export function iconUrl(icon: string | null | undefined): string | null {
+  if (!icon) return null;
+  return icon.startsWith('/') ? `${API_BASE_URL}${icon}` : icon;
+}
+
+// What to call an app: its store name, else its package's last word.
+export function releaseName(release: { name?: string | null; pkg: string | null }): string {
+  if (release.name) return release.name;
+  const tail = release.pkg?.split('.').filter((part) => !/^(app|android|seeker|mobile|io|com|dev|fun|xyz)$/i.test(part)).at(-1);
+  return tail ? tail.charAt(0).toUpperCase() + tail.slice(1) : release.pkg || '—';
 }
 
 export function shortKey(key: string): string {
