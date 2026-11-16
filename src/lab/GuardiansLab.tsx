@@ -419,7 +419,7 @@ export function GuardiansLab({ active }: { active: boolean }) {
 
   return (
     <ScrollView ref={scroll} style={styles.screen} contentContainerStyle={styles.content}>
-      <Scene data={data} height={Math.round(Math.min(width * 1.32, 600))} active={active} onPick={onPick} />
+      <Scene data={data} height={Math.round(Math.min(width * 1.45, 640))} active={active} onPick={onPick} />
 
       <View style={styles.pad} onLayout={(event) => { place.current.pad = event.nativeEvent.layout.y; }}>
         <DayStrip data={data} />

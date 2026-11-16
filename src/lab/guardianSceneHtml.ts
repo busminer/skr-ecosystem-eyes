@@ -162,7 +162,9 @@ function sky(){ var key=W+'x'+H; if(S.bgKey===key) return; var bg=document.creat
 var MED=[0,36,36,33,28,24,20.5];
 function layout(){ sky(); var top=S.insTop, bot=S.insBot, h=Math.max(60,H-top-bot), n=Math.max(1,Math.min(6,S.G.length)), i;
   U=Math.min(W/360,h/430); S.cx=W/2; S.Rm=MED[n]*U; var gap=n>1?Math.min(W*0.30,(W-2*S.Rm-22*U)/(n-1)):0;
-  for(i=0;i<S.G.length;i++){ var g=S.G[i], k=Math.min(i,n-1)-(n-1)/2; g.x=S.cx+k*gap; var kk=(g.x-S.cx)/(W/2); g.y=top+27*U+S.Rm+13*U*kk*kk; }
+  for(i=0;i<S.G.length;i++){ var g=S.G[i], k=Math.min(i,n-1)-(n-1)/2; g.x=S.cx+k*gap; var kk=(g.x-S.cx)/(W/2); g.y=top+20*U+S.Rm+13*U*kk*kk; }
+  // The distant store owns the band between the guardians' seconds and the belt.
+  var gb=top; for(i=0;i<S.G.length;i++) gb=Math.max(gb,S.G[i].y); S.farTop=gb+S.Rm+40*U; S.farBot=top+h*0.585-12*U;
   S.St=58*U; S.Sq=38*U; S.yRail=top+h*0.585; S.xq=S.cx-W*0.335; S.xp=S.cx+W*0.335;
   S.Rs=W*0.80; S.limb=H-bot-h*0.20; S.cys=S.limb+S.Rs; S.mini=21*U; S.M=Math.max(5,Math.min(11,Math.floor((W-24*U)/(S.mini+6*U))));
   S.shelf.forEach(function(r){ var p=shelfPos(r); r.sx=p[0]; r.sy=p[1]; }); S.rejects.forEach(function(r){ var p=outPos(r); r.ox=p[0]; r.oy=p[1]; }); }
@@ -310,11 +312,36 @@ function farBuild(){ var c=document.createElement('canvas'), x=c.getContext('2d'
   if(faces){ for(i=0;i<3;i++) paint(faces[i][0],faces[i][1],faces[i][2]); } else paint(FAR,'#4C97A0','#0E2A38');
   tx.globalCompositeOperation='source-over'; tx.clearRect(0,0,n,n); tx.drawImage(FAR,0,0,n,n); tx.globalCompositeOperation='destination-out'; tx.drawImage(FAR,-1.5,4,n,n); tx.globalCompositeOperation='source-in'; tx.fillStyle='#D2F6F1'; tx.fillRect(0,0,n,n);
   x.globalAlpha=0.85; x.drawImage(t,ox,oy,m,m); x.globalAlpha=1;
-  x.globalCompositeOperation='destination-in'; var hz=x.createLinearGradient(0,oy,0,oy+m+30); hz.addColorStop(0,'rgba(0,0,0,1)'); hz.addColorStop(0.55,'rgba(0,0,0,0.82)'); hz.addColorStop(1,'rgba(0,0,0,0.1)'); x.fillStyle=hz; x.fillRect(0,0,520,520); S.far=c; }
-function farStore(){ if(!CFG.far||!FAR||!FAR.complete||!(FAR.naturalWidth>0)) return; if(!S.far) farBuild();
-  var w=Math.min(W*1.18,(S.yRail-S.insTop)*1.5), br=0.5+0.5*Math.sin(S.t*0.33), x=S.cx-w*0.5+3.5*U*Math.sin(S.t*0.09), y=S.insTop+(S.yRail-S.insTop)*0.53-w*0.374+2*U*Math.sin(S.t*0.07+1);
-  glow('#12808F',S.cx,y+w*0.40,w*0.6,0.06+0.03*br);
-  ctx.save(); ctx.globalAlpha=0.27+0.07*br; ctx.drawImage(S.far,x,y,w,w*0.86); ctx.restore(); }
+  x.globalCompositeOperation='destination-in'; var hz=x.createLinearGradient(0,oy,0,oy+m+30); hz.addColorStop(0,'rgba(0,0,0,1)'); hz.addColorStop(0.6,'rgba(0,0,0,0.92)'); hz.addColorStop(1,'rgba(0,0,0,0.55)'); x.fillStyle=hz; x.fillRect(0,0,520,520); S.far=c; }
+function farStore(){ if(!CFG.far||!FAR||!FAR.complete||!(FAR.naturalWidth>0)) return; if(!S.far) farBuild(); if(!S.farText) farTextBuild();
+  var span=Math.max(40*U,S.farBot-S.farTop), br=0.5+0.5*Math.sin(S.t*0.33), hd=span*0.98, w=hd/0.86, dx=2.5*U*Math.sin(S.t*0.09), dy=1.5*U*Math.sin(S.t*0.07+1);
+  var x=S.cx-w*0.5+dx, y=S.farTop-hd*0.08+dy, foot=y+hd*0.79;
+  glow('#12808F',S.cx,y+hd*0.5,w*0.7,0.08+0.03*br);
+  ctx.save(); ctx.globalAlpha=0.40+0.08*br; ctx.drawImage(S.far,x,y,w,hd); ctx.restore();
+  if(S.farText){ var tw=Math.min(W*0.9,w*2.1), th=tw*S.farText.height/S.farText.width, ty=foot+span*0.035;
+    ctx.save(); ctx.globalAlpha=0.44+0.08*br; ctx.drawImage(S.farText,S.cx-tw/2+dx*0.6,ty+dy*0.6,tw,th); ctx.restore(); } }
+// The store's name under it, in the cube's own colours and light: block
+// letters with a dark extruded depth and a lit upper rim, then laid back on the
+// ground toward the store, narrowing and fading as they go, so the words go
+// away into the haze the cube stands in.
+function farTextBuild(){ var word='SOLANA MOBILE', fs=150, pad=40, c=document.createElement('canvas'), x=c.getContext('2d');
+  x.font='800 '+fs+'px sans-serif'; try{ x.letterSpacing='16px'; }catch(e){}
+  var tw=Math.ceil(x.measureText(word).width)+pad*2, th=fs+60, depth=16, k; c.width=tw; c.height=th;
+  x.font='800 '+fs+'px sans-serif'; try{ x.letterSpacing='16px'; }catch(e){} x.textAlign='center'; x.textBaseline='middle';
+  var cy=th/2-depth/2;
+  for(k=depth;k>=1;k--){ var f=k/depth; x.fillStyle='rgb('+Math.round(8+10*(1-f))+','+Math.round(26+26*(1-f))+','+Math.round(37+26*(1-f))+')'; x.fillText(word,tw/2,cy+k); }
+  var fg=x.createLinearGradient(0,cy-fs*0.42,0,cy+fs*0.42); fg.addColorStop(0,'#86D8D3'); fg.addColorStop(0.55,'#3E8F97'); fg.addColorStop(1,'#1C4C58'); x.fillStyle=fg; x.fillText(word,tw/2,cy);
+  var r=document.createElement('canvas'), rx=r.getContext('2d'); r.width=tw; r.height=th;
+  rx.font='800 '+fs+'px sans-serif'; try{ rx.letterSpacing='16px'; }catch(e){} rx.textAlign='center'; rx.textBaseline='middle';
+  rx.fillStyle='#D2F6F1'; rx.fillText(word,tw/2,cy); rx.globalCompositeOperation='destination-out'; rx.fillText(word,tw/2,cy+3.5);
+  x.globalAlpha=0.8; x.drawImage(r,0,0); x.globalAlpha=1;
+  // Laid back: each row of the result takes a row of the letters, the far rows
+  // squeezed and narrowed, the near ones full width.
+  var out=document.createElement('canvas'), ox=out.getContext('2d'), oh=Math.round(th*0.62), j; out.width=tw; out.height=oh;
+  for(j=0;j<oh;j++){ var t=j/(oh-1), v=Math.pow(t,1.35), sy=v*(th-1), sc=0.58+0.42*t, dw=tw*sc;
+    ox.globalAlpha=0.25+0.75*t; ox.drawImage(c,0,sy,tw,Math.max(1,th/oh),(tw-dw)/2,j,dw,1); }
+  ox.globalAlpha=1; ox.globalCompositeOperation='destination-in'; var hz=ox.createLinearGradient(0,0,0,oh); hz.addColorStop(0,'rgba(0,0,0,0.35)'); hz.addColorStop(1,'rgba(0,0,0,1)'); ox.fillStyle=hz; ox.fillRect(0,0,tw,oh);
+  S.farText=out; }
 // The store is the vault's moon risen from below: the same body, the same
 // mark, and along its edge the day's releases stand where they came down.
 function store(now){ var cx=S.cx, cy=S.cys, R=S.Rs, i;
