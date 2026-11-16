@@ -633,7 +633,7 @@ export const ru: Record<string, string> = {
   'Request': 'Запрос',
   'Request on Solscan': 'Запрос в Solscan',
   'Since {date}: {votes} votes on {releases} releases from {apps} apps.': 'С {date} голосов: {votes}, релизов: {releases}, приложений: {apps}.',
-  'Solana Mobile, Jito and Helius are named and shown only to say whose vote is whose. SKR Eyes is independent of them.': 'Solana Mobile, Jito и Helius названы и показаны только для того, чтобы было видно, чей голос чей. SKR Eyes от них не зависит.',
+  'Solana Mobile, its dApp Store, Jito and Helius are named and their marks shown only to say whose store this is and whose vote is whose. SKR Eyes is independent of them.': 'Solana Mobile, его dApp Store, Jito и Helius названы, а их знаки показаны только для того, чтобы было видно, чей это магазин и чей голос чей. SKR Eyes от них не зависит.',
   'Stop': 'Стоп',
   'The guardians could not be read just now.': 'Гардианов сейчас не удалось прочитать.',
   'This release': 'Этот релиз',

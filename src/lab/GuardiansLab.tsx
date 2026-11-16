@@ -476,7 +476,7 @@ export function GuardiansLab({ active }: { active: boolean }) {
 
         {totals ? <Evidence lines={[totals]} /> : null}
         <Text style={styles.fine}>{t('Read from the store\'s guardian program on chain ({program}) by our own indexer. A vote is not the release itself: the store lists an approved build later, often hours later. Apps go by their store name and icon; one the store does not list yet, by the name registered on chain.', { program: shortKey(data?.program || 'GUARDsVUfAaydbPU6QGcpWRLUkExaULtaygwEtkdhZAD') })}</Text>
-        <Text style={styles.fine}>{t('Solana Mobile, Jito and Helius are named and shown only to say whose vote is whose. SKR Eyes is independent of them.')}</Text>
+        <Text style={styles.fine}>{t('Solana Mobile, its dApp Store, Jito and Helius are named and their marks shown only to say whose store this is and whose vote is whose. SKR Eyes is independent of them.')}</Text>
       </View>
     </ScrollView>
   );

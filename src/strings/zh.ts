@@ -619,7 +619,7 @@ export const zh: Record<string, string> = {
   'Request': '请求',
   'Request on Solscan': '在 Solscan 查看请求',
   'Since {date}: {votes} votes on {releases} releases from {apps} apps.': '自 {date} 起：{apps} 个应用的 {releases} 次发布，共 {votes} 票。',
-  'Solana Mobile, Jito and Helius are named and shown only to say whose vote is whose. SKR Eyes is independent of them.': '提及并显示 Solana Mobile、Jito 和 Helius，只是为了说明哪一票属于谁。SKR Eyes 独立于它们。',
+  'Solana Mobile, its dApp Store, Jito and Helius are named and their marks shown only to say whose store this is and whose vote is whose. SKR Eyes is independent of them.': '提及 Solana Mobile 及其 dApp Store、Jito 和 Helius 并显示它们的标志，只是为了说明这是谁的商店、哪一票属于谁。SKR Eyes 独立于它们。',
   'Stop': '停止',
   'The guardians could not be read just now.': '暂时无法读取守护者。',
   'This release': '本次发布',

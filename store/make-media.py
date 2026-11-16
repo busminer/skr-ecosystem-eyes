@@ -86,8 +86,10 @@ BAR_SHAPE = ((26, "#7CF0BC"), (40, "#7CF0BC"), (18, "#FF7E79"), (52, "#7CF0BC"),
 def banner():
     # Depth: the vault sky at the back, the SKR mark far left where the store's
     # own back button and icon sit anyway, the staker card standing a little
-    # way off, and the phone with the living scene in front, turned towards
-    # the reader. Every word stays inside x 440-1170, y 110-460.
+    # way off, and the phone in front, turned towards the reader. Since 1.6.0
+    # (16.11.2026) the phone holds the guardians at work: a real frame of the
+    # scene, three green votes on a release under the dApp Store's cube.
+    # Every word stays inside x 440-1170, y 110-460.
     body = """
 <div class="sheet">
   <div class="scene"></div>
@@ -98,9 +100,9 @@ def banner():
   </div>
   <div class="copy">
     <div class="wordmark">SKR EYES</div>
-    <div class="tag">Watch the SKR vault.</div>
+    <div class="tag">Watch SKR and its guardians.</div>
     <div class="line"></div>
-    <div class="sub">The vault, alive: every stake falls in with its .skr name, every exit hangs and cools. Your card beside it.</div>
+    <div class="sub">Every dApp Store release, voted on chain by its guardians as it lands. The vault beside it, and your staker card.</div>
   </div>
 </div>"""
     css = """
@@ -126,7 +128,7 @@ def banner():
   .line{margin:20px 0 16px;width:110px;height:2px;background:METAL;opacity:.85;}
   .sub{font-size:18px;color:MUTED;max-width:330px;line-height:1.45;}
 """.replace("TEXT", TEXT).replace("ACCENT", ACCENT).replace("METAL", METAL).replace("MUTED", MUTED).replace("BG", BG)
-    body = body.replace("CARD", data_uri(MEDIA / "card-only.png")).replace("PHONE", data_uri(MEDIA / "phone-scene.png"))
+    body = body.replace("CARD", data_uri(MEDIA / "card-only.png")).replace("PHONE", data_uri(MEDIA / "phone-guardians.png"))
     css = css.replace("SCENE", data_uri(MEDIA / "bg-banner.png"))
     render("banner-1200x600.png", 1200, 600, body, css)
 
@@ -141,10 +143,10 @@ def feature():
   <div class="stars"></div>
   <div class="top">
     <div class="brand">MARK<span class="wordmark">SKR EYES</span></div>
-    <h1>The vault, alive</h1>
+    <h1>The guardians at work</h1>
   </div>
   <div class="phone"><div class="glow"></div><div class="body"><img src="PHONE"></div></div>
-  <div class="foot">Every stake with its .skr name · every exit cooling in the open · 4.95B SKR held</div>
+  <div class="foot">Every dApp Store release · every guardian vote · read from the chain as it lands</div>
 </div>"""
     css = """
   .sheet{position:relative;width:1200px;height:1200px;overflow:hidden;background:BG;}
@@ -163,23 +165,26 @@ def feature():
   .phone .body img{width:100%;display:block;}
   .foot{position:absolute;left:0;right:0;bottom:64px;text-align:center;font-size:24px;color:MUTED;letter-spacing:.02em;}
 """.replace("TEXT", TEXT).replace("MUTED", MUTED).replace("BG", BG)
-    body = body.replace("MARK", MARK).replace("PHONE", data_uri(MEDIA / "phone-scene.png"))
+    body = body.replace("MARK", MARK).replace("PHONE", data_uri(MEDIA / "phone-guardians-tall.png"))
     css = css.replace("SCENE", data_uri(MEDIA / "bg-feature.png"))
     render("feature-1200x1200.png", 1200, 1200, body, css)
 
 
 SHOTS = [
-    # 1.6.0 (15.11.2026): the guardians lead; captured on Alex's Seeker from the rc4 build.
-    ("g16-guardians.png", "The guardians, live",
-     "Every release to the dApp Store and every guardian vote on it, read from the chain as it lands. A gold thread for each vote, with the seconds it took."),
-    ("g16-lapse.png", "A day in twenty seconds",
-     "Replay the last 24 hours: every release on the dial, every vote at its real pace. The rings are seconds from request to vote."),
+    # 1.6.0 (16.11.2026): every capture from rc11 on Alex's Seeker. The two
+    # guardian frames are taken from a screen recording of the 6-hour replay.
+    ("g16-guardians.png", "Every release, every vote",
+     "Each release comes down the belt under its store name and icon, and every guardian's vote lands on it at its real second. Replay the last hour, six hours or day."),
+    ("g16-turned.png", "Yes in green, no in red",
+     "Every yes lights the app green, every no takes its share in red. The turned-away stand on a line of their own, off the store's shelf."),
     ("g16-releases.png", "Seconds, release by release",
-     "The latest releases and how long each guardian took. Tap any of them for its transactions on Solscan."),
+     "Each guardian's seconds in the colour of its vote, and the verdict. Tap a release for its transactions on Solscan."),
     ("g16-vault.png", "The vault, alive",
      "Every stake falls in with its .skr name; every exit hangs and cools above the pile of what stays. Tap any move for its receipt."),
     ("g16-top.png", "Find yourself among 45 000",
      "Everybody who stakes, in order: by stake, by what each position received, and by places moved since yesterday. Your own place sits at the top."),
+    ("g16-radar.png", "Everyone on one dial",
+     "Six rings by tier, every staker a phone on the dial, yours in gold among them."),
     ("g16-flow.png", "Every finalized move, live",
      "Stakes, exits and withdrawals as they land, by kind and by size, the day's biggest pinned on top."),
     ("g16-me.png", "Your staker card",

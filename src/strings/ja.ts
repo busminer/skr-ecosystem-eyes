@@ -619,7 +619,7 @@ export const ja: Record<string, string> = {
   'Request': 'リクエスト',
   'Request on Solscan': 'Solscan でリクエストを見る',
   'Since {date}: {votes} votes on {releases} releases from {apps} apps.': '{date} 以降：{apps} アプリの {releases} リリースに {votes} 票。',
-  'Solana Mobile, Jito and Helius are named and shown only to say whose vote is whose. SKR Eyes is independent of them.': 'Solana Mobile、Jito、Helius の名前と表示は、どの票が誰のものかを示すためだけのものです。SKR Eyes はこれらの会社から独立しています。',
+  'Solana Mobile, its dApp Store, Jito and Helius are named and their marks shown only to say whose store this is and whose vote is whose. SKR Eyes is independent of them.': 'Solana Mobile とその dApp Store、Jito、Helius の名前とマークは、誰のストアで、どの票が誰のものかを示すためだけに表示しています。SKR Eyes はこれらの会社から独立しています。',
   'Stop': '停止',
   'The guardians could not be read just now.': '今はガーディアンを読み取れませんでした。',
   'This release': 'このリリース',

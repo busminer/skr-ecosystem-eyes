@@ -619,7 +619,7 @@ export const id: Record<string, string> = {
   'Request': 'Permintaan',
   'Request on Solscan': 'Permintaan di Solscan',
   'Since {date}: {votes} votes on {releases} releases from {apps} apps.': 'Sejak {date}: {votes} suara untuk {releases} rilis dari {apps} aplikasi.',
-  'Solana Mobile, Jito and Helius are named and shown only to say whose vote is whose. SKR Eyes is independent of them.': 'Solana Mobile, Jito, dan Helius disebut dan ditampilkan hanya untuk menunjukkan suara mana milik siapa. SKR Eyes independen dari mereka.',
+  'Solana Mobile, its dApp Store, Jito and Helius are named and their marks shown only to say whose store this is and whose vote is whose. SKR Eyes is independent of them.': 'Solana Mobile, dApp Store-nya, Jito, dan Helius disebut dan logonya ditampilkan hanya untuk menunjukkan toko milik siapa dan suara mana milik siapa. SKR Eyes independen dari mereka.',
   'Stop': 'Berhenti',
   'The guardians could not be read just now.': 'Para guardian belum bisa dibaca saat ini.',
   'This release': 'Rilis ini',

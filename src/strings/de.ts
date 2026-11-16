@@ -627,7 +627,7 @@ export const de: Record<string, string> = {
   'Request': 'Antrag',
   'Request on Solscan': 'Antrag auf Solscan',
   'Since {date}: {votes} votes on {releases} releases from {apps} apps.': 'Seit dem {date}: {votes} Stimmen zu {releases} Releases von {apps} Apps.',
-  'Solana Mobile, Jito and Helius are named and shown only to say whose vote is whose. SKR Eyes is independent of them.': 'Solana Mobile, Jito und Helius werden nur genannt und gezeigt, damit erkennbar ist, welche Stimme wem gehört. SKR Eyes ist von ihnen unabhängig.',
+  'Solana Mobile, its dApp Store, Jito and Helius are named and their marks shown only to say whose store this is and whose vote is whose. SKR Eyes is independent of them.': 'Solana Mobile, sein dApp Store, Jito und Helius werden genannt und ihre Zeichen gezeigt, nur damit erkennbar ist, wessen Store das ist und welche Stimme wem gehört. SKR Eyes ist von ihnen unabhängig.',
   'Stop': 'Stopp',
   'The guardians could not be read just now.': 'Die Guardians ließen sich gerade nicht lesen.',
   'This release': 'Dieses Release',

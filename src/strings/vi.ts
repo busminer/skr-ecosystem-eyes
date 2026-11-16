@@ -632,7 +632,7 @@ export const vi: Record<string, string> = {
   'Request': 'Yêu cầu',
   'Request on Solscan': 'Yêu cầu trên Solscan',
   'Since {date}: {votes} votes on {releases} releases from {apps} apps.': 'Từ {date}: {votes} phiếu cho {releases} bản phát hành từ {apps} ứng dụng.',
-  'Solana Mobile, Jito and Helius are named and shown only to say whose vote is whose. SKR Eyes is independent of them.': 'Solana Mobile, Jito và Helius được nêu tên và hiển thị chỉ để cho biết phiếu nào là của ai. SKR Eyes độc lập với họ.',
+  'Solana Mobile, its dApp Store, Jito and Helius are named and their marks shown only to say whose store this is and whose vote is whose. SKR Eyes is independent of them.': 'Solana Mobile, dApp Store của họ, Jito và Helius được nêu tên và hiển thị biểu trưng chỉ để cho biết cửa hàng này là của ai và phiếu nào là của ai. SKR Eyes độc lập với họ.',
   'Stop': 'Dừng',
   'The guardians could not be read just now.': 'Hiện chưa đọc được các guardian.',
   'This release': 'Bản phát hành này',

@@ -622,7 +622,7 @@ export const tr: Record<string, string> = {
   'Request': 'Talep',
   'Request on Solscan': 'Solscan\'de talep',
   'Since {date}: {votes} votes on {releases} releases from {apps} apps.': '{date} tarihinden beri: {apps} uygulamadan {releases} sürüme {votes} oy.',
-  'Solana Mobile, Jito and Helius are named and shown only to say whose vote is whose. SKR Eyes is independent of them.': 'Solana Mobile, Jito ve Helius yalnızca hangi oyu kimin verdiğini göstermek için anılır ve gösterilir. SKR Eyes onlardan bağımsızdır.',
+  'Solana Mobile, its dApp Store, Jito and Helius are named and their marks shown only to say whose store this is and whose vote is whose. SKR Eyes is independent of them.': 'Solana Mobile, dApp Store\'u, Jito ve Helius yalnızca mağazanın kime ait olduğunu ve hangi oyu kimin verdiğini göstermek için anılır ve işaretleri gösterilir. SKR Eyes onlardan bağımsızdır.',
   'Stop': 'Durdur',
   'The guardians could not be read just now.': 'Koruyucular şu an okunamadı.',
   'This release': 'Bu sürüm',

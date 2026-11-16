@@ -620,7 +620,7 @@ export const ko: Record<string, string> = {
   'Request': '요청',
   'Request on Solscan': 'Solscan에서 요청 보기',
   'Since {date}: {votes} votes on {releases} releases from {apps} apps.': '{date} 이후: 앱 {apps}개의 릴리스 {releases}건에 {votes}표.',
-  'Solana Mobile, Jito and Helius are named and shown only to say whose vote is whose. SKR Eyes is independent of them.': 'Solana Mobile, Jito, Helius의 이름과 표시는 어느 표가 누구의 것인지 알려 주기 위한 것일 뿐입니다. SKR Eyes는 이들과 독립적입니다.',
+  'Solana Mobile, its dApp Store, Jito and Helius are named and their marks shown only to say whose store this is and whose vote is whose. SKR Eyes is independent of them.': 'Solana Mobile과 그 dApp Store, Jito, Helius의 이름과 마크는 누구의 스토어인지, 어느 표가 누구의 것인지 알려 주기 위해서만 표시합니다. SKR Eyes는 이들과 독립적입니다.',
   'Stop': '정지',
   'The guardians could not be read just now.': '지금은 가디언 정보를 읽을 수 없습니다.',
   'This release': '이번 릴리스',
